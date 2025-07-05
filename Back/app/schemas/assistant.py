@@ -11,13 +11,13 @@ These Pydantic models define the structure and validation rules for:
 ======================================
 The Custom Assistants feature enables users to create specialized AI personas:
 
-1. **Assistant Creation**: User defines name, description, system prompt, model preferences
+1. **Assistant Creation**: User defines name, description, system prompt, model preferences, color
 2. **Conversation Integration**: Assistants can be used in chat conversations
-3. **Personalization**: Each user has their own private assistants
+3. **Personalization**: Each user has their own private assistants with visual identity
 4. **Validation**: Ensures data integrity and security
 
 Think of assistants as "AI characters" - a Data Analyst assistant, Creative Writer, etc.
-Each has its own personality (system prompt) and preferences (temperature, model).
+Each has its own personality (system prompt), preferences (temperature, model), and visual identity (color).
 
 Why separate schemas from models?
 - Models = Database structure (SQLAlchemy)
@@ -40,17 +40,7 @@ from .conversation import ConversationSummary, ConversationDetail
 # =============================================================================
 
 class AssistantStatus(str, Enum):
-    """
-    Status options for assistants.
-    
-    🎓 LEARNING: Enum vs String Fields
-    ================================
-    Using Enums provides:
-    - Type safety (can't use invalid values)
-    - Clear documentation of valid options
-    - IDE autocompletion
-    - Automatic validation by Pydantic
-    """
+    """Status options for assistants."""
     ACTIVE = "active"
     INACTIVE = "inactive"
     DRAFT = "draft"
@@ -103,6 +93,13 @@ class AssistantBase(BaseModel):
         example="Specialized in analyzing datasets, creating visualizations, and providing statistical insights."
     )
     
+    color: Optional[str] = Field(
+        None,
+        pattern=r'^#[0-9A-Fa-f]{6}$',
+        description="Hex color code for visual identification (e.g., '#3B82F6'). Auto-generated if not provided.",
+        example="#3B82F6"
+    )
+    
     system_prompt: str = Field(
         ...,
         min_length=MIN_SYSTEM_PROMPT_LENGTH,
@@ -126,16 +123,7 @@ class AssistantBase(BaseModel):
     
     @validator('name')
     def validate_name(cls, v):
-        """
-        Validate assistant name format and content.
-        
-        🎓 LEARNING: Input Sanitization
-        ==============================
-        Always validate user input to prevent:
-        - XSS attacks (malicious scripts)
-        - Data corruption (invalid characters)
-        - Poor user experience (confusing names)
-        """
+        """Validate assistant name format and content."""
         if not v or not v.strip():
             raise ValueError('Assistant name cannot be empty or just whitespace')
         
@@ -157,19 +145,18 @@ class AssistantBase(BaseModel):
                 return None  # Convert empty string to None
         return v
     
+    @validator('color')
+    def validate_color(cls, v):
+        """Validate color format if provided."""
+        if v is not None:
+            import re
+            if not re.match(r'^#[0-9A-Fa-f]{6}$', v):
+                raise ValueError('Color must be a valid hex code (e.g., #3B82F6)')
+        return v
+    
     @validator('system_prompt')
     def validate_system_prompt(cls, v):
-        """
-        Validate system prompt content and security.
-        
-        🎓 LEARNING: Prompt Injection Protection
-        =======================================
-        System prompts are critical for AI behavior. We must:
-        - Ensure minimum content (not just whitespace)
-        - Check for prompt injection attempts
-        - Maintain reasonable length limits
-        - Preserve user intent while ensuring safety
-        """
+        """Validate system prompt content and security."""
         if not v or not v.strip():
             raise ValueError('System prompt cannot be empty or just whitespace')
         
@@ -193,17 +180,7 @@ class AssistantBase(BaseModel):
     
     @validator('model_preferences')
     def validate_model_preferences(cls, v):
-        """
-        Validate model preferences structure and values.
-        
-        🎓 LEARNING: Configuration Validation
-        ====================================
-        Model preferences control AI behavior, so validate:
-        - Temperature in valid range (0-2)
-        - Max tokens as positive integer
-        - Model name from supported list
-        - No dangerous or invalid configurations
-        """
+        """Validate model preferences structure and values."""
         if v is None:
             return v
         
@@ -225,7 +202,7 @@ class AssistantBase(BaseModel):
                 raise ValueError('Max tokens must be an integer')
             if tokens <= 0:
                 raise ValueError('Max tokens must be positive')
-            if tokens > 32000:  # Reasonable upper limit
+            if tokens > 32000:
                 raise ValueError('Max tokens cannot exceed 32,000')
         
         # Validate model name if provided
@@ -238,25 +215,16 @@ class AssistantBase(BaseModel):
 
 
 class AssistantCreate(AssistantBase):
-    """
-    Schema for creating a new assistant.
-    
-    🎓 LEARNING: Creation Schema Design
-    =================================
-    Creation schemas should:
-    - Include all required fields for new records
-    - Provide sensible defaults where possible
-    - Validate business rules specific to creation
-    - Be permissive (user can iterate and improve)
-    """
+    """Schema for creating a new assistant."""
     pass  # Inherits all fields from AssistantBase
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "name": "Creative Writing Assistant",
                 "description": "Helps with creative writing, storytelling, character development, and narrative structure.",
-                "system_prompt": "You are a creative writing assistant. Help users with storytelling, character development, plot ideas, and creative content. Be imaginative, inspiring, and supportive of creative expression. Ask questions to understand the genre, audience, and style preferences.",
+                "color": "#8B5CF6",
+                "system_prompt": "You are a creative writing assistant. Help users with storytelling, character development, plot ideas, and creative content. Be imaginative, inspiring, and supportive of creative expression.",
                 "model_preferences": {
                     "model": "gpt-4",
                     "temperature": 0.9,
@@ -270,17 +238,7 @@ class AssistantCreate(AssistantBase):
 
 
 class AssistantUpdate(BaseModel):
-    """
-    Schema for updating an existing assistant.
-    
-    🎓 LEARNING: Update Schema Pattern
-    =================================
-    Update schemas differ from create schemas:
-    - All fields are optional (partial updates)
-    - Can't change ownership or system-generated fields
-    - May have different validation rules
-    - Should preserve existing data if field not provided
-    """
+    """Schema for updating an existing assistant."""
     name: Optional[str] = Field(
         None,
         min_length=1,
@@ -292,6 +250,12 @@ class AssistantUpdate(BaseModel):
         None,
         max_length=MAX_ASSISTANT_DESCRIPTION_LENGTH,
         description="Updated description"
+    )
+    
+    color: Optional[str] = Field(
+        None,
+        pattern=r'^#[0-9A-Fa-f]{6}$',
+        description="Updated hex color code"
     )
     
     system_prompt: Optional[str] = Field(
@@ -314,15 +278,17 @@ class AssistantUpdate(BaseModel):
     # Apply same validators as base schema
     _validate_name = validator('name', allow_reuse=True)(AssistantBase.validate_name)
     _validate_description = validator('description', allow_reuse=True)(AssistantBase.validate_description)
+    _validate_color = validator('color', allow_reuse=True)(AssistantBase.validate_color)
     _validate_system_prompt = validator('system_prompt', allow_reuse=True)(AssistantBase.validate_system_prompt)
     _validate_model_preferences = validator('model_preferences', allow_reuse=True)(AssistantBase.validate_model_preferences)
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "name": "Advanced Data Analyst",
                 "description": "Enhanced with statistical analysis and machine learning capabilities.",
-                "system_prompt": "You are an expert data analyst with advanced statistical knowledge. Help users with complex data analysis, statistical modeling, and machine learning insights. Always explain your methodology.",
+                "color": "#3B82F6",
+                "system_prompt": "You are an expert data analyst with advanced statistical knowledge. Help users with complex data analysis, statistical modeling, and machine learning insights.",
                 "model_preferences": {
                     "temperature": 0.2,
                     "max_tokens": 4000
@@ -333,20 +299,11 @@ class AssistantUpdate(BaseModel):
 
 
 class AssistantResponse(BaseModel):
-    """
-    Schema for assistant API responses.
-    
-    🎓 LEARNING: Response Schema Design
-    ==================================
-    Response schemas should include:
-    - All data frontend needs for display
-    - Computed fields (conversation_count, status_label)
-    - Metadata (timestamps, owner info)
-    - Safe data only (no sensitive internal details)
-    """
+    """Schema for assistant API responses."""
     id: int = Field(..., description="Unique assistant identifier")
     name: str = Field(..., description="Assistant name")
     description: Optional[str] = Field(None, description="Assistant description")
+    color: str = Field(..., description="Hex color code for visual identification")
     system_prompt: str = Field(..., description="System prompt defining assistant behavior")
     system_prompt_preview: str = Field(..., description="Truncated system prompt for list views")
     model_preferences: Dict[str, Any] = Field(..., description="LLM model preferences")
@@ -368,11 +325,12 @@ class AssistantResponse(BaseModel):
         json_encoders = {
             datetime: lambda v: v.isoformat()
         }
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "id": 123,
                 "name": "Data Analyst Pro",
                 "description": "Specialized in analyzing datasets and providing statistical insights.",
+                "color": "#3B82F6",
                 "system_prompt": "You are a skilled data analyst. Help users analyze data, create visualizations...",
                 "system_prompt_preview": "You are a skilled data analyst. Help users analyze data, create...",
                 "model_preferences": {
@@ -393,20 +351,11 @@ class AssistantResponse(BaseModel):
 
 
 class AssistantSummary(BaseModel):
-    """
-    Lightweight assistant summary for list views and dropdowns.
-    
-    🎓 LEARNING: Performance Optimization
-    ===================================
-    Not all API endpoints need full data. Summary schemas provide:
-    - Faster API responses (less data transfer)
-    - Reduced database load (fewer joins)
-    - Better user experience (faster page loads)
-    - Bandwidth savings for mobile users
-    """
+    """Lightweight assistant summary for list views and dropdowns."""
     id: int = Field(..., description="Assistant ID")
     name: str = Field(..., description="Assistant name")
     description: Optional[str] = Field(None, description="Brief description")
+    color: str = Field(..., description="Assistant color")
     system_prompt_preview: str = Field(..., description="Preview of system prompt")
     is_active: bool = Field(..., description="Whether assistant is active")
     conversation_count: int = Field(..., description="Number of conversations")
@@ -421,180 +370,79 @@ class AssistantSummary(BaseModel):
 
 
 # =============================================================================
-# CONVERSATION SCHEMAS WITH ASSISTANT INTEGRATION
+# ASSISTANT CONVERSATION SCHEMAS
 # =============================================================================
 
 class AssistantConversationCreate(BaseModel):
-    """
-    Schema for creating a conversation with a specific assistant.
-    
-    🎓 LEARNING: Feature Integration
-    ===============================
-    When adding assistants to conversations, we need:
-    - Clear association between conversation and assistant
-    - Validation that user owns the assistant
-    - Optional conversation metadata
-    - Fallback behavior if assistant unavailable
-    """
-    assistant_id: int = Field(..., description="ID of the assistant to use")
-    title: Optional[str] = Field(
-        None,
-        max_length=255,
-        description="Optional conversation title (auto-generated if not provided)"
-    )
-    first_message: Optional[str] = Field(
-        None,
-        min_length=1,
-        max_length=10000,
-        description="Optional first message to start the conversation"
-    )
-    
-    @validator('title')
-    def validate_title(cls, v):
-        """Validate conversation title if provided."""
-        if v is not None:
-            v = v.strip()
-            if len(v) == 0:
-                return None
-        return v
+    """Schema for creating a conversation with a specific assistant."""
+    title: str = Field(..., max_length=255, description="Conversation title")
+    llm_config_id: Optional[int] = Field(None, description="LLM configuration to use (optional, assistant preferences will be used if not provided)")
+    model_used: Optional[str] = Field(None, description="Specific model to use (optional, assistant preferences will be used if not provided)")
+    project_id: Optional[int] = Field(None, description="Project/folder to assign conversation to")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
-                "assistant_id": 123,
-                "title": "Q3 Sales Data Analysis",
-                "first_message": "I have the Q3 sales data and need to identify trends and insights."
+                "title": "Data Analysis Session",
+                "llm_config_id": 1,
+                "model_used": "gpt-4",
+                "project_id": 5
             }
         }
 
 
 class AssistantConversationResponse(BaseModel):
-    """
-    Schema for conversation responses with assistant information.
-    
-    🎓 LEARNING: Rich Response Data
-    =============================
-    Include assistant context in conversation responses so frontend can:
-    - Display which assistant is being used
-    - Show assistant-specific UI elements
-    - Enable assistant switching
-    - Provide context about AI behavior
-    """
+    """Schema for assistant conversation responses."""
     id: int = Field(..., description="Conversation ID")
     title: str = Field(..., description="Conversation title")
-    user_id: int = Field(..., description="Owner user ID")
-    
-    # Assistant information
-    assistant_id: Optional[int] = Field(None, description="Associated assistant ID")
-    assistant_name: Optional[str] = Field(None, description="Assistant name for display")
-    assistant_description: Optional[str] = Field(None, description="Assistant description")
-    
-    # Conversation metadata
-    message_count: int = Field(..., description="Number of messages")
-    last_message_at: Optional[datetime] = Field(None, description="Last message timestamp")
+    user_id: int = Field(..., description="User who owns the conversation")
+    assistant_id: int = Field(..., description="Assistant used in this conversation")
+    assistant_name: Optional[str] = Field(None, description="Name of the assistant")
+    assistant_description: Optional[str] = Field(None, description="Description of the assistant")
+    message_count: int = Field(..., description="Number of messages in the conversation")
+    last_message_at: Optional[datetime] = Field(None, description="Timestamp of last message")
     is_active: bool = Field(..., description="Whether conversation is active")
-    
-    # Timestamps
-    created_at: datetime = Field(..., description="Creation timestamp")
-    updated_at: datetime = Field(..., description="Last update timestamp")
+    created_at: datetime = Field(..., description="When conversation was created")
+    updated_at: datetime = Field(..., description="When conversation was last updated")
     
     class Config:
         from_attributes = True
         json_encoders = {
             datetime: lambda v: v.isoformat()
         }
-        schema_extra = {
+        json_schema_extra = {
             "example": {
-                "id": 789,
+                "id": 123,
                 "title": "Data Analysis Session",
                 "user_id": 456,
-                "assistant_id": 123,
+                "assistant_id": 789,
                 "assistant_name": "Data Analyst Pro",
-                "assistant_description": "Specialized in data analysis and statistics",
-                "message_count": 12,
-                "last_message_at": "2025-06-18T15:45:00Z",
+                "assistant_description": "Specialized in analyzing datasets and providing statistical insights.",
+                "message_count": 15,
+                "last_message_at": "2025-06-18T14:30:00Z",
                 "is_active": True,
                 "created_at": "2025-06-18T10:00:00Z",
-                "updated_at": "2025-06-18T15:45:00Z"
+                "updated_at": "2025-06-18T14:30:00Z"
             }
         }
 
 
 # =============================================================================
-# LIST AND FILTER SCHEMAS
+# ASSISTANT LIST AND OPERATION SCHEMAS
 # =============================================================================
 
 class AssistantListRequest(BaseModel):
-    """
-    Schema for requesting assistant lists with filtering and pagination.
-    
-    🎓 LEARNING: API Pagination and Filtering
-    ========================================
-    Production APIs need:
-    - Pagination (don't load all records at once)
-    - Filtering (find specific assistants)
-    - Sorting (order by name, date, usage)
-    - Search (fuzzy matching on names/descriptions)
-    """
-    limit: int = Field(
-        20,
-        ge=1,
-        le=100,
-        description="Maximum assistants to return"
-    )
-    offset: int = Field(
-        0,
-        ge=0,
-        description="Number of assistants to skip"
-    )
-    search: Optional[str] = Field(
-        None,
-        max_length=100,
-        description="Search query for name or description"
-    )
-    status_filter: Optional[AssistantStatus] = Field(
-        None,
-        description="Filter by assistant status"
-    )
-    sort_by: Optional[str] = Field(
-        "updated_at",
-        description="Field to sort by (name, created_at, updated_at, conversation_count)"
-    )
-    sort_order: Optional[str] = Field(
-        "desc",
-        description="Sort order (asc or desc)"
-    )
-    include_inactive: bool = Field(
-        False,
-        description="Whether to include inactive assistants"
-    )
-    
-    @validator('search')
-    def validate_search(cls, v):
-        """Validate search query."""
-        if v is not None:
-            v = v.strip()
-            if len(v) == 0:
-                return None
-        return v
-    
-    @validator('sort_by')
-    def validate_sort_by(cls, v):
-        """Validate sort field."""
-        allowed_fields = ['name', 'created_at', 'updated_at', 'conversation_count']
-        if v not in allowed_fields:
-            raise ValueError(f'Sort by must be one of: {", ".join(allowed_fields)}')
-        return v
-    
-    @validator('sort_order')
-    def validate_sort_order(cls, v):
-        """Validate sort order."""
-        if v not in ['asc', 'desc']:
-            raise ValueError('Sort order must be "asc" or "desc"')
-        return v
+    """Schema for listing assistants with filters."""
+    limit: int = Field(50, ge=1, le=100, description="Maximum assistants to return")
+    offset: int = Field(0, ge=0, description="Number of assistants to skip")
+    search: Optional[str] = Field(None, description="Search term for assistant name or description")
+    status_filter: Optional[str] = Field(None, description="Filter by status (active, inactive, draft)")
+    sort_by: Optional[str] = Field("updated_at", description="Field to sort by (name, created_at, updated_at, conversation_count)")
+    sort_order: Optional[str] = Field("desc", description="Sort order (asc or desc)")
+    include_inactive: Optional[bool] = Field(False, description="Include inactive assistants")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "limit": 20,
                 "offset": 0,
@@ -608,298 +456,176 @@ class AssistantListRequest(BaseModel):
 
 
 class AssistantListResponse(BaseModel):
-    """
-    Schema for assistant list responses with pagination info.
-    
-    🎓 LEARNING: Pagination Response Pattern
-    =======================================
-    Paginated responses should always include:
-    - The actual data (assistants list)
-    - Pagination metadata (total, has_more)
-    - Filter/search context
-    - Performance info (query time, etc.)
-    """
-    assistants: List[AssistantSummary] = Field(..., description="List of assistants")
-    total_count: int = Field(..., description="Total number of assistants matching filters")
-    limit: int = Field(..., description="Requested limit")
-    offset: int = Field(..., description="Requested offset")
-    has_more: bool = Field(..., description="Whether there are more results available")
-    filters_applied: Dict[str, Any] = Field(..., description="Summary of applied filters")
+    """Response schema for assistant lists."""
+    assistants: List[AssistantSummary]
+    total_count: int
+    limit: int
+    offset: int
+    has_more: bool
+    filters_applied: Optional[Dict[str, Any]] = Field(None, description="Applied filters for debugging")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
-                "assistants": [
-                    {
-                        "id": 123,
-                        "name": "Data Analyst Pro",
-                        "description": "Specialized in data analysis",
-                        "system_prompt_preview": "You are a skilled data analyst...",
-                        "is_active": True,
-                        "conversation_count": 7,
-                        "created_at": "2025-06-18T10:00:00Z",
-                        "is_new": False
-                    }
-                ],
-                "total_count": 15,
+                "assistants": [],
+                "total_count": 5,
                 "limit": 20,
                 "offset": 0,
                 "has_more": False,
                 "filters_applied": {
-                    "search": None,
+                    "search": "data analyst",
                     "status_filter": "active",
-                    "include_inactive": False
+                    "include_inactive": False,
+                    "sort_by": "updated_at",
+                    "sort_order": "desc"
                 }
             }
         }
 
 
-# =============================================================================
-# OPERATION RESULT SCHEMAS
-# =============================================================================
-
 class AssistantOperationResponse(BaseModel):
-    """
-    Generic response schema for assistant operations (create, update, delete).
-    
-    🎓 LEARNING: Consistent Operation Responses
-    ==========================================
-    Standardized responses help frontend handle operations consistently:
-    - Always know if operation succeeded
-    - Get helpful messages for user feedback
-    - Receive updated data when appropriate
-    - Handle errors gracefully
-    """
-    success: bool = Field(..., description="Whether operation succeeded")
-    message: str = Field(..., description="Human-readable result message")
-    assistant_id: Optional[int] = Field(None, description="ID of affected assistant")
-    assistant: Optional[AssistantResponse] = Field(None, description="Updated assistant data")
+    """Generic response for assistant operations."""
+    success: bool
+    message: str
+    assistant_id: Optional[int] = None
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "success": True,
-                "message": "Assistant updated successfully",
-                "assistant_id": 123,
-                "assistant": {
-                    "id": 123,
-                    "name": "Updated Data Analyst",
-                    "description": "Enhanced with new capabilities"
-                }
+                "message": "Assistant created successfully",
+                "assistant_id": 123
             }
         }
 
 
 class AssistantStatsResponse(BaseModel):
-    """
-    Schema for assistant statistics and usage analytics.
-    
-    🎓 LEARNING: Analytics and Insights
-    ==================================
-    Statistics help users understand:
-    - Which assistants are most useful
-    - Usage patterns over time
-    - System health and performance
-    - Opportunities for optimization
-    """
-    total_assistants: int = Field(..., description="Total number of assistants for user")
-    active_assistants: int = Field(..., description="Number of active assistants")
-    total_conversations: int = Field(..., description="Total conversations using assistants")
-    most_used_assistant: Optional[Dict[str, Any]] = Field(
-        None,
-        description="Information about most frequently used assistant"
-    )
-    recent_activity: List[Dict[str, Any]] = Field(
-        ...,
-        description="Recent assistant-related activity"
-    )
+    """Response schema for assistant statistics."""
+    total_assistants: int
+    active_assistants: int
+    total_conversations: int
+    average_conversations_per_assistant: float
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
-                "total_assistants": 8,
-                "active_assistants": 6,
-                "total_conversations": 45,
-                "most_used_assistant": {
-                    "id": 123,
-                    "name": "Data Analyst Pro",
-                    "conversation_count": 15
-                },
-                "recent_activity": [
-                    {
-                        "type": "conversation_created",
-                        "assistant_name": "Creative Writer",
-                        "timestamp": "2025-06-18T15:30:00Z"
-                    }
-                ]
+                "total_assistants": 10,
+                "active_assistants": 8,
+                "total_conversations": 150,
+                "average_conversations_per_assistant": 15.0
             }
         }
 
 
-# =============================================================================
-# ERROR SCHEMAS
-# =============================================================================
-
 class AssistantErrorResponse(BaseModel):
-    """
-    Error response schema for assistant operations.
-    
-    🎓 LEARNING: Comprehensive Error Handling
-    ========================================
-    Good error responses provide:
-    - Clear error classification
-    - Actionable error messages
-    - Context about what went wrong
-    - Suggestions for resolution
-    - Debug information for developers
-    """
-    error_type: str = Field(..., description="Type of error (validation, permission, not_found, etc.)")
-    message: str = Field(..., description="Human-readable error message")
-    details: Optional[Dict[str, Any]] = Field(None, description="Additional error details")
-    assistant_id: Optional[int] = Field(None, description="ID of assistant related to error")
-    field_errors: Optional[Dict[str, List[str]]] = Field(
-        None,
-        description="Field-specific validation errors"
-    )
-    suggestions: Optional[List[str]] = Field(
-        None,
-        description="Suggestions for resolving the error"
-    )
+    """Error response schema for assistant operations."""
+    error: str
+    detail: Optional[str] = None
+    assistant_id: Optional[int] = None
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
-                "error_type": "validation_error",
-                "message": "Assistant data contains validation errors",
-                "details": {
-                    "invalid_fields": ["system_prompt", "model_preferences"],
-                    "error_count": 2
-                },
-                "assistant_id": None,
-                "field_errors": {
-                    "system_prompt": ["System prompt is too short (minimum 10 characters)"],
-                    "model_preferences": ["Temperature must be between 0 and 2"]
-                },
-                "suggestions": [
-                    "Provide a more detailed system prompt describing the assistant's role",
-                    "Check temperature value in model preferences",
-                    "Review the assistant creation guidelines"
-                ]
+                "error": "not_found",
+                "detail": "Assistant not found",
+                "assistant_id": 123
             }
         }
 
 
 class AssistantPermissionError(BaseModel):
-    """Specific error schema for permission-related issues."""
-    error_type: str = Field(default="permission_denied", description="Error type")
-    message: str = Field(..., description="Permission error message")
-    assistant_id: int = Field(..., description="ID of assistant user tried to access")
-    required_permission: str = Field(..., description="Permission that was required")
+    """Permission error response for assistant operations."""
+    error: str = "permission_denied"
+    detail: str = "You don't have permission to access this assistant"
+    assistant_id: Optional[int] = None
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
-                "error_type": "permission_denied",
-                "message": "You don't have permission to modify this assistant",
-                "assistant_id": 123,
-                "required_permission": "assistant:edit"
+                "error": "permission_denied",
+                "detail": "You don't have permission to access this assistant",
+                "assistant_id": 123
             }
         }
 
 
-# =============================================================================
-# BULK OPERATIONS SCHEMAS
-# =============================================================================
-
 class AssistantBulkAction(BaseModel):
-    """Schema for bulk operations on assistants."""
-    assistant_ids: List[int] = Field(..., description="List of assistant IDs")
-    action: str = Field(..., description="Action to perform (activate, deactivate, delete)")
-    
-    @validator('assistant_ids')
-    def validate_assistant_ids(cls, v):
-        """Validate assistant IDs list."""
-        if len(v) == 0:
-            raise ValueError('At least one assistant ID is required')
-        if len(v) > 20:
-            raise ValueError('Cannot perform bulk operations on more than 20 assistants at once')
-        if len(set(v)) != len(v):
-            raise ValueError('Duplicate assistant IDs are not allowed')
-        return v
+    """Schema for bulk assistant operations."""
+    action: str = Field(..., description="Action to perform: 'delete', 'activate', 'deactivate'")
+    assistant_ids: List[int] = Field(..., description="List of assistant IDs to operate on")
     
     @validator('action')
     def validate_action(cls, v):
-        """Validate bulk action type."""
-        allowed_actions = ['activate', 'deactivate', 'delete']
+        allowed_actions = ['delete', 'activate', 'deactivate']
         if v not in allowed_actions:
-            raise ValueError(f'Action must be one of: {", ".join(allowed_actions)}')
+            raise ValueError(f'Action must be one of: {allowed_actions}')
+        return v
+    
+    @validator('assistant_ids')
+    def validate_ids(cls, v):
+        if len(v) < 1:
+            raise ValueError('At least one assistant ID is required')
+        if len(v) > 50:
+            raise ValueError('Cannot operate on more than 50 assistants at once')
         return v
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
-                "assistant_ids": [123, 124, 125],
-                "action": "deactivate"
+                "action": "activate",
+                "assistant_ids": [1, 2, 3]
             }
         }
 
 
 class AssistantBulkResponse(BaseModel):
-    """Response schema for bulk operations."""
-    success: bool = Field(..., description="Whether bulk operation succeeded")
-    message: str = Field(..., description="Overall operation result message")
-    total_requested: int = Field(..., description="Total assistants requested for operation")
-    successful_count: int = Field(..., description="Number of assistants successfully processed")
-    failed_count: int = Field(..., description="Number of assistants that failed")
-    failed_assistants: Optional[List[Dict[str, Any]]] = Field(
-        None,
-        description="Details about assistants that failed"
-    )
+    """Response schema for bulk assistant operations."""
+    success: bool
+    message: str
+    processed_count: int
+    failed_count: int
+    failed_ids: List[int] = Field(default_factory=list)
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "success": True,
-                "message": "Bulk deactivation completed",
-                "total_requested": 3,
-                "successful_count": 3,
+                "message": "Bulk operation completed",
+                "processed_count": 3,
                 "failed_count": 0,
-                "failed_assistants": None
+                "failed_ids": []
             }
         }
 
 
-# =============================================================================
-# EXPORT/IMPORT SCHEMAS
-# =============================================================================
-
 class AssistantExport(BaseModel):
-    """Schema for exporting assistant configurations."""
-    name: str = Field(..., description="Assistant name")
-    description: Optional[str] = Field(None, description="Assistant description")
-    system_prompt: str = Field(..., description="System prompt")
-    model_preferences: Dict[str, Any] = Field(..., description="Model preferences")
-    export_version: str = Field(default="1.0", description="Export format version")
-    exported_at: datetime = Field(..., description="Export timestamp")
+    """Schema for assistant export data."""
+    assistants: List[AssistantResponse]
+    export_date: datetime
+    total_count: int
     
     class Config:
+        from_attributes = True
         json_encoders = {
             datetime: lambda v: v.isoformat()
         }
 
 
 class AssistantImport(BaseModel):
-    """Schema for importing assistant configurations."""
-    name: str = Field(..., description="Assistant name")
-    description: Optional[str] = Field(None, description="Assistant description")
-    system_prompt: str = Field(..., description="System prompt")
-    model_preferences: Optional[Dict[str, Any]] = Field(None, description="Model preferences")
+    """Schema for assistant import data."""
+    assistants: List[AssistantCreate]
+    import_mode: str = Field("create", description="Import mode: 'create' or 'update'")
     
-    # Apply same validation as creation
-    _validate_name = validator('name', allow_reuse=True)(AssistantBase.validate_name)
-    _validate_description = validator('description', allow_reuse=True)(AssistantBase.validate_description)
-    _validate_system_prompt = validator('system_prompt', allow_reuse=True)(AssistantBase.validate_system_prompt)
-    _validate_model_preferences = validator('model_preferences', allow_reuse=True)(AssistantBase.validate_model_preferences)
+    @validator('import_mode')
+    def validate_import_mode(cls, v):
+        if v not in ['create', 'update']:
+            raise ValueError('Import mode must be "create" or "update"')
+        return v
+
+
+def validate_assistant_ownership(assistant_user_id: int, current_user_id: int) -> bool:
+    """Utility function to validate assistant ownership."""
+    return assistant_user_id == current_user_id
 
 
 # =============================================================================
@@ -910,30 +636,12 @@ def create_assistant_response_from_model(
     assistant_model, 
     conversation_count: Optional[int] = None
 ) -> AssistantResponse:
-    """
-    Utility function to convert an Assistant model instance to AssistantResponse.
-    
-    Args:
-        assistant_model: SQLAlchemy Assistant model instance
-        conversation_count: Pre-computed conversation count (avoids lazy loading)
-        
-    Returns:
-        AssistantResponse schema instance
-        
-    🎓 LEARNING: Async-Safe Model-to-Schema Conversion
-    ================================================
-    This utility avoids lazy loading issues in async contexts by:
-    - Accepting pre-computed values as parameters
-    - Computing simple properties directly
-    - Avoiding database queries in the conversion process
-    """
+    """Utility function to convert an Assistant model instance to AssistantResponse."""
     # Compute conversation count safely
     if conversation_count is None:
-        # If conversations are already loaded, use them
         if hasattr(assistant_model, 'conversations') and assistant_model.conversations is not None:
             conversation_count = len(assistant_model.conversations)
         else:
-            # Default to 0 to avoid lazy loading
             conversation_count = 0
     
     # Compute is_new without accessing potentially lazy-loaded properties
@@ -963,6 +671,7 @@ def create_assistant_response_from_model(
         id=assistant_model.id,
         name=assistant_model.name,
         description=assistant_model.description,
+        color=assistant_model.display_color,  # Use display_color property that handles fallbacks
         system_prompt=assistant_model.system_prompt,
         system_prompt_preview=system_prompt_preview,
         model_preferences=defaults,
@@ -975,59 +684,3 @@ def create_assistant_response_from_model(
         status_label="Active" if assistant_model.is_active else "Inactive",
         has_custom_preferences=bool(assistant_model.model_preferences)
     )
-
-
-def validate_assistant_ownership(assistant_model, user_id: int) -> bool:
-    """
-    Utility function to validate assistant ownership.
-    
-    Args:
-        assistant_model: Assistant model instance
-        user_id: ID of user to check ownership for
-        
-    Returns:
-        True if user owns the assistant
-        
-    🎓 LEARNING: Security Validation
-    ===============================
-    Always validate ownership before allowing operations.
-    This prevents users from accessing/modifying assistants they don't own.
-    """
-    return assistant_model.user_id == user_id
-
-
-# =============================================================================
-# DEBUGGING AND TESTING SCHEMAS
-# =============================================================================
-
-if __name__ == "__main__":
-    # Quick validation tests
-    print("🧪 Testing Assistant Schemas...")
-    
-    # Test valid assistant creation
-    try:
-        assistant_data = {
-            "name": "Test Assistant",
-            "description": "A test assistant for validation",
-            "system_prompt": "You are a helpful test assistant.",
-            "model_preferences": {
-                "temperature": 0.7,
-                "max_tokens": 2000
-            }
-        }
-        assistant = AssistantCreate(**assistant_data)
-        print("✅ Valid assistant creation schema works")
-    except Exception as e:
-        print(f"❌ Assistant creation validation failed: {e}")
-    
-    # Test invalid data
-    try:
-        invalid_assistant = AssistantCreate(
-            name="",  # Invalid: empty name
-            system_prompt="Short",  # Invalid: too short
-        )
-        print("❌ Validation should have failed but didn't")
-    except Exception as e:
-        print("✅ Validation correctly caught invalid data")
-    
-    print("🎯 Assistant schemas loaded successfully!")

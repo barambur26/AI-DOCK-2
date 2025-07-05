@@ -146,6 +146,9 @@ async def get_conversation(
             detail="Conversation not found"
         )
     
+    # Ensure all relationships are loaded before returning
+    await db.refresh(conversation, attribute_names=['messages', 'projects', 'assistant', 'user'])
+    
     return conversation
 
 @router.put("/{conversation_id}", response_model=ConversationDetail)
@@ -170,11 +173,22 @@ async def update_conversation(
                 detail="Conversation not found"
             )
         
-        return await conversation_service.get_conversation(
+        conversation = await conversation_service.get_conversation(
             db=db,
             conversation_id=conversation_id,
             user_id=current_user.id
         )
+        
+        if not conversation:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Conversation not found"
+            )
+        
+        # Ensure all relationships are loaded before returning
+        await db.refresh(conversation, attribute_names=['messages', 'projects', 'assistant', 'user'])
+        
+        return conversation
     
     raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,

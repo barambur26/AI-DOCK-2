@@ -5,6 +5,7 @@
 import React from 'react';
 import { Wand2 } from 'lucide-react';
 import { FormField } from './FormField';
+import { ColorPickerField } from './ColorPickerField';
 import { AssistantFormData, ASSISTANT_VALIDATION } from '../../../types/assistant';
 
 interface BasicInformationSectionProps {
@@ -102,6 +103,18 @@ export const BasicInformationSection: React.FC<BasicInformationSectionProps> = (
             validationErrors={getFieldErrors('description')}
             onChange={(value) => onInputChange('description', value)}
             onBlur={() => onFieldBlur('description')}
+          />
+        </div>
+        
+        {/* Color Picker Field */}
+        <div className="md:col-span-1">
+          <ColorPickerField
+            value={formData.color || ''}
+            hasError={hasFieldError('color')}
+            hasChanged={hasFieldChanged('color')}
+            validationErrors={getFieldErrors('color')}
+            onChange={(value) => onInputChange('color', value)}
+            onBlur={() => onFieldBlur('color')}
           />
         </div>
       </div>

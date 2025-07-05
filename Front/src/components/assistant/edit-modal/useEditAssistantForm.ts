@@ -80,6 +80,7 @@ export const useEditAssistantForm = ({
     name: '',
     description: '',
     system_prompt: '',
+    color: '#3B82F6',
     model_preferences: {}
   });
 
@@ -88,6 +89,7 @@ export const useEditAssistantForm = ({
     name: '',
     description: '',
     system_prompt: '',
+    color: '#3B82F6',
     model_preferences: {}
   });
 
@@ -118,6 +120,7 @@ export const useEditAssistantForm = ({
       name: assistantData.name || '',
       description: assistantData.description || '',
       system_prompt: assistantData.system_prompt || '',
+      color: assistantData.color || '#3B82F6',
       model_preferences: assistantData.model_preferences ? { ...assistantData.model_preferences } : {}
     };
 
@@ -126,6 +129,7 @@ export const useEditAssistantForm = ({
       name: assistantData.name || '',
       description: assistantData.description || '',
       system_prompt: assistantData.system_prompt || '',
+      color: assistantData.color || '#3B82F6',
       model_preferences: assistantData.model_preferences ? { ...assistantData.model_preferences } : {}
     });
 
@@ -175,6 +179,9 @@ export const useEditAssistantForm = ({
     
     const systemPromptChanged = (formData.system_prompt || '') !== (originalData.system_prompt || '');
     
+    // Color comparison
+    const colorChanged = (formData.color || '') !== (originalData.color || '');
+    
     // Object comparison for model preferences
     const formPrefs = formData.model_preferences || {};
     const originalPrefs = originalData.model_preferences || {};
@@ -184,7 +191,7 @@ export const useEditAssistantForm = ({
     const originalPrefsStr = JSON.stringify(originalPrefs, Object.keys(originalPrefs).sort());
     const modelPreferencesChanged = formPrefsStr !== originalPrefsStr;
 
-    return nameChanged || descriptionChanged || systemPromptChanged || modelPreferencesChanged;
+    return nameChanged || descriptionChanged || systemPromptChanged || colorChanged || modelPreferencesChanged;
   };
 
   /**
@@ -207,6 +214,10 @@ export const useEditAssistantForm = ({
 
     if ((formData.system_prompt || '') !== (originalData.system_prompt || '')) {
       updates.system_prompt = formData.system_prompt.trim();
+    }
+
+    if ((formData.color || '') !== (originalData.color || '')) {
+      updates.color = formData.color;
     }
 
     const formPrefs = formData.model_preferences || {};
@@ -376,8 +387,8 @@ export const useEditAssistantForm = ({
   useEffect(() => {
     if (!isOpen) {
       // Reset all state
-      setFormData({ name: '', description: '', system_prompt: '', model_preferences: {} });
-      setOriginalData({ name: '', description: '', system_prompt: '', model_preferences: {} });
+      setFormData({ name: '', description: '', system_prompt: '', color: '#3B82F6', model_preferences: {} });
+      setOriginalData({ name: '', description: '', system_prompt: '', color: '#3B82F6', model_preferences: {} });
       setValidationErrors({});
       setIsSubmitting(false);
       setSubmitSuccess(false);

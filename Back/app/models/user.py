@@ -232,7 +232,15 @@ class User(Base):
         String representation of the User object.
         This is what you see when you print(user) or in debugger.
         """
-        return f"<User(id={self.id}, username='{self.username}', email='{self.email}')>"
+        try:
+            # Safely access attributes that might not be loaded
+            user_id = getattr(self, 'id', '?')
+            username = getattr(self, 'username', 'Unknown')
+            email = getattr(self, 'email', 'Unknown')
+            return f"<User(id={user_id}, username='{username}', email='{email}')>"
+        except Exception:
+            # Fallback if any attribute access fails
+            return f"<User(id=?, username='Unknown', email='Unknown')>"
     
     def __str__(self) -> str:
         """Human-friendly string representation."""

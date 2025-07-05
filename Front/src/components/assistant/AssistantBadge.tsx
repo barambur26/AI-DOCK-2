@@ -7,6 +7,7 @@ import { Bot, Sparkles } from 'lucide-react';
 
 interface AssistantBadgeProps {
   assistantName: string;
+  assistantColor?: string;  // Hex color code for the assistant
   isIntroduction?: boolean;
   className?: string;
 }
@@ -25,27 +26,54 @@ interface AssistantBadgeProps {
  */
 export const AssistantBadge: React.FC<AssistantBadgeProps> = ({
   assistantName,
+  assistantColor,
   isIntroduction = false,
   className = ''
 }) => {
+  // Use assistant color or fallback to defaults
+  const iconColor = assistantColor || (isIntroduction ? '#3B82F6' : '#6B7280');
+  const textColor = assistantColor || (isIntroduction ? '#1D4ED8' : '#4B5563');
+  const badgeColor = assistantColor ? `${assistantColor}20` : '#DBEAFE'; // 20% opacity
+  
   return (
     <div className={`inline-flex items-center space-x-1.5 ${className}`}>
-      {/* Icon varies based on message type */}
-      {isIntroduction ? (
-        <Sparkles className="w-3 h-3 text-blue-400" />
-      ) : (
-        <Bot className="w-3 h-3 text-blue-500" />
+      {/* Color indicator dot */}
+      {assistantColor && (
+        <div 
+          className="w-2 h-2 rounded-full flex-shrink-0"
+          style={{ backgroundColor: assistantColor }}
+        ></div>
       )}
       
-      {/* Assistant name with conditional styling */}
-      <span className={`text-xs font-medium ${
-        isIntroduction 
-          ? 'text-blue-600 font-semibold' 
-          : 'text-gray-600'
-      }`}>
+      {/* Icon varies based on message type with color */}
+      {isIntroduction ? (
+        <Sparkles 
+          className="w-3 h-3" 
+          style={{ color: iconColor }}
+        />
+      ) : (
+        <Bot 
+          className="w-3 h-3" 
+          style={{ color: iconColor }}
+        />
+      )}
+      
+      {/* Assistant name with color theming */}
+      <span 
+        className={`text-xs font-medium ${
+          isIntroduction ? 'font-semibold' : ''
+        }`}
+        style={{ color: textColor }}
+      >
         {assistantName}
         {isIntroduction && (
-          <span className="ml-1 bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full text-xs">
+          <span 
+            className="ml-1 px-1.5 py-0.5 rounded-full text-xs font-medium"
+            style={{
+              backgroundColor: badgeColor,
+              color: textColor
+            }}
+          >
             Introduction
           </span>
         )}
@@ -68,13 +96,20 @@ export const AssistantBadge: React.FC<AssistantBadgeProps> = ({
  * ===============
  * 
  * ```tsx
- * // Regular AI response badge
- * <AssistantBadge assistantName="Customer Support Bot" />
+ * // Regular AI response badge with color
+ * <AssistantBadge 
+ *   assistantName="Customer Support Bot" 
+ *   assistantColor="#3B82F6"
+ * />
  * 
- * // Introduction message badge
+ * // Introduction message badge with color
  * <AssistantBadge 
  *   assistantName="Creative Writing Assistant" 
+ *   assistantColor="#10B981"
  *   isIntroduction={true} 
  * />
+ * 
+ * // Fallback without color (uses default styling)
+ * <AssistantBadge assistantName="Default Assistant" />
  * ```
  */

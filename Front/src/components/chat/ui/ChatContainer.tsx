@@ -20,6 +20,7 @@ import { useResponsiveLayout } from '../../../hooks/chat/useResponsiveLayout';
 import { useAuth } from '../../../hooks/useAuth';
 import { useSidebarState } from '../../../hooks/chat/useSidebarState';
 import { useFolderContext } from '../../../hooks/folder/useFolderContext';
+import { getProjectDefaultAssistantById } from '../../../hooks/folder/getProjectDefaultAssistantById';
 import { DEFAULT_AUTO_SAVE_CONFIG, shouldAutoSave } from '../../../types/conversation';
 import type { FileAttachment } from '../../../types/file';
 import { assistantService } from '../../../services/assistantService';
@@ -310,12 +311,34 @@ export const ChatContainer: React.FC = () => {
       setPreviousMessageCount(loadedMessages.length);
       setPreviousConversationId(conversationId);
 
-      // Auto-select the conversation's assigned assistant
+      // 🔧 ENHANCED: Handle assistant selection with project default fallback
       if (conversationAssistantId && conversationAssistantId !== selectedAssistantId) {
+        // Conversation has a specific assistant assigned
         console.log('🤖 Auto-selecting conversation assistant:', conversationAssistantId);
         handleAssistantSelect(conversationAssistantId);
-      } else if (!conversationAssistantId && selectedAssistantId) {
-        console.log('🤖 Deactivating assistant for conversation without assigned assistant');
+      } else if (!conversationAssistantId && conversationProjectId) {
+        // Conversation has no assigned assistant but belongs to a project
+        // Check if the project has a default assistant
+        try {
+          const projectDefaultAssistant = await getProjectDefaultAssistantById(conversationProjectId);
+          if (projectDefaultAssistant && projectDefaultAssistant.id !== selectedAssistantId) {
+            console.log('🤖 Auto-selecting project default assistant:', projectDefaultAssistant.name);
+            handleAssistantSelect(projectDefaultAssistant.id);
+          } else if (!projectDefaultAssistant && selectedAssistantId) {
+            console.log('🤖 Deactivating assistant - conversation has no assigned assistant and project has no default');
+            deactivateAssistant();
+          }
+        } catch (error) {
+          console.warn('⚠️ Failed to fetch project default assistant:', error);
+          // Fallback: deactivate assistant if we can't determine project default
+          if (selectedAssistantId) {
+            console.log('🤖 Deactivating assistant due to project assistant fetch error');
+            deactivateAssistant();
+          }
+        }
+      } else if (!conversationAssistantId && !conversationProjectId && selectedAssistantId) {
+        // Conversation has no assigned assistant and no project
+        console.log('🤖 Deactivating assistant for conversation without assigned assistant or project');
         deactivateAssistant();
       }
       
@@ -327,7 +350,7 @@ export const ChatContainer: React.FC = () => {
     } finally {
       setIsLoadingConversation(false);
     }
-  }, [isStreaming, handleLoadConversation, setError, conversationAssistantId, selectedAssistantId, handleAssistantSelect, deactivateAssistant]);
+  }, [isStreaming, handleLoadConversation, setError, conversationAssistantId, conversationProjectId, selectedAssistantId, handleAssistantSelect, deactivateAssistant, getProjectDefaultAssistantById]);
 
   // 💾 Save current conversation
   const handleSaveCurrentConversation = useCallback(async () => {

@@ -4,6 +4,7 @@
 
 export { BasicInformationSection } from './BasicInformationSection';
 export { FormField } from './FormField';
+export { ColorPickerField } from './ColorPickerField';
 export { LoadingState, SuccessState } from './ModalStates';
 export { SystemPromptSection } from './SystemPromptSection';
 export { AdvancedSettingsSection } from './AdvancedSettingsSection';

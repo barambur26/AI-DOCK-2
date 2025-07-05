@@ -12,7 +12,7 @@ import logging
 # Setup logging for assistant service
 logger = logging.getLogger(__name__)
 
-from ..models.assistant import Assistant
+from ..models.assistant import Assistant, get_random_assistant_color
 from ..models.chat_conversation import ChatConversation
 from ..models.conversation import Conversation
 from ..models.user import User
@@ -102,10 +102,14 @@ class AssistantService:
                 raise ValueError(f"Assistant with name '{assistant_data.name}' already exists")
             
             # Create the assistant instance
+            # Generate color if not provided
+            color = assistant_data.color if assistant_data.color else get_random_assistant_color()
+            
             assistant = Assistant(
                 name=assistant_data.name.strip(),
                 description=assistant_data.description.strip() if assistant_data.description else None,
                 system_prompt=assistant_data.system_prompt.strip(),
+                color=color,
                 model_preferences=assistant_data.model_preferences or {},
                 user_id=user_id,
                 is_active=True
@@ -126,6 +130,114 @@ class AssistantService:
         except Exception as e:
             await db.rollback()
             logger.error(f"Failed to create assistant for user {user_id}: {str(e)}")
+            raise
+    
+    async def get_user_assistants(
+        self,
+        db: AsyncSession,
+        user_id: int,
+        request: AssistantListRequest
+    ) -> Tuple[List[Assistant], int]:
+        """
+        Get a list of assistants for a user with filtering, sorting, and pagination.
+        
+        Args:
+            db: Async database session
+            user_id: ID of the user whose assistants to retrieve
+            request: Request parameters for filtering and pagination
+            
+        Returns:
+            Tuple of (assistants list, total count)
+        """
+        try:
+            # Build base query with conversation count
+            conversation_count_subquery = (
+                select(func.count(ChatConversation.id))
+                .where(ChatConversation.assistant_id == Assistant.id)
+                .label("conversation_count")
+            )
+            
+            # Base query
+            stmt = select(
+                Assistant,
+                conversation_count_subquery
+            ).where(Assistant.user_id == user_id)
+            
+            # Apply filters
+            if request.search:
+                search_term = f"%{request.search}%"
+                stmt = stmt.where(
+                    or_(
+                        Assistant.name.ilike(search_term),
+                        Assistant.description.ilike(search_term)
+                    )
+                )
+            
+            if request.status_filter:
+                if request.status_filter == "active":
+                    stmt = stmt.where(Assistant.is_active == True)
+                elif request.status_filter == "inactive":
+                    stmt = stmt.where(Assistant.is_active == False)
+            
+            if not request.include_inactive:
+                stmt = stmt.where(Assistant.is_active == True)
+            
+            # Get total count before pagination
+            count_stmt = select(func.count(Assistant.id)).where(Assistant.user_id == user_id)
+            if request.search:
+                search_term = f"%{request.search}%"
+                count_stmt = count_stmt.where(
+                    or_(
+                        Assistant.name.ilike(search_term),
+                        Assistant.description.ilike(search_term)
+                    )
+                )
+            if request.status_filter:
+                if request.status_filter == "active":
+                    count_stmt = count_stmt.where(Assistant.is_active == True)
+                elif request.status_filter == "inactive":
+                    count_stmt = count_stmt.where(Assistant.is_active == False)
+            if not request.include_inactive:
+                count_stmt = count_stmt.where(Assistant.is_active == True)
+            
+            count_result = await db.execute(count_stmt)
+            total_count = count_result.scalar() or 0
+            
+            # Apply sorting
+            if request.sort_by == "name":
+                sort_column = Assistant.name
+            elif request.sort_by == "created_at":
+                sort_column = Assistant.created_at
+            else:  # default to updated_at
+                sort_column = Assistant.updated_at
+            
+            if request.sort_order == "asc":
+                stmt = stmt.order_by(sort_column)
+            else:  # default to desc
+                stmt = stmt.order_by(desc(sort_column))
+            
+            # Apply pagination
+            stmt = stmt.offset(request.offset).limit(request.limit)
+            
+            # Execute query
+            result = await db.execute(stmt)
+            rows = result.fetchall()
+            
+            # Process results
+            assistants = []
+            for row in rows:
+                assistant = row[0]  # Assistant object
+                conversation_count = row[1] or 0  # Conversation count
+                
+                # Attach conversation count to avoid lazy loading issues
+                assistant._conversation_count = conversation_count
+                assistants.append(assistant)
+            
+            logger.debug(f"Retrieved {len(assistants)} assistants for user {user_id}")
+            return assistants, total_count
+            
+        except Exception as e:
+            logger.error(f"Failed to get assistants for user {user_id}: {str(e)}")
             raise
     
     async def get_assistant(

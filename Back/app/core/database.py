@@ -136,7 +136,11 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
             # without triggering unnecessary rollbacks
         except Exception as e:
             # Only rollback if there was actually an error
-            await session.rollback()
+            try:
+                await session.rollback()
+            except Exception as rollback_error:
+                logger.error(f"Failed to rollback session: {rollback_error}")
+            
             logger.error(f"Async database session error: {e}")
             raise
         # 🔧 Removed finally block - let context manager handle cleanup

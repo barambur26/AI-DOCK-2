@@ -177,6 +177,7 @@ def compute_assistant_summary(assistant: Assistant) -> AssistantSummary:
         name=assistant.name,
         description=assistant.description,
         system_prompt_preview=system_prompt_preview,
+        color=assistant.color,
         is_active=assistant.is_active,
         conversation_count=conversation_count,
         created_at=assistant.created_at,

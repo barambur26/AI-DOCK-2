@@ -67,7 +67,15 @@ class Conversation(Base):
     )
     
     def __repr__(self) -> str:
-        return f"<Conversation(id={self.id}, title='{self.title}', messages={self.message_count})>"
+        try:
+            # Safely access attributes that might not be loaded
+            conv_id = getattr(self, 'id', '?')
+            title = getattr(self, 'title', 'Unknown')
+            message_count = getattr(self, 'message_count', 0)
+            return f"<Conversation(id={conv_id}, title='{title}', messages={message_count})>"
+        except Exception:
+            # Fallback if any attribute access fails
+            return f"<Conversation(id=?, title='Unknown', messages=0)>"
     
     def update_stats(self):
         """Update denormalized stats"""
@@ -246,8 +254,16 @@ class ConversationMessage(Base):
         self.message_metadata = value if isinstance(value, dict) else {}
     
     def __repr__(self) -> str:
-        preview = self.content[:50] + "..." if len(self.content) > 50 else self.content
-        return f"<Message(id={self.id}, role='{self.role}', content='{preview}')>"
+        try:
+            # Safely access attributes that might not be loaded
+            msg_id = getattr(self, 'id', '?')
+            role = getattr(self, 'role', 'unknown')
+            content = getattr(self, 'content', '')
+            preview = content[:50] + "..." if len(content) > 50 else content
+            return f"<Message(id={msg_id}, role='{role}', content='{preview}')>"
+        except Exception:
+            # Fallback if any attribute access fails
+            return f"<Message(id=?, role='unknown', content='...')>"
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dict for API responses with safe metadata handling"""

@@ -24,7 +24,9 @@ router = APIRouter(prefix="/usage", tags=["Usage Analytics"])
 
 async def get_provider_usage_stats_fixed(
     start_date: datetime,
-    end_date: datetime
+    end_date: datetime,
+    department_id: Optional[int] = None,
+    provider_name: Optional[str] = None
 ) -> List[Dict[str, Any]]:
     """
     🔧 FIXED provider usage statistics with proper cost calculation.
@@ -65,7 +67,11 @@ async def get_provider_usage_stats_fixed(
                     UsageLog.created_at >= start_date,
                     UsageLog.created_at <= end_date,
                     # Add cache-busting condition that's always true
-                    UsageLog.id >= 0
+                    UsageLog.id >= 0,
+                    # Add department filter if specified
+                    *([UsageLog.department_id == department_id] if department_id else []),
+                    # Add provider filter if specified
+                    *([UsageLog.provider == provider_name.lower()] if provider_name else [])
                 )
             ).group_by(UsageLog.provider).params(cache_buster=cache_buster)
             
@@ -135,6 +141,8 @@ async def get_provider_usage_stats_fixed(
 @router.get("/summary")
 async def get_usage_summary(
     days: int = Query(30, description="Number of days to analyze", ge=1, le=365),
+    department_id: Optional[int] = Query(None, description="Filter by department ID"),
+    provider_name: Optional[str] = Query(None, description="Filter by provider name"),
     current_admin: User = Depends(get_current_admin_user),
     session: AsyncSession = Depends(get_async_db)
 ) -> Dict[str, Any]:
@@ -167,7 +175,7 @@ async def get_usage_summary(
         logger.info(f"🔍 Getting usage summary for {days} days: {start_date} to {end_date}")
         
         # 🔧 FIX: Use improved provider statistics with NULL cost handling
-        provider_stats = await get_provider_usage_stats_fixed(start_date, end_date)
+        provider_stats = await get_provider_usage_stats_fixed(start_date, end_date, department_id, provider_name)
         
         # Calculate overall totals from provider stats
         total_requests = sum(p["requests"]["total"] for p in provider_stats)
@@ -497,6 +505,8 @@ async def get_top_users_by_usage(
     days: int = Query(30, description="Number of days to analyze", ge=1, le=365),
     limit: int = Query(10, description="Number of top users to return", ge=1, le=50),
     metric: str = Query("total_cost", description="Metric to sort by: total_cost, total_tokens, or request_count"),
+    department_id: Optional[int] = Query(None, description="Filter by department ID"),
+    provider_name: Optional[str] = Query(None, description="Filter by provider name"),
     current_admin: User = Depends(get_current_admin_user),
     session: AsyncSession = Depends(get_async_db)
 ) -> Dict[str, Any]:
@@ -558,7 +568,11 @@ async def get_top_users_by_usage(
                 UsageLog.created_at >= start_date,
                 UsageLog.created_at <= end_date,
                 # Add cache-busting condition that's always true
-                UsageLog.id >= 0
+                UsageLog.id >= 0,
+                # Add department filter if specified
+                *([UsageLog.department_id == department_id] if department_id else []),
+                # Add provider filter if specified
+                *([UsageLog.provider == provider_name.lower()] if provider_name else [])
             )
         ).group_by(
             UsageLog.user_id,
@@ -737,6 +751,184 @@ async def get_pricing_cache_stats(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to get cache stats: {str(e)}"
+        )
+
+# =============================================================================
+# MOST USED MODELS ANALYTICS
+# =============================================================================
+
+@router.get("/most-used-models")
+async def get_most_used_models(
+    days: int = Query(30, description="Number of days to analyze", ge=1, le=365),
+    limit: int = Query(20, description="Number of top models to return", ge=1, le=100),
+    department_id: Optional[int] = Query(None, description="Filter by department ID"),
+    provider_name: Optional[str] = Query(None, description="Filter by provider name"),
+    current_admin: User = Depends(get_current_admin_user),
+    session: AsyncSession = Depends(get_async_db)
+) -> Dict[str, Any]:
+    """
+    Get most used models by usage statistics.
+    
+    This provides insights into:
+    - Which models are most popular
+    - Usage patterns by model
+    - Cost breakdown by model
+    - Performance metrics per model
+    
+    Perfect for understanding model adoption and costs.
+    
+    Args:
+        days: Number of days to analyze
+        limit: Number of top models to return
+        department_id: Optional department filter
+        provider_name: Optional provider filter
+        
+    Returns:
+        List of most used models with usage statistics
+    """
+    try:
+        from sqlalchemy import select, func, and_, desc
+        from ...models.usage_log import UsageLog
+        
+        # Calculate date range
+        end_date = datetime.utcnow()
+        start_date = end_date - timedelta(days=days)
+        
+        # Add cache-busting parameter to prevent query caching
+        cache_buster = datetime.utcnow().microsecond
+        
+        # Build aggregation query for models
+        query = select(
+            UsageLog.model,
+            UsageLog.provider,
+            func.count(UsageLog.id).label('total_requests'),
+            func.count(UsageLog.id).filter(UsageLog.success == True).label('successful_requests'),
+            func.sum(UsageLog.total_tokens).label('total_tokens'),
+            func.sum(UsageLog.input_tokens).label('input_tokens'),
+            func.sum(UsageLog.output_tokens).label('output_tokens'),
+            func.sum(func.coalesce(UsageLog.estimated_cost, 0.0)).label('total_cost'),
+            func.avg(UsageLog.response_time_ms).label('avg_response_time'),
+            func.max(UsageLog.response_time_ms).label('max_response_time')
+        ).where(
+            and_(
+                UsageLog.created_at >= start_date,
+                UsageLog.created_at <= end_date,
+                # Add cache-busting condition that's always true
+                UsageLog.id >= 0,
+                # Add department filter if specified
+                *([UsageLog.department_id == department_id] if department_id else []),
+                # Add provider filter if specified
+                *([UsageLog.provider == provider_name.lower()] if provider_name else [])
+            )
+        ).group_by(
+            UsageLog.model,
+            UsageLog.provider
+        ).order_by(
+            desc(func.count(UsageLog.id))  # Sort by total requests
+        ).limit(limit).params(cache_buster=cache_buster)
+        
+        result = await session.execute(query)
+        models = result.fetchall()
+        
+        # Format results
+        models_data = []
+        for model in models:
+            total_requests = model.total_requests or 0
+            successful_requests = model.successful_requests or 0
+            total_cost = float(model.total_cost or 0)
+            
+            models_data.append({
+                "model": model.model or "unknown",
+                "provider": model.provider or "unknown",
+                "requests": {
+                    "total": total_requests,
+                    "successful": successful_requests,
+                    "failed": total_requests - successful_requests,
+                    "success_rate_percent": (successful_requests / total_requests * 100) if total_requests > 0 else 0
+                },
+                "tokens": {
+                    "total": int(model.total_tokens or 0),
+                    "input": int(model.input_tokens or 0),
+                    "output": int(model.output_tokens or 0),
+                    "average_per_request": int(model.total_tokens or 0) / successful_requests if successful_requests > 0 else 0
+                },
+                "cost": {
+                    "total_usd": total_cost,
+                    "average_per_request": total_cost / successful_requests if successful_requests > 0 else 0,
+                    "cost_per_1k_tokens": (total_cost / (model.total_tokens / 1000)) if model.total_tokens and model.total_tokens > 0 else 0
+                },
+                "performance": {
+                    "average_response_time_ms": int(model.avg_response_time or 0),
+                    "max_response_time_ms": int(model.max_response_time or 0)
+                }
+            })
+        
+        return {
+            "period": {
+                "start_date": start_date.isoformat(),
+                "end_date": end_date.isoformat(),
+                "days": days
+            },
+            "models": models_data,
+            "limit": limit,
+            "filters_applied": {
+                "department_id": department_id,
+                "provider_name": provider_name
+            },
+            "generated_at": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get most used models: {str(e)}"
+        )
+
+@router.get("/providers/list")
+async def get_providers_list(
+    current_admin: User = Depends(get_current_admin_user),
+    session: AsyncSession = Depends(get_async_db)
+) -> Dict[str, Any]:
+    """
+    Get list of providers for filtering dropdown.
+    
+    Returns list of providers that have been used in the system,
+    formatted for frontend dropdowns.
+    
+    Returns:
+        List of available providers
+    """
+    try:
+        from sqlalchemy import select, func, distinct
+        from ...models.usage_log import UsageLog
+        
+        # Get distinct providers from usage logs
+        query = select(distinct(UsageLog.provider)).where(
+            UsageLog.provider.isnot(None)
+        ).order_by(UsageLog.provider)
+        
+        result = await session.execute(query)
+        providers = result.scalars().all()
+        
+        # Format for frontend dropdown
+        provider_list = [
+            {
+                "value": provider,
+                "label": provider.title() if provider else "Unknown"
+            }
+            for provider in providers if provider
+        ]
+        
+        return {
+            "providers": provider_list,
+            "count": len(provider_list),
+            "generated_at": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get providers list: {str(e)}"
         )
 
 # =============================================================================

@@ -1,6 +1,6 @@
-// 🤖 Assistant Selection and Management Hook
+// 🤖 Assistant Selection and Management Hook - NO AUTO MESSAGES
 // Manages custom AI assistants, selection, and URL parameter integration
-// Extracted from ChatInterface.tsx for better modularity
+// MODIFIED: Removed automatic chat messaging functionality
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -104,49 +104,35 @@ export const useAssistantManager = (
     }
   }, [searchParams, selectedAssistantId]);
   
-  // 🤖 Update selected assistant when ID changes
+  // 🤖 Update selected assistant when ID changes - NO AUTO MESSAGES
   useEffect(() => {
     if (selectedAssistantId && availableAssistants.length > 0) {
       const assistant = availableAssistants.find(a => a.id === selectedAssistantId);
       if (assistant && assistant !== selectedAssistant) {
         const previousAssistant = selectedAssistant;
         setSelectedAssistant(assistant);
-        console.log('🤖 Selected assistant updated:', {
+        console.log('🤖 Selected assistant updated (no auto messages):', {
           id: assistant.id,
           name: assistant.name,
           systemPromptPreview: assistant.system_prompt_preview,
-          isManualUpdate
+          isManualUpdate,
+          previous: previousAssistant?.name || 'none'
         });
         
-        // 🔧 Only generate introduction message if this is not a manual update
-        if (!isManualUpdate) {
-          // Generate introduction message
-          const introMessage = handleAssistantIntroduction(assistant, previousAssistant);
-          if (onAssistantMessage) {
-            onAssistantMessage(introMessage);
-          }
-        } else {
-          console.log('🔧 Skipping automatic introduction during manual update');
-        }
+        // 🚫 REMOVED: Automatic introduction message generation
+        // Users will know what assistant they're using via the UI
       }
     } else if (!selectedAssistantId && selectedAssistant) {
-      // Generate deselection message (only if not a manual update)
-      if (!isManualUpdate) {
-        const dividerMessage: ChatMessage = {
-          role: 'system',
-          content: `Switched back to default AI chat`,
-          assistantChanged: true,
-          previousAssistantName: selectedAssistant.name
-        };
-        
-        if (onAssistantMessage) {
-          onAssistantMessage(dividerMessage);
-        }
-      }
+      // 🚫 REMOVED: Automatic deselection message generation
+      // Users will see the change via the UI elements
+      
+      console.log('🤖 Switched back to default chat (no auto messages):', {
+        previousAssistant: selectedAssistant.name
+      });
       
       setSelectedAssistant(null);
     }
-  }, [selectedAssistantId, availableAssistants, selectedAssistant, onAssistantMessage, isManualUpdate]);
+  }, [selectedAssistantId, availableAssistants, selectedAssistant, isManualUpdate]);
   
   // Load assistants when component mounts
   useEffect(() => {
@@ -166,7 +152,7 @@ export const useAssistantManager = (
     }
     setSearchParams(newSearchParams, { replace: true });
     
-    console.log('🤖 Assistant selected:', assistantId, isAuto ? '(auto)' : '(manual)');
+    console.log('🤖 Assistant selected (no auto messages):', assistantId, isAuto ? '(auto)' : '(manual)');
   }, [searchParams, setSearchParams]);
   
   // 🤖 Handle assistant change (for backward compatibility with dropdown)
@@ -186,7 +172,8 @@ export const useAssistantManager = (
     }
   }, [handleAssistantSelect]);
   
-  // 🤖 Generate assistant introduction message
+  // 🤖 Generate assistant introduction message (kept for backward compatibility)
+  // NOTE: This function is preserved but no longer called automatically
   const handleAssistantIntroduction = useCallback((
     assistant: AssistantSummary, 
     previousAssistant: AssistantSummary | null
@@ -201,7 +188,7 @@ export const useAssistantManager = (
       previousAssistantName: previousAssistant?.name
     };
     
-    console.log('🤖 Generated assistant introduction:', {
+    console.log('🤖 Generated assistant introduction (manual only):', {
       assistantName: assistant.name,
       isSwitch: !!previousAssistant,
       previousAssistant: previousAssistant?.name

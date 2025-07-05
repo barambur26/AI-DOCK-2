@@ -13,7 +13,10 @@ import {
   hasValidationErrors,
   createDefaultAssistantFormData,
   DEFAULT_ASSISTANT_CONFIG,
-  ASSISTANT_VALIDATION
+  ASSISTANT_VALIDATION,
+  ASSISTANT_COLOR_PALETTE,
+  getRandomAssistantColor,
+  isValidHexColor
 } from '../../types/assistant';
 
 interface CreateAssistantModalProps {
@@ -175,7 +178,8 @@ export const CreateAssistantModal: React.FC<CreateAssistantModalProps> = ({
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
         system_prompt: formData.system_prompt.trim(),
-        model_preferences: formData.model_preferences
+        model_preferences: formData.model_preferences,
+        color: formData.color // Include color in create request
       };
 
       // Create assistant via service
@@ -348,6 +352,97 @@ export const CreateAssistantModal: React.FC<CreateAssistantModalProps> = ({
   };
 
   /**
+   * Render color picker field
+   * 
+   * 🎓 LEARNING: Color Picker Component
+   * ==================================
+   * A custom color picker using predefined palette for consistency
+   * with the AI Dock theme. Includes random color generation.
+   */
+  const renderColorPicker = () => {
+    return (
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Assistant Color
+          <span className="ml-2 text-xs text-gray-500">
+            Choose a color for visual identification
+          </span>
+        </label>
+        
+        {/* Color palette grid */}
+        <div className="grid grid-cols-8 gap-2 mb-3">
+          {ASSISTANT_COLOR_PALETTE.map((color) => (
+            <button
+              key={color}
+              type="button"
+              onClick={() => handleInputChange('color', color)}
+              className={`
+                w-8 h-8 rounded-full border-2 transition-all duration-200 hover:scale-110
+                ${formData.color === color 
+                  ? 'border-gray-800 shadow-lg scale-110' 
+                  : 'border-gray-300 hover:border-gray-500'
+                }
+              `}
+              style={{ backgroundColor: color }}
+              title={`Select color ${color}`}
+            />
+          ))}
+        </div>
+        
+        {/* Custom color input and random generator */}
+        <div className="flex items-center space-x-2">
+          <div className="flex-1">
+            <input
+              type="text"
+              value={formData.color}
+              onChange={(e) => handleInputChange('color', e.target.value)}
+              onBlur={() => validateField('color')}
+              placeholder="#3B82F6"
+              pattern="^#[0-9A-Fa-f]{6}$"
+              className={`
+                w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 transition-colors text-sm
+                ${hasAttemptedSubmit && validationErrors.color?.length > 0
+                  ? 'border-red-300 focus:border-red-500'
+                  : 'border-gray-300 focus:border-blue-500'
+                }
+              `}
+            />
+          </div>
+          
+          {/* Color preview */}
+          <div 
+            className="w-10 h-10 rounded-lg border-2 border-gray-300 flex-shrink-0"
+            style={{ backgroundColor: isValidHexColor(formData.color) ? formData.color : '#E5E7EB' }}
+            title="Color preview"
+          />
+          
+          {/* Random color button */}
+          <button
+            type="button"
+            onClick={() => handleInputChange('color', getRandomAssistantColor())}
+            className="px-3 py-2 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors flex-shrink-0"
+            title="Generate random color"
+          >
+            🎲 Random
+          </button>
+        </div>
+        
+        {/* Color validation errors */}
+        {hasAttemptedSubmit && validationErrors.color?.length > 0 && (
+          <div className="mt-1">
+            {validationErrors.color.map((error, index) => (
+              <p key={index} className="text-sm text-red-600 flex items-center">
+                <AlertCircle className="h-4 w-4 mr-1" />
+                {error}
+              </p>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  /**
    * Render model preference field
    */
   const renderModelPreferenceField = (
@@ -472,6 +567,11 @@ export const CreateAssistantModal: React.FC<CreateAssistantModalProps> = ({
                     ASSISTANT_VALIDATION.DESCRIPTION.MAX_LENGTH,
                     descriptionLength
                   )}
+                </div>
+                
+                {/* Color picker - spans full width on mobile, left side on desktop */}
+                <div className="md:col-span-1">
+                  {renderColorPicker()}
                 </div>
               </div>
             </div>

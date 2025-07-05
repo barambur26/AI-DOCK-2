@@ -311,6 +311,53 @@ export interface SystemInfo {
 }
 
 // =============================================================================
+// MOST USED MODELS TYPES
+// =============================================================================
+
+/**
+ * Most used models analytics response
+ * 
+ * Learning: This provides insights into which AI models are being
+ * used most frequently, their performance, and costs.
+ */
+export interface MostUsedModelsResponse {
+  period: TimePeriod;
+  models: ModelStats[];
+  limit: number;
+  filters_applied: {
+    department_id?: number;
+    provider_name?: string;
+  };
+  generated_at: string;
+}
+
+export interface ModelStats {
+  model: string;
+  provider: string;
+  requests: {
+    total: number;
+    successful: number;
+    failed: number;
+    success_rate_percent: number;
+  };
+  tokens: {
+    total: number;
+    input: number;
+    output: number;
+    average_per_request: number;
+  };
+  cost: {
+    total_usd: number;
+    average_per_request: number;
+    cost_per_1k_tokens: number;
+  };
+  performance: {
+    average_response_time_ms: number;
+    max_response_time_ms: number;
+  };
+}
+
+// =============================================================================
 // DASHBOARD DATA TYPES
 // =============================================================================
 
@@ -325,6 +372,7 @@ export interface DashboardData {
   topUsers: TopUsersCollection;
   recentActivity: RecentLogsResponse;
   systemHealth: UsageSystemHealth;
+  mostUsedModels: MostUsedModelsResponse;
   loadedAt: string;
 }
 

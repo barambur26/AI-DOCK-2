@@ -140,15 +140,25 @@ class UsageAnalyticsService {
    * 
    * Args:
    *   days: Number of days to analyze (default: 30)
+   *   departmentId: Optional department ID to filter by
+   *   providerName: Optional provider name to filter by
    * 
    * Returns:
    *   Comprehensive usage summary
    */
-  async getUsageSummary(days: number = 30): Promise<UsageSummary> {
-    console.log(`📊 Fetching usage summary for ${days} days...`);
+  async getUsageSummary(days: number = 30, departmentId?: number, providerName?: string): Promise<UsageSummary> {
+    console.log(`📊 Fetching usage summary for ${days} days${departmentId ? ` (department: ${departmentId})` : ''}${providerName ? ` (provider: ${providerName})` : ''}...`);
+    
+    const params = new URLSearchParams({ days: days.toString() });
+    if (departmentId) {
+      params.append('department_id', departmentId.toString());
+    }
+    if (providerName) {
+      params.append('provider_name', providerName);
+    }
     
     const response = await fetch(
-      `${API_BASE_URL}/admin/usage/summary?days=${days}`,
+      `${API_BASE_URL}/admin/usage/summary?${params}`,
       {
         method: 'GET',
         headers: this.getAuthHeaders()
@@ -264,16 +274,32 @@ class UsageAnalyticsService {
    *   days: Number of days to analyze
    *   limit: Number of top users to return
    *   metric: What to sort by ('total_cost', 'total_tokens', 'request_count')
+   *   departmentId: Optional department ID to filter by
+   *   providerName: Optional provider name to filter by
    */
   async getTopUsers(
     days: number = 30, 
     limit: number = 10, 
-    metric: 'total_cost' | 'total_tokens' | 'request_count' = 'total_cost'
+    metric: 'total_cost' | 'total_tokens' | 'request_count' = 'total_cost',
+    departmentId?: number,
+    providerName?: string
   ): Promise<TopUsersResponse> {
-    console.log(`🏆 Fetching top ${limit} users by ${metric} (${days} days)...`);
+    console.log(`🏆 Fetching top ${limit} users by ${metric} (${days} days)${departmentId ? ` (department: ${departmentId})` : ''}${providerName ? ` (provider: ${providerName})` : ''}...`);
+    
+    const params = new URLSearchParams({
+      days: days.toString(),
+      limit: limit.toString(),
+      metric: metric
+    });
+    if (departmentId) {
+      params.append('department_id', departmentId.toString());
+    }
+    if (providerName) {
+      params.append('provider_name', providerName);
+    }
     
     const response = await fetch(
-      `${API_BASE_URL}/admin/usage/top-users?days=${days}&limit=${limit}&metric=${metric}`,
+      `${API_BASE_URL}/admin/usage/top-users?${params}`,
       {
         method: 'GET',
         headers: this.getAuthHeaders()
@@ -395,8 +421,96 @@ class UsageAnalyticsService {
   }
 
   // =============================================================================
+  // DEPARTMENT MANAGEMENT
+  // =============================================================================
+
+  /**
+   * Get departments for filtering dropdown
+   * 
+   * Returns list of departments formatted for frontend dropdowns.
+   * Used to populate the department filter in analytics dashboard.
+   */
+  async getDepartments(): Promise<Department[]> {
+    console.log('🏢 Fetching departments for filter dropdown...');
+    
+    const response = await fetch(
+      `${API_BASE_URL}/admin/departments/list`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders()
+      }
+    );
+    
+    const result = await this.handleResponse<Department[]>(response);
+    console.log('✅ Departments loaded:', result);
+    return result;
+  }
+
+  // =============================================================================
   // CONVENIENCE METHODS
   // =============================================================================
+
+  /**
+   * Get most used models analytics
+   * 
+   * Provides insights into:
+   * - Which models are most popular
+   * - Usage patterns by model
+   * - Cost breakdown by model
+   * - Performance metrics per model
+   */
+  async getMostUsedModels(
+    days: number = 30,
+    limit: number = 20,
+    departmentId?: number,
+    providerName?: string
+  ): Promise<MostUsedModelsResponse> {
+    console.log(`🤖 Fetching most used models (${days} days, limit: ${limit})${departmentId ? ` (department: ${departmentId})` : ''}${providerName ? ` (provider: ${providerName})` : ''}...`);
+    
+    const params = new URLSearchParams({
+      days: days.toString(),
+      limit: limit.toString()
+    });
+    if (departmentId) {
+      params.append('department_id', departmentId.toString());
+    }
+    if (providerName) {
+      params.append('provider_name', providerName);
+    }
+    
+    const response = await fetch(
+      `${API_BASE_URL}/admin/usage/most-used-models?${params}`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders()
+      }
+    );
+    
+    const result = await this.handleResponse<MostUsedModelsResponse>(response);
+    console.log('✅ Most used models loaded:', result);
+    return result;
+  }
+
+  /**
+   * Get providers list for filtering dropdown
+   * 
+   * Returns list of providers that have been used in the system.
+   */
+  async getProviders(): Promise<Provider[]> {
+    console.log('🔧 Fetching providers for filter dropdown...');
+    
+    const response = await fetch(
+      `${API_BASE_URL}/admin/usage/providers/list`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders()
+      }
+    );
+    
+    const result = await this.handleResponse<{ providers: Provider[] }>(response);
+    console.log('✅ Providers loaded:', result);
+    return result.providers;
+  }
 
   /**
    * Get dashboard data in one call
@@ -407,8 +521,8 @@ class UsageAnalyticsService {
    * 
    * Now includes fallback data for when authentication fails or system is not set up.
    */
-  async getDashboardData(days: number = 30): Promise<DashboardData> {
-    console.log(`🎯 Loading complete dashboard data for ${days} days...`);
+  async getDashboardData(days: number = 30, departmentId?: number, providerName?: string): Promise<DashboardData> {
+    console.log(`🎯 Loading complete dashboard data for ${days} days${departmentId ? ` (department: ${departmentId})` : ''}${providerName ? ` (provider: ${providerName})` : ''}...`);
     
     try {
       console.log('📊 Loading dashboard data with fallback support...');
@@ -431,7 +545,13 @@ class UsageAnalyticsService {
           average_response_time_ms: 0,
           average_tokens_per_request: 0
         },
-        providers: [],
+        providers: providerName ? [{
+          provider: providerName,
+          requests: { total: 0, successful: 0, success_rate: 0 },
+          tokens: { total: 0 },
+          cost: { total_usd: 0, average_per_request: 0 },
+          performance: { average_response_time_ms: 0 }
+        }] : [],
         generated_at: new Date().toISOString()
       };
 
@@ -636,22 +756,22 @@ class UsageAnalyticsService {
       
       // Load data with fallbacks
       const usageSummary = await this.safeApiCall(
-        () => this.getUsageSummary(days),
+        () => this.getUsageSummary(days, departmentId, providerName),
         fallbackSummary
       );
       
       const topUsersByCost = await this.safeApiCall(
-        () => this.getTopUsers(days, 5, 'total_cost'),
+        () => this.getTopUsers(days, 5, 'total_cost', departmentId, providerName),
         { ...fallbackTopUsers, sort_metric: 'total_cost' }
       );
       
       const topUsersByTokens = await this.safeApiCall(
-        () => this.getTopUsers(days, 5, 'total_tokens'),
+        () => this.getTopUsers(days, 5, 'total_tokens', departmentId, providerName),
         { ...fallbackTopUsers, sort_metric: 'total_tokens' }
       );
       
       const topUsersByRequests = await this.safeApiCall(
-        () => this.getTopUsers(days, 5, 'request_count'),
+        () => this.getTopUsers(days, 5, 'request_count', departmentId, providerName),
         { ...fallbackTopUsers, sort_metric: 'request_count' }
       );
       
@@ -703,6 +823,18 @@ class UsageAnalyticsService {
         systemHealth.error = undefined;
       }
       
+      // Load most used models (with fallback)
+      const mostUsedModels = await this.safeApiCall(
+        () => this.getMostUsedModels(days, 10, departmentId, providerName),
+        {
+          period: fallbackSummary.period,
+          models: [],
+          limit: 10,
+          filters_applied: { department_id: departmentId, provider_name: providerName },
+          generated_at: new Date().toISOString()
+        }
+      );
+
       const dashboardData: DashboardData = {
         summary: usageSummary,
         topUsers: {
@@ -712,6 +844,7 @@ class UsageAnalyticsService {
         },
         recentActivity: recentLogs,
         systemHealth: systemHealth,
+        mostUsedModels: mostUsedModels,
         loadedAt: new Date().toISOString()
       };
       
@@ -981,6 +1114,7 @@ export interface DashboardData {
   };
   recentActivity: RecentLogsResponse;
   systemHealth: UsageSystemHealth;
+  mostUsedModels: MostUsedModelsResponse;
   loadedAt: string;
 }
 
@@ -992,6 +1126,57 @@ export interface ProviderChartData {
   cost: number;
   avgResponseTime: number;
   successRate: number;
+}
+
+export interface Department {
+  value: number;
+  label: string;
+}
+
+export interface Provider {
+  value: string;
+  label: string;
+}
+
+export interface MostUsedModelsResponse {
+  period: {
+    start_date: string;
+    end_date: string;
+    days: number;
+  };
+  models: ModelStats[];
+  limit: number;
+  filters_applied: {
+    department_id?: number;
+    provider_name?: string;
+  };
+  generated_at: string;
+}
+
+export interface ModelStats {
+  model: string;
+  provider: string;
+  requests: {
+    total: number;
+    successful: number;
+    failed: number;
+    success_rate_percent: number;
+  };
+  tokens: {
+    total: number;
+    input: number;
+    output: number;
+    average_per_request: number;
+  };
+  cost: {
+    total_usd: number;
+    average_per_request: number;
+    cost_per_1k_tokens: number;
+  };
+  performance: {
+    average_response_time_ms: number;
+    max_response_time_ms: number;
+  };
 }
 
 // =============================================================================

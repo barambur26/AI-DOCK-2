@@ -81,19 +81,32 @@ class ConversationService:
         user_id: int
     ) -> Optional[Conversation]:
         """Get conversation with all messages and project information"""
-        stmt = select(Conversation).options(
-            selectinload(Conversation.messages),
-            selectinload(Conversation.projects),  # Load project relationships for folder functionality
-            selectinload(Conversation.assistant)   # Load assistant relationship for API responses
-        ).where(
-            and_(
-                Conversation.id == conversation_id,
-                Conversation.user_id == user_id
+        try:
+            stmt = select(Conversation).options(
+                selectinload(Conversation.messages),
+                selectinload(Conversation.projects),  # Load project relationships for folder functionality
+                selectinload(Conversation.assistant),  # Load assistant relationship for API responses
+                selectinload(Conversation.user)        # Load user relationship to avoid lazy loading issues
+            ).where(
+                and_(
+                    Conversation.id == conversation_id,
+                    Conversation.user_id == user_id
+                )
             )
-        )
-        
-        result = await db.execute(stmt)
-        return result.scalar_one_or_none()
+            
+            result = await db.execute(stmt)
+            conversation = result.scalar_one_or_none()
+            
+            # Ensure all relationships are loaded before returning
+            if conversation:
+                # Force load any remaining lazy relationships
+                await db.refresh(conversation, attribute_names=['messages', 'projects', 'assistant', 'user'])
+            
+            return conversation
+            
+        except Exception as e:
+            logger.error(f"Error getting conversation {conversation_id}: {e}")
+            raise
     
     async def get_user_conversations(
         self,

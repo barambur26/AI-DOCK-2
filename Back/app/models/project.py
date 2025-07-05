@@ -190,7 +190,15 @@ class Project(Base):
         String representation of the Project folder object.
         This is what you see when you print(project) or in debugger.
         """
-        return f"<ProjectFolder(id={self.id}, name='{self.name}', user_id={self.user_id})>"
+        try:
+            # Safely access attributes that might not be loaded
+            project_id = getattr(self, 'id', '?')
+            name = getattr(self, 'name', 'Unknown')
+            user_id = getattr(self, 'user_id', '?')
+            return f"<ProjectFolder(id={project_id}, name='{name}', user_id={user_id})>"
+        except Exception:
+            # Fallback if any attribute access fails
+            return f"<ProjectFolder(id=?, name='Unknown', user_id=?)>"
     
     def __str__(self) -> str:
         """Human-friendly string representation."""

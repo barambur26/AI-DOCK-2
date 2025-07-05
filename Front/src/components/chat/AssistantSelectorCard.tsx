@@ -132,20 +132,30 @@ export const AssistantSelectorCard: React.FC<AssistantSelectorCardProps> = ({
         <div className="relative flex items-center justify-between">
           {/* 📱 Left side: Assistant info with info button */}
           <div className="flex items-center space-x-3 min-w-0 flex-1">
-            {/* 🤖 Avatar/Icon Section */}
-            <div className={`
-              flex-shrink-0 w-12 h-12 rounded-full 
-              flex items-center justify-center
-              transition-all duration-200
-              ${isDefaultChat 
-                ? 'bg-blue-500/20 border-2 border-blue-400/30' 
-                : 'bg-purple-500/20 border-2 border-purple-400/30'
-              }
-            `}>
+            {/* 🤖 Avatar/Icon Section with Color */}
+            <div 
+              className={`
+                flex-shrink-0 w-12 h-12 rounded-full 
+                flex items-center justify-center
+                transition-all duration-200
+                border-2
+                ${isDefaultChat 
+                  ? 'bg-blue-500/20 border-blue-400/30' 
+                  : 'border-opacity-30'
+                }
+              `}
+              style={isDefaultChat ? {} : {
+                backgroundColor: `${selectedAssistant.color}20`, // 20% opacity
+                borderColor: `${selectedAssistant.color}50` // 50% opacity
+              }}
+            >
               {isDefaultChat ? (
                 <Bot className="w-6 h-6 text-blue-300" />
               ) : (
-                <Sparkles className="w-6 h-6 text-purple-300" />
+                <Sparkles 
+                  className="w-6 h-6" 
+                  style={{ color: selectedAssistant.color }}
+                />
               )}
             </div>
             
@@ -235,7 +245,11 @@ export const AssistantSelectorCard: React.FC<AssistantSelectorCardProps> = ({
               
               {/* 🎯 Visual indicator for active assistant with tooltip hint */}
               <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                {/* Assistant color indicator */}
+                <div 
+                  className="w-2 h-2 rounded-full animate-pulse"
+                  style={{ backgroundColor: selectedAssistant.color }}
+                ></div>
                 <span className="text-green-300 text-xs">In Use</span>
                 {showTooltip && (
                   <span className="text-blue-300/60 text-xs">

@@ -29,6 +29,9 @@ export interface Assistant {
   is_active: boolean;
   conversation_count: number;
   
+  // Color personalization
+  color: string;  // Hex color code (e.g., #3B82F6)
+  
   // Timestamps as ISO strings (from backend JSON serialization)
   created_at: string;
   updated_at: string;
@@ -52,6 +55,9 @@ export interface AssistantSummary {
   conversation_count: number;
   created_at: string;
   is_new: boolean;
+  
+  // Color personalization
+  color: string;  // Hex color code (e.g., #3B82F6)
 }
 
 // =============================================================================
@@ -67,6 +73,7 @@ export interface AssistantCreate {
   description?: string;
   system_prompt: string;
   model_preferences?: Record<string, any>;
+  color?: string;  // Hex color code, auto-generated if not provided
 }
 
 /**
@@ -79,6 +86,7 @@ export interface AssistantUpdate {
   system_prompt?: string;
   model_preferences?: Record<string, any>;
   is_active?: boolean;
+  color?: string;  // Hex color code for visual personalization
 }
 
 /**
@@ -329,6 +337,7 @@ export interface AssistantFormData {
   name: string;
   description: string;
   system_prompt: string;
+  color: string;  // Hex color code for visual personalization
   model_preferences: {
     model?: string;
     temperature?: number;
@@ -411,8 +420,36 @@ export const DEFAULT_ASSISTANT_CONFIG = {
     top_p: 1.0,
     frequency_penalty: 0.0,
     presence_penalty: 0.0
-  }
+  },
+  color: '#3B82F6'  // Default blue color
 } as const;
+
+/**
+ * Predefined color palette for assistants
+ * Professional colors that work well with the AI Dock theme
+ */
+export const ASSISTANT_COLOR_PALETTE = [
+  '#3B82F6',  // Blue
+  '#10B981',  // Emerald
+  '#8B5CF6',  // Violet
+  '#F59E0B',  // Amber
+  '#EF4444',  // Red
+  '#06B6D4',  // Cyan
+  '#84CC16',  // Lime
+  '#F97316',  // Orange
+  '#EC4899',  // Pink
+  '#6366F1',  // Indigo
+  '#14B8A6',  // Teal
+  '#A855F7',  // Purple
+  '#FBBF24',  // Yellow
+  '#F87171',  // Red Light
+  '#60A5FA',  // Blue Light
+  '#34D399',  // Emerald Light
+  '#A78BFA',  // Violet Light
+  '#FBBF24',  // Amber Light
+  '#FB7185',  // Rose
+  '#38BDF8'   // Sky
+] as const;
 
 /**
  * Validation constants matching backend
@@ -486,7 +523,8 @@ export function assistantToSummary(assistant: Assistant): AssistantSummary {
     is_active: assistant.is_active,
     conversation_count: assistant.conversation_count,
     created_at: assistant.created_at,
-    is_new: assistant.is_new
+    is_new: assistant.is_new,
+    color: assistant.color
   };
 }
 
@@ -498,6 +536,7 @@ export function createDefaultAssistantFormData(): AssistantFormData {
     name: '',
     description: '',
     system_prompt: '',
+    color: getRandomAssistantColor(),
     model_preferences: { ...DEFAULT_ASSISTANT_CONFIG.model_preferences }
   };
 }
@@ -529,6 +568,11 @@ export function validateAssistantFormData(data: AssistantFormData): Record<strin
     errors.system_prompt = [`System prompt must be at least ${ASSISTANT_VALIDATION.SYSTEM_PROMPT.MIN_LENGTH} characters`];
   } else if (data.system_prompt.length > ASSISTANT_VALIDATION.SYSTEM_PROMPT.MAX_LENGTH) {
     errors.system_prompt = [`System prompt cannot exceed ${ASSISTANT_VALIDATION.SYSTEM_PROMPT.MAX_LENGTH} characters`];
+  }
+  
+  // Validate color
+  if (data.color && !isValidHexColor(data.color)) {
+    errors.color = ['Color must be a valid hex color code (e.g., #3B82F6)'];
   }
   
   // Validate model preferences
@@ -597,6 +641,77 @@ export function generateSystemPromptPreview(prompt: string, maxLength: number = 
   }
   
   return prompt.substring(0, maxLength - 3) + '...';
+}
+
+/**
+ * Get a random color from the predefined palette
+ */
+export function getRandomAssistantColor(): string {
+  const randomIndex = Math.floor(Math.random() * ASSISTANT_COLOR_PALETTE.length);
+  return ASSISTANT_COLOR_PALETTE[randomIndex];
+}
+
+/**
+ * Validate a hex color code
+ */
+export function isValidHexColor(color: string): boolean {
+  const hexColorRegex = /^#[0-9A-Fa-f]{6}$/;
+  return hexColorRegex.test(color);
+}
+
+/**
+ * Get contrasting text color (black or white) for a given background color
+ */
+export function getContrastTextColor(backgroundColor: string): string {
+  // Remove # if present
+  const hex = backgroundColor.replace('#', '');
+  
+  // Convert to RGB
+  const r = parseInt(hex.substr(0, 2), 16);
+  const g = parseInt(hex.substr(2, 2), 16);
+  const b = parseInt(hex.substr(4, 2), 16);
+  
+  // Calculate relative luminance
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  
+  // Return black for light backgrounds, white for dark
+  return luminance > 0.5 ? '#000000' : '#FFFFFF';
+}
+
+/**
+ * Generate CSS styles for assistant color theming
+ */
+export function getAssistantColorStyles(color: string) {
+  const contrastColor = getContrastTextColor(color);
+  
+  return {
+    backgroundColor: color,
+    color: contrastColor,
+    borderColor: color,
+    // Light version for backgrounds
+    backgroundColorLight: `${color}20`, // 20% opacity
+    backgroundColorMedium: `${color}40`, // 40% opacity
+    // Dark version for borders/accents
+    borderColorDark: color,
+    // Text colors
+    textColor: contrastColor,
+    textColorMuted: `${contrastColor}80`, // 80% opacity
+  };
+}
+
+/**
+ * Create Tailwind-compatible color classes from hex color
+ */
+export function getTailwindColorClasses(color: string) {
+  // This is a helper for inline styles since we can't generate Tailwind classes dynamically
+  return {
+    bg: { backgroundColor: color },
+    bgLight: { backgroundColor: `${color}20` },
+    bgMedium: { backgroundColor: `${color}40` },
+    border: { borderColor: color },
+    text: { color: getContrastTextColor(color) },
+    textMuted: { color: `${getContrastTextColor(color)}80` }
+  };
 }
 
 // =============================================================================

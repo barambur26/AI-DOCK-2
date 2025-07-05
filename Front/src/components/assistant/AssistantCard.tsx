@@ -190,13 +190,20 @@ export const AssistantCard: React.FC<AssistantCardProps> = ({
         </div>
       )}
 
-      {/* Header: Name and Status */}
+      {/* Header: Name, Color, and Status */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1 min-w-0">
-          {/* Assistant name */}
-          <h3 className="text-lg font-semibold text-gray-900 truncate mb-1">
-            {assistant.name}
-          </h3>
+          {/* Assistant name with color indicator */}
+          <div className="flex items-center space-x-2 mb-1">
+            <div 
+              className="w-4 h-4 rounded-full border-2 border-white shadow-sm flex-shrink-0"
+              style={{ backgroundColor: assistant.color }}
+              title={`Assistant color: ${assistant.color}`}
+            ></div>
+            <h3 className="text-lg font-semibold text-gray-900 truncate">
+              {assistant.name}
+            </h3>
+          </div>
           
           {/* Description */}
           {assistant.description && (
@@ -206,11 +213,16 @@ export const AssistantCard: React.FC<AssistantCardProps> = ({
           )}
         </div>
         
-        {/* Status badge */}
-        <div className={`
-          px-2 py-1 text-xs font-medium border rounded-full whitespace-nowrap
-          ${getStatusBadgeStyles()}
-        `}>
+        {/* Status badge with color accent */}
+        <div 
+          className={`
+            px-2 py-1 text-xs font-medium border-2 rounded-full whitespace-nowrap
+            ${getStatusBadgeStyles()}
+          `}
+          style={{
+            borderColor: assistant.color + '50', // 50% opacity
+          }}
+        >
           {formatAssistantStatus(assistant)}
         </div>
       </div>
@@ -269,18 +281,33 @@ export const AssistantCard: React.FC<AssistantCardProps> = ({
 
       {/* Action Buttons */}
       <div className="flex items-center justify-between gap-3">
-        {/* Primary action: Start Chat */}
+        {/* Primary action: Start Chat with assistant color */}
         <button
           onClick={() => onStartChat(assistant.id)}
           disabled={!assistant.is_active}
           className={`
             flex-1 flex items-center justify-center space-x-2 px-4 py-2 rounded-lg 
-            text-sm font-medium transition-all duration-200
-            ${assistant.is_active 
-              ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105' 
-              : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+            text-sm font-medium transition-all duration-200 text-white
+            shadow-lg hover:shadow-xl transform hover:scale-105
+            ${!assistant.is_active 
+              ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+              : ''
             }
           `}
+          style={assistant.is_active ? {
+            backgroundColor: assistant.color,
+            borderColor: assistant.color
+          } : {}}
+          onMouseEnter={(e) => {
+            if (assistant.is_active) {
+              e.currentTarget.style.backgroundColor = assistant.color + 'CC'; // Darker on hover
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (assistant.is_active) {
+              e.currentTarget.style.backgroundColor = assistant.color;
+            }
+          }}
         >
           <Bot className="w-4 h-4" />
           <span>Start Chat</span>

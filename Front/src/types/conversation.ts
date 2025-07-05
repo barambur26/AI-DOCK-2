@@ -50,6 +50,14 @@ export interface ConversationSummary {
 
 export interface ConversationDetail extends ConversationSummary {
   messages: ConversationMessage[];
+  assistant_id?: number; // Assistant ID for this conversation
+  assistant_name?: string; // Assistant name for UI display
+  assistant?: {
+    id: number;
+    name: string;
+    description?: string;
+    is_active: boolean;
+  }; // Full assistant information from backend
   project?: {
     id: number;
     name: string;
