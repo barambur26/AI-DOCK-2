@@ -7,6 +7,7 @@ import { useSearchParams } from 'react-router-dom';
 import { ChatMessage, ChatServiceError, StreamingChatRequest, ChatResponse } from '../../types/chat';
 import { AssistantSummary } from '../../types/assistant';
 import { ProjectDetails } from '../../types/project';
+import { shouldAutoSave } from '../../types/conversation';
 import { chatService } from '../../services/chatService';
 import { useStreamingChat } from '../../utils/streamingStateManager';
 import type { FileAttachment } from '../../types/file';
@@ -19,6 +20,8 @@ export interface ChatStateConfig {
   selectedProjectId: number | null;
   selectedProject: ProjectDetails | null;
   currentConversationId: number | null;
+  // Add autosave callback for post-streaming save
+  onAutoSave?: (messages: ChatMessage[]) => void;
 }
 
 export interface ChatStateActions {
@@ -116,7 +119,7 @@ export const useChatState = (config: ChatStateConfig): ChatStateReturn => {
       };
       
       // 🤖 Prepare messages with system prompts
-      let messagesWithSystemPrompt = [userMessage];
+      let messagesWithSystemPrompt: ChatMessage[] = [];
       
       // Add project system prompt if available
       if (config.selectedProject?.system_prompt) {
@@ -126,7 +129,7 @@ export const useChatState = (config: ChatStateConfig): ChatStateReturn => {
           projectId: config.selectedProjectId || undefined,
           projectName: config.selectedProject.name
         };
-        messagesWithSystemPrompt = [projectSystemMessage];
+        messagesWithSystemPrompt.push(projectSystemMessage);
       }
       
       // Add assistant system prompt if available
@@ -137,10 +140,10 @@ export const useChatState = (config: ChatStateConfig): ChatStateReturn => {
           assistantId: selectedAssistantId || undefined,
           assistantName: selectedAssistant.name
         };
-        messagesWithSystemPrompt = [...messagesWithSystemPrompt, assistantSystemMessage];
+        messagesWithSystemPrompt.push(assistantSystemMessage);
       }
       
-      // Add conversation history and new message
+      // Add conversation history and the new user message
       messagesWithSystemPrompt = [...messagesWithSystemPrompt, ...messages, userMessage];
       
       const updatedMessages = [...messages, userMessage];
@@ -178,10 +181,23 @@ export const useChatState = (config: ChatStateConfig): ChatStateReturn => {
             assistantName: selectedAssistant?.name || undefined
           };
           
-          setMessages(prev => [
-            ...prev.slice(0, -1),
-            finalMessage
-          ]);
+          setMessages(prev => {
+            const updatedMessages = [
+              ...prev.slice(0, -1),
+              finalMessage
+            ];
+            
+            // 💾 CRITICAL FIX: Trigger autosave after streaming completes
+            // Use setTimeout to ensure React state has updated before autosave
+            setTimeout(() => {
+              if (config.onAutoSave && shouldAutoSave(updatedMessages)) {
+                console.log('💾 Post-streaming autosave triggered');
+                config.onAutoSave(updatedMessages);
+              }
+            }, 100);
+            
+            return updatedMessages;
+          });
           
           setIsLoading(false);
         }
@@ -231,7 +247,16 @@ export const useChatState = (config: ChatStateConfig): ChatStateReturn => {
         projectName: config.selectedProject?.name || undefined
       };
       
-      setMessages([...updatedMessages, aiMessage]);
+      const finalMessages = [...updatedMessages, aiMessage];
+      setMessages(finalMessages);
+      
+      // 💾 Trigger autosave for regular (non-streaming) responses
+      setTimeout(() => {
+        if (config.onAutoSave && shouldAutoSave(finalMessages)) {
+          console.log('💾 Post-regular-chat autosave triggered');
+          config.onAutoSave(finalMessages);
+        }
+      }, 100);
       
       console.log('✅ Received AI response via regular chat');
       

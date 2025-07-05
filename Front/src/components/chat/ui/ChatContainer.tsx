@@ -124,6 +124,32 @@ export const ChatContainer: React.FC = () => {
     }
   );
   
+  // 💾 Create autosave callback for post-streaming saves
+  const handlePostStreamingAutosave = useCallback((messages: ChatMessage[]) => {
+    const saveConfig = {
+      selectedConfigId: selectedConfigId || undefined,
+      selectedModelId: selectedModelId || undefined,
+      projectId: currentConversationId ? (conversationProjectId || undefined) : folderForNewChat || undefined
+    };
+    
+    handleAutoSaveConversation(messages, saveConfig);
+    
+    // Clear folder context after successful auto-save of new chat
+    if (!currentConversationId && hasNewChatFolderContext()) {
+      console.log('🧹 Clearing folder context after post-streaming auto-save');
+      clearNewChatFolderContext();
+    }
+  }, [
+    selectedConfigId,
+    selectedModelId,
+    currentConversationId,
+    conversationProjectId,
+    folderForNewChat,
+    handleAutoSaveConversation,
+    hasNewChatFolderContext,
+    clearNewChatFolderContext
+  ]);
+
   // 💬 Chat state management - FIXED: Remove project interference
   const {
     messages,
@@ -147,7 +173,8 @@ export const ChatContainer: React.FC = () => {
     selectedAssistant,
     selectedProjectId: currentConversationId ? conversationProjectId : folderForNewChat, // Use folder context only for new chats
     selectedProject: null, // Remove project display from active chat
-    currentConversationId
+    currentConversationId,
+    onAutoSave: handlePostStreamingAutosave // Add autosave callback
   });
   
   // Helper to set messages (needed for conversation loading)
@@ -222,75 +249,25 @@ export const ChatContainer: React.FC = () => {
       }
     }
   }, [accumulatedContent, isStreaming, messages.length, updateLastMessage]);
+
+  // 🌊 Note: Post-streaming autosave is now handled directly in useChatState completion callbacks
   
-  // 🔄 Track previous message count to detect new messages vs loaded messages
-  const [previousMessageCount, setPreviousMessageCount] = useState(0);
+  // 🔄 Track conversation loading state
   const [isLoadingConversation, setIsLoadingConversation] = useState(false);
-  const [previousConversationId, setPreviousConversationId] = useState<number | null>(null);
   const [conversationJustLoaded, setConversationJustLoaded] = useState(false);
 
-  // 💾 FIXED: Auto-save with folder context for new chats only
-  useEffect(() => {
-    // 🚫 Don't auto-save during conversation loading to prevent race conditions
-    if (isLoadingConversation || conversationJustLoaded || isStreaming) {
-      return;
-    }
-
-    // 🚫 Skip if no messages
-    if (messages.length === 0) {
-      return;
-    }
-
-    // 🧠 Only count user messages for auto-save detection
-    const userMessages = messages.filter(msg => msg.role === 'user');
-    const currentUserMessageCount = userMessages.length;
-    const previousUserMessageCount = messages.slice(0, previousMessageCount).filter(msg => msg.role === 'user').length;
-    
-    const hasNewUserMessages = currentUserMessageCount > previousUserMessageCount;
-    const conversationChanged = currentConversationId !== previousConversationId;
-
-    if (hasNewUserMessages && !conversationChanged) {
-      console.log('💾 Auto-save triggered: new user messages detected', {
-        currentUserCount: currentUserMessageCount,
-        previousUserCount: previousUserMessageCount,
-        totalMessages: messages.length,
-        conversationId: currentConversationId,
-        folderForNewChat: folderForNewChat
-      });
-
-      handleAutoSaveConversation(messages, {
-        selectedConfigId: selectedConfigId || undefined,
-        selectedModelId: selectedModelId || undefined,
-        // 🔧 FIXED: Use folder context only for NEW chats, never change existing chat folder
-        projectId: currentConversationId ? (conversationProjectId || undefined) : folderForNewChat || undefined
-      });
-      
-      // Clear folder context after successful auto-save of new chat
-      if (!currentConversationId && hasNewChatFolderContext()) {
-        console.log('🧹 Clearing folder context after new chat auto-save');
-        clearNewChatFolderContext();
-      }
-    }
-
-    // Update tracking variables for next comparison
-    setPreviousMessageCount(messages.length);
-    setPreviousConversationId(currentConversationId);
-  }, [
-    messages,
-    isStreaming,
-    handleAutoSaveConversation,
-    selectedConfigId,
-    selectedModelId,
-    folderForNewChat,
-    currentConversationId,
-    previousMessageCount,
-    previousConversationId,
-    isLoadingConversation,
-    conversationJustLoaded,
-    conversationProjectId,
-    hasNewChatFolderContext,
-    clearNewChatFolderContext
-  ]);
+  // 💾 DISABLED: useEffect autosave - now handled by post-streaming callback only
+  // This prevents double autosave issues where both useEffect and post-streaming callback
+  // would trigger saves, creating duplicate conversations
+  // 
+  // The post-streaming autosave in useChatState.ts is more reliable because:
+  // 1. It only triggers after streaming completes (no race conditions)
+  // 2. It has access to the final, complete message state
+  // 3. It's triggered at the right moment in the message flow
+  // 
+  // useEffect(() => {
+  //   // Autosave logic moved to post-streaming callback
+  // }, [messages, ...]);
 
   // 💾 Conversation loading with streaming check
   const handleLoadSelectedConversation = useCallback(async (conversationId: number) => {
@@ -306,10 +283,6 @@ export const ChatContainer: React.FC = () => {
       
       console.log('💾 Loading conversation:', conversationId);
       const loadedMessages = await handleLoadConversation(conversationId);
-      
-      // Set tracking state for the loaded conversation
-      setPreviousMessageCount(loadedMessages.length);
-      setPreviousConversationId(conversationId);
 
       // 🔧 ENHANCED: Handle assistant selection with project default fallback
       if (conversationAssistantId && conversationAssistantId !== selectedAssistantId) {
@@ -380,23 +353,20 @@ export const ChatContainer: React.FC = () => {
     }
   }, [messages, handleSaveConversation, selectedConfigId, selectedModelId, folderForNewChat, currentConversationId, conversationProjectId, setError, hasNewChatFolderContext, clearNewChatFolderContext]);
 
-  // ✉️ Enhanced message sending with auto-save integration
+  // ✉️ Enhanced message sending
   const handleSendMessage = useCallback(async (
     content: string, 
     files?: FileAttachment[]
   ) => {
     try {
       await sendMessage(content, files);
-      
-      // Update message count for next auto-save comparison
-      const newCount = messages.length + 2; // +1 for user message, +1 for assistant response
-      setPreviousMessageCount(newCount);
+      console.log('✉️ Message sent successfully');
       
     } catch (error) {
       console.error('❌ Failed to send message:', error);
       // Error handling is done in useChatState
     }
-  }, [sendMessage, messages.length]);
+  }, [sendMessage]);
 
   // 🤖 Assistant manager change handler
   const handleAssistantManagerChange = useCallback(async () => {
@@ -446,9 +416,7 @@ export const ChatContainer: React.FC = () => {
     }
     
     handleNewConversation();
-    // Reset tracking state for new conversation
-    setPreviousMessageCount(0);
-    setPreviousConversationId(null);
+    // Reset conversation state
     setConversationJustLoaded(false);
 
     // Clear any active assistant when starting a new conversation (unless we have folder context)
