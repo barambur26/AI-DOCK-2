@@ -362,6 +362,10 @@ class AssistantService:
                 assistant.system_prompt = update_data.system_prompt.strip()
                 updated_fields.append("system_prompt")
             
+            if update_data.color is not None:
+                assistant.color = update_data.color
+                updated_fields.append("color")
+            
             if update_data.model_preferences is not None:
                 assistant.model_preferences = update_data.model_preferences
                 updated_fields.append("model_preferences")

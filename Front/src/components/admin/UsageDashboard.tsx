@@ -3,7 +3,7 @@
 // Executive-level overview of AI usage, costs, performance, and activity monitoring
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { usageAnalyticsService, Department, Provider } from '../../services/usageAnalyticsService';
+import { usageAnalyticsService, Department, Provider, Model } from '../../services/usageAnalyticsService';
 import { DashboardData, DashboardState, TopUserMetric } from '../../types/usage';
 
 // Import our dashboard components
@@ -12,6 +12,7 @@ import UsageCharts from './UsageCharts';
 import TopUsersTable from './TopUsersTable';
 import RecentActivity from './RecentActivity';
 import MostUsedModels from './MostUsedModels';
+import UnifiedFiltersButton from './UnifiedFiltersButton';
 
 /**
  * Usage Dashboard Component
@@ -44,7 +45,6 @@ const UsageDashboard: React.FC = () => {
     data: null,
     lastUpdated: null,
     selectedPeriod: 30,
-    selectedProvider: null,
     selectedMetric: 'total_cost'
   });
 
@@ -52,9 +52,18 @@ const UsageDashboard: React.FC = () => {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [selectedDepartment, setSelectedDepartment] = useState<number | null>(null);
 
-  // Provider filtering state
+  // Provider filtering state  
   const [providers, setProviders] = useState<Provider[]>([]);
-  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
+  const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
+  
+  // Model filtering state
+  const [models, setModels] = useState<Model[]>([]);
+  const [selectedModels, setSelectedModels] = useState<string[]>([]);
+  const [modelsByProvider, setModelsByProvider] = useState<Record<string, Model[]>>({});
+  
+  // Filter UI state (showAdvancedFilters and advancedFilterTab now handled in AdvancedFilterPanel component)
+  
+
 
   // Prevent duplicate API calls
   const loadingRef = useRef(false);
@@ -90,12 +99,41 @@ const UsageDashboard: React.FC = () => {
       const providerList = await usageAnalyticsService.getProviders();
       if (mountedRef.current) {
         setProviders(providerList);
+        // Initialize with all providers selected
+        setSelectedProviders(providerList.map(p => p.value));
       }
     } catch (error) {
       console.error('Failed to load providers:', error);
       // Don't fail the entire dashboard if providers can't be loaded
       if (mountedRef.current) {
         setProviders([]);
+        setSelectedProviders([]);
+      }
+    }
+  }, []);
+
+  /**
+   * Load models for filter dropdown
+   */
+  const loadModels = useCallback(async () => {
+    try {
+      const [modelList, modelsByProviderMap] = await Promise.all([
+        usageAnalyticsService.getModels(),
+        usageAnalyticsService.getModelsByProvider()
+      ]);
+      if (mountedRef.current) {
+        setModels(modelList);
+        setModelsByProvider(modelsByProviderMap);
+        // Initialize with all models selected
+        setSelectedModels(modelList.map(m => m.value));
+      }
+    } catch (error) {
+      console.error('Failed to load models:', error);
+      // Don't fail the entire dashboard if models can't be loaded
+      if (mountedRef.current) {
+        setModels([]);
+        setModelsByProvider({});
+        setSelectedModels([]);
       }
     }
   }, []);
@@ -107,14 +145,14 @@ const UsageDashboard: React.FC = () => {
    * We use Promise.all to fetch everything at once rather than sequentially.
    * This provides better user experience with faster load times.
    */
-  const loadDashboardData = useCallback(async (days: number = 30, departmentId: number | null = null, providerId: string | null = null, isRefresh: boolean = false) => {
+  const loadDashboardData = useCallback(async (days: number = 30, departmentId: number | null = null, providerIds: string[] = [], modelIds: string[] = [], isRefresh: boolean = false) => {
     // Prevent duplicate requests
     if (loadingRef.current) {
       console.log('⏭️ Skipping dashboard load - already in progress');
       return;
     }
 
-    console.log(`📊 Loading dashboard data for ${days} days${departmentId ? ` (department: ${departmentId})` : ''}${providerId ? ` (provider: ${providerId})` : ''} (refresh: ${isRefresh})`);
+    console.log(`📊 Loading dashboard data for ${days} days${departmentId ? ` (department: ${departmentId})` : ''}${providerIds.length ? ` (providers: ${providerIds.join(', ')})` : ''}${modelIds.length ? ` (models: ${modelIds.join(', ')})` : ''} (refresh: ${isRefresh})`);
     loadingRef.current = true;
 
     // Update loading state
@@ -126,8 +164,13 @@ const UsageDashboard: React.FC = () => {
     }));
 
     try {
-      // Load all dashboard data in parallel
-      const dashboardData = await usageAnalyticsService.getDashboardData(days, departmentId || undefined, providerId || undefined);
+      // Load all dashboard data in parallel  
+      const dashboardData = await usageAnalyticsService.getDashboardData(
+        days, 
+        departmentId || undefined, 
+        providerIds.length > 0 ? providerIds : undefined,
+        modelIds.length > 0 ? modelIds : undefined
+      );
       
       // Only update state if component is still mounted
       if (mountedRef.current) {
@@ -168,8 +211,8 @@ const UsageDashboard: React.FC = () => {
    */
   const handlePeriodChange = useCallback((days: number) => {
     console.log(`📅 Changing period to ${days} days`);
-    loadDashboardData(days, selectedDepartment, selectedProvider, false);
-  }, [loadDashboardData, selectedDepartment, selectedProvider]);
+    loadDashboardData(days, selectedDepartment, selectedProviders, selectedModels, false);
+  }, [loadDashboardData, selectedDepartment, selectedProviders, selectedModels]);
 
   /**
    * Handle department change
@@ -180,20 +223,34 @@ const UsageDashboard: React.FC = () => {
   const handleDepartmentChange = useCallback((departmentId: number | null) => {
     console.log(`🏢 Changing department filter to: ${departmentId || 'All Departments'}`);
     setSelectedDepartment(departmentId);
-    loadDashboardData(dashboardState.selectedPeriod, departmentId, selectedProvider, false);
-  }, [loadDashboardData, dashboardState.selectedPeriod, selectedProvider]);
+    loadDashboardData(dashboardState.selectedPeriod, departmentId, selectedProviders, selectedModels, false);
+  }, [loadDashboardData, dashboardState.selectedPeriod, selectedProviders, selectedModels]);
 
   /**
-   * Handle provider change
+   * Handle multiple providers selection change
    * 
-   * Learning: Provider filtering allows admins to focus on specific
-   * LLM providers and their usage patterns.
+   * Learning: Multi-select provider filtering allows admins to focus on specific
+   * combinations of LLM providers and their usage patterns.
    */
-  const handleProviderChange = useCallback((providerId: string | null) => {
-    console.log(`🔧 Changing provider filter to: ${providerId || 'All Providers'}`);
-    setSelectedProvider(providerId);
-    loadDashboardData(dashboardState.selectedPeriod, selectedDepartment, providerId, false);
-  }, [loadDashboardData, dashboardState.selectedPeriod, selectedDepartment]);
+  const handleProvidersChange = useCallback((providerIds: string[]) => {
+    console.log(`🔧 Changing provider filters to: ${providerIds.length ? providerIds.join(', ') : 'All Providers'}`);
+    setSelectedProviders(providerIds);
+    loadDashboardData(dashboardState.selectedPeriod, selectedDepartment, providerIds, selectedModels, false);
+  }, [loadDashboardData, dashboardState.selectedPeriod, selectedDepartment, selectedModels]);
+
+  /**
+   * Handle multiple models selection change
+   * 
+   * Learning: Multi-select model filtering allows admins to focus on specific
+   * combinations of AI models and their usage patterns.
+   */
+  const handleModelsChange = useCallback((modelIds: string[]) => {
+    console.log(`🤖 Changing model filters to: ${modelIds.length ? modelIds.join(', ') : 'All Models'}`);
+    setSelectedModels(modelIds);
+    loadDashboardData(dashboardState.selectedPeriod, selectedDepartment, selectedProviders, modelIds, false);
+  }, [loadDashboardData, dashboardState.selectedPeriod, selectedDepartment, selectedProviders]);
+
+
 
   /**
    * Handle dashboard refresh
@@ -203,8 +260,8 @@ const UsageDashboard: React.FC = () => {
    */
   const handleRefresh = useCallback(() => {
     console.log('🔄 Refreshing dashboard data');
-    loadDashboardData(dashboardState.selectedPeriod, selectedDepartment, selectedProvider, true);
-  }, [loadDashboardData, dashboardState.selectedPeriod, selectedDepartment, selectedProvider]);
+    loadDashboardData(dashboardState.selectedPeriod, selectedDepartment, selectedProviders, selectedModels, true);
+  }, [loadDashboardData, dashboardState.selectedPeriod, selectedDepartment, selectedProviders, selectedModels]);
 
   /**
    * Handle metric selection change
@@ -233,13 +290,14 @@ const UsageDashboard: React.FC = () => {
     console.log('🚀 Usage Dashboard mounting - loading initial data');
     mountedRef.current = true;
 
-    // Load departments, providers, and initial dashboard data
+    // Load departments, providers, models, and initial dashboard data
     const initializeDashboard = async () => {
       await Promise.all([
         loadDepartments(),
-        loadProviders()
+        loadProviders(),
+        loadModels()
       ]);
-      await loadDashboardData(30, null, null, false);
+      await loadDashboardData(30, null, [], [], false);
     };
     
     initializeDashboard();
@@ -250,7 +308,7 @@ const UsageDashboard: React.FC = () => {
       mountedRef.current = false;
       loadingRef.current = false;
     };
-  }, [loadDepartments, loadProviders, loadDashboardData]); // Include dependencies
+  }, [loadDepartments, loadProviders, loadModels, loadDashboardData]); // Include dependencies
 
   /**
    * Auto-refresh setup (optional)
@@ -294,66 +352,37 @@ const UsageDashboard: React.FC = () => {
    */
   const handleRetry = useCallback(() => {
     console.log('🔄 Retrying dashboard load after error');
-    loadDashboardData(dashboardState.selectedPeriod, selectedDepartment, selectedProvider, false);
-  }, [loadDashboardData, dashboardState.selectedPeriod, selectedDepartment, selectedProvider]);
+    loadDashboardData(dashboardState.selectedPeriod, selectedDepartment, selectedProviders, selectedModels, false);
+  }, [loadDashboardData, dashboardState.selectedPeriod, selectedDepartment, selectedProviders, selectedModels]);
 
   // =============================================================================
   // RENDER HELPERS
   // =============================================================================
 
   /**
-   * Render department selector dropdown
+   * Render unified filters button component
    * 
-   * Learning: Department filtering allows admins to focus on specific
-   * organizational units and analyze usage patterns by department.
+   * Learning: Unified filtering provides a clean, single interface for all
+   * filtering options including departments, providers, and models.
    */
-  const renderDepartmentSelector = () => {
-    return (
-      <div className="flex items-center space-x-2">
-        <span className="text-sm text-blue-200 font-medium">Department:</span>
-        <select
-          value={selectedDepartment || ''}
-          onChange={(e) => handleDepartmentChange(e.target.value ? parseInt(e.target.value) : null)}
-          disabled={dashboardState.isLoading || dashboardState.isRefreshing}
-          className="bg-white/10 backdrop-blur-lg border border-white/10 text-white px-3 py-2 rounded-xl text-sm font-medium transition-all duration-300 hover:bg-white/20 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-400/50"
-        >
-          <option value="" className="bg-gray-800 text-white">All Departments</option>
-          {departments.map(dept => (
-            <option key={dept.value} value={dept.value} className="bg-gray-800 text-white">
-              {dept.label}
-            </option>
-          ))}
-        </select>
-      </div>
-    );
-  };
+  const renderUnifiedFilters = () => (
+    <UnifiedFiltersButton
+      departments={departments}
+      providers={providers}
+      models={models}
+      modelsByProvider={modelsByProvider}
+      selectedDepartment={selectedDepartment}
+      selectedProviders={selectedProviders}
+      selectedModels={selectedModels}
+      onDepartmentChange={handleDepartmentChange}
+      onProvidersChange={handleProvidersChange}
+      onModelsChange={handleModelsChange}
+      isLoading={dashboardState.isLoading}
+      isRefreshing={dashboardState.isRefreshing}
+    />
+  );
 
-  /**
-   * Render provider selector dropdown
-   * 
-   * Learning: Provider filtering allows admins to focus on specific
-   * LLM providers and analyze usage patterns by provider.
-   */
-  const renderProviderSelector = () => {
-    return (
-      <div className="flex items-center space-x-2">
-        <span className="text-sm text-blue-200 font-medium">Provider:</span>
-        <select
-          value={selectedProvider || ''}
-          onChange={(e) => handleProviderChange(e.target.value || null)}
-          disabled={dashboardState.isLoading || dashboardState.isRefreshing}
-          className="bg-white/10 backdrop-blur-lg border border-white/10 text-white px-3 py-2 rounded-xl text-sm font-medium transition-all duration-300 hover:bg-white/20 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-400/50"
-        >
-          <option value="" className="bg-gray-800 text-white">All Providers</option>
-          {providers.map(provider => (
-            <option key={provider.value} value={provider.value} className="bg-gray-800 text-white">
-              {provider.label}
-            </option>
-          ))}
-        </select>
-      </div>
-    );
-  };
+
 
   /**
    * Render period selector buttons
@@ -412,9 +441,14 @@ const UsageDashboard: React.FC = () => {
                 • Filtered by {departments.find(d => d.value === selectedDepartment)?.label}
               </span>
             )}
-            {selectedProvider && providers.length > 0 && (
+            {selectedProviders.length > 0 && selectedProviders.length < providers.length && (
               <span className="text-blue-300 ml-2">
-                • Provider: {providers.find(p => p.value === selectedProvider)?.label}
+                • {selectedProviders.length} provider{selectedProviders.length !== 1 ? 's' : ''} selected
+              </span>
+            )}
+            {selectedModels.length > 0 && selectedModels.length < models.length && (
+              <span className="text-blue-300 ml-2">
+                • {selectedModels.length} model{selectedModels.length !== 1 ? 's' : ''} selected
               </span>
             )}
           </p>
@@ -426,8 +460,7 @@ const UsageDashboard: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-4">
-          {renderDepartmentSelector()}
-          {renderProviderSelector()}
+          {renderUnifiedFilters()}
           {renderPeriodSelector()}
           <button
             onClick={handleRefresh}
@@ -626,7 +659,7 @@ const UsageDashboard: React.FC = () => {
                   </span>
                 </div>
                 <div className="text-sm text-blue-200">
-                  {dashboardState.data.systemHealth.usage_tracking.logs_last_24h || 0} logs in last 24h
+                  {dashboardState.data.summary?.overview.total_requests || 0} logs in last {dashboardState.selectedPeriod} days
                 </div>
               </div>
             </div>

@@ -326,13 +326,20 @@ export const AssistantSidebar: React.FC<AssistantSidebarProps> = ({
         title={isStreaming ? 'Cannot switch assistants while AI is responding' : 'Select this assistant'}
       >
         {/* Assistant icon */}
-        <div className={`flex items-center justify-center w-10 h-10 rounded-xl mr-3 backdrop-blur-sm border shadow-md ${
-          currentAssistantId === assistant.id
-            ? 'bg-blue-500/30 border-blue-400/40 text-blue-100'
-            : assistant.is_active
-            ? 'bg-green-500/20 border-green-400/30 text-green-200'
-            : 'bg-gray-500/20 border-gray-400/30 text-gray-300'
-        }`}>
+        <div 
+          className={`flex items-center justify-center w-10 h-10 rounded-xl mr-3 backdrop-blur-sm border shadow-md ${
+            currentAssistantId === assistant.id
+              ? 'text-white'
+              : assistant.is_active
+              ? 'text-white'
+              : 'bg-gray-500/20 border-gray-400/30 text-gray-300'
+          }`}
+          style={assistant.is_active ? {
+            backgroundColor: `${assistant.color}30`, // 30% opacity background
+            borderColor: `${assistant.color}50`, // 50% opacity border
+            color: assistant.color // Icon color matches assistant color
+          } : {}}
+        >
           <Bot className="w-5 h-5" />
         </div>
 
@@ -661,11 +668,14 @@ export const AssistantSidebar: React.FC<AssistantSidebarProps> = ({
                 title={isStreaming ? 'Cannot switch to default chat while AI is responding' : 'Use default AI assistant'}
               >
                 <div className="flex items-center p-3">
-                  <div className={`flex items-center justify-center w-10 h-10 rounded-xl mr-3 backdrop-blur-sm border shadow-md ${
-                    currentAssistantId === null
-                      ? 'bg-blue-500/30 border-blue-400/40 text-blue-100'
-                      : 'bg-gray-500/20 border-gray-400/30 text-gray-300'
-                  }`}>
+                  <div 
+                    className="flex items-center justify-center w-10 h-10 rounded-xl mr-3 backdrop-blur-sm border shadow-md"
+                    style={{
+                      backgroundColor: currentAssistantId === null ? '#3B82F630' : '#6B728020', // Blue if selected, gray if not
+                      borderColor: currentAssistantId === null ? '#3B82F650' : '#6B728030',
+                      color: currentAssistantId === null ? '#3B82F6' : '#6B7280'
+                    }}
+                  >
                     <MessageSquare className="w-5 h-5" />
                   </div>
                   <div className="flex-1">

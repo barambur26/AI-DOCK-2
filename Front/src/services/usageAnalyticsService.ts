@@ -141,20 +141,24 @@ class UsageAnalyticsService {
    * Args:
    *   days: Number of days to analyze (default: 30)
    *   departmentId: Optional department ID to filter by
-   *   providerName: Optional provider name to filter by
+   *   providerNames: Optional list of provider names to filter by
+   *   modelNames: Optional list of model names to filter by
    * 
    * Returns:
    *   Comprehensive usage summary
    */
-  async getUsageSummary(days: number = 30, departmentId?: number, providerName?: string): Promise<UsageSummary> {
-    console.log(`📊 Fetching usage summary for ${days} days${departmentId ? ` (department: ${departmentId})` : ''}${providerName ? ` (provider: ${providerName})` : ''}...`);
+  async getUsageSummary(days: number = 30, departmentId?: number, providerNames?: string[], modelNames?: string[]): Promise<UsageSummary> {
+    console.log(`📊 Fetching usage summary for ${days} days${departmentId ? ` (department: ${departmentId})` : ''}${providerNames?.length ? ` (providers: ${providerNames.join(', ')})` : ''}${modelNames?.length ? ` (models: ${modelNames.join(', ')})` : ''}...`);
     
     const params = new URLSearchParams({ days: days.toString() });
     if (departmentId) {
       params.append('department_id', departmentId.toString());
     }
-    if (providerName) {
-      params.append('provider_name', providerName);
+    if (providerNames?.length) {
+      providerNames.forEach(provider => params.append('provider_names', provider));
+    }
+    if (modelNames?.length) {
+      modelNames.forEach(model => params.append('model_names', model));
     }
     
     const response = await fetch(
@@ -275,16 +279,18 @@ class UsageAnalyticsService {
    *   limit: Number of top users to return
    *   metric: What to sort by ('total_cost', 'total_tokens', 'request_count')
    *   departmentId: Optional department ID to filter by
-   *   providerName: Optional provider name to filter by
+   *   providerNames: Optional list of provider names to filter by
+   *   modelNames: Optional list of model names to filter by
    */
   async getTopUsers(
     days: number = 30, 
     limit: number = 10, 
     metric: 'total_cost' | 'total_tokens' | 'request_count' = 'total_cost',
     departmentId?: number,
-    providerName?: string
+    providerNames?: string[],
+    modelNames?: string[]
   ): Promise<TopUsersResponse> {
-    console.log(`🏆 Fetching top ${limit} users by ${metric} (${days} days)${departmentId ? ` (department: ${departmentId})` : ''}${providerName ? ` (provider: ${providerName})` : ''}...`);
+    console.log(`🏆 Fetching top ${limit} users by ${metric} (${days} days)${departmentId ? ` (department: ${departmentId})` : ''}${providerNames?.length ? ` (providers: ${providerNames.join(', ')})` : ''}${modelNames?.length ? ` (models: ${modelNames.join(', ')})` : ''}...`);
     
     const params = new URLSearchParams({
       days: days.toString(),
@@ -294,8 +300,11 @@ class UsageAnalyticsService {
     if (departmentId) {
       params.append('department_id', departmentId.toString());
     }
-    if (providerName) {
-      params.append('provider_name', providerName);
+    if (providerNames?.length) {
+      providerNames.forEach(provider => params.append('provider_names', provider));
+    }
+    if (modelNames?.length) {
+      modelNames.forEach(model => params.append('model_names', model));
     }
     
     const response = await fetch(
@@ -463,9 +472,10 @@ class UsageAnalyticsService {
     days: number = 30,
     limit: number = 20,
     departmentId?: number,
-    providerName?: string
+    providerNames?: string[],
+    modelNames?: string[]
   ): Promise<MostUsedModelsResponse> {
-    console.log(`🤖 Fetching most used models (${days} days, limit: ${limit})${departmentId ? ` (department: ${departmentId})` : ''}${providerName ? ` (provider: ${providerName})` : ''}...`);
+    console.log(`🤖 Fetching most used models (${days} days, limit: ${limit})${departmentId ? ` (department: ${departmentId})` : ''}${providerNames?.length ? ` (providers: ${providerNames.join(', ')})` : ''}${modelNames?.length ? ` (models: ${modelNames.join(', ')})` : ''}...`);
     
     const params = new URLSearchParams({
       days: days.toString(),
@@ -474,8 +484,11 @@ class UsageAnalyticsService {
     if (departmentId) {
       params.append('department_id', departmentId.toString());
     }
-    if (providerName) {
-      params.append('provider_name', providerName);
+    if (providerNames?.length) {
+      providerNames.forEach(provider => params.append('provider_names', provider));
+    }
+    if (modelNames?.length) {
+      modelNames.forEach(model => params.append('model_names', model));
     }
     
     const response = await fetch(
@@ -513,6 +526,49 @@ class UsageAnalyticsService {
   }
 
   /**
+   * Get models list for filtering dropdown
+   * 
+   * Returns list of models that have been used in the system,
+   * with provider grouping and usage statistics.
+   */
+  async getModels(): Promise<Model[]> {
+    console.log('🤖 Fetching models for filter dropdown...');
+    
+    const response = await fetch(
+      `${API_BASE_URL}/admin/usage/models/list`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders()
+      }
+    );
+    
+    const result = await this.handleResponse<{ models: Model[], models_by_provider: Record<string, Model[]> }>(response);
+    console.log('✅ Models loaded:', result);
+    return result.models;
+  }
+
+  /**
+   * Get models grouped by provider for filtering dropdown
+   * 
+   * Returns models organized by provider for better UI organization.
+   */
+  async getModelsByProvider(): Promise<Record<string, Model[]>> {
+    console.log('🤖 Fetching models grouped by provider...');
+    
+    const response = await fetch(
+      `${API_BASE_URL}/admin/usage/models/list`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders()
+      }
+    );
+    
+    const result = await this.handleResponse<{ models: Model[], models_by_provider: Record<string, Model[]> }>(response);
+    console.log('✅ Models by provider loaded:', result);
+    return result.models_by_provider;
+  }
+
+  /**
    * Get dashboard data in one call
    * 
    * This is a convenience method that fetches multiple pieces of data
@@ -521,8 +577,8 @@ class UsageAnalyticsService {
    * 
    * Now includes fallback data for when authentication fails or system is not set up.
    */
-  async getDashboardData(days: number = 30, departmentId?: number, providerName?: string): Promise<DashboardData> {
-    console.log(`🎯 Loading complete dashboard data for ${days} days${departmentId ? ` (department: ${departmentId})` : ''}${providerName ? ` (provider: ${providerName})` : ''}...`);
+  async getDashboardData(days: number = 30, departmentId?: number, providerNames?: string[], modelNames?: string[]): Promise<DashboardData> {
+    console.log(`🎯 Loading complete dashboard data for ${days} days${departmentId ? ` (department: ${departmentId})` : ''}${providerNames?.length ? ` (providers: ${providerNames.join(', ')})` : ''}${modelNames?.length ? ` (models: ${modelNames.join(', ')})` : ''}...`);
     
     try {
       console.log('📊 Loading dashboard data with fallback support...');
@@ -545,13 +601,13 @@ class UsageAnalyticsService {
           average_response_time_ms: 0,
           average_tokens_per_request: 0
         },
-        providers: providerName ? [{
-          provider: providerName,
+        providers: providerNames && providerNames.length > 0 ? providerNames.map(name => ({
+          provider: name,
           requests: { total: 0, successful: 0, success_rate: 0 },
           tokens: { total: 0 },
           cost: { total_usd: 0, average_per_request: 0 },
           performance: { average_response_time_ms: 0 }
-        }] : [],
+        })) : [],
         generated_at: new Date().toISOString()
       };
 
@@ -756,22 +812,22 @@ class UsageAnalyticsService {
       
       // Load data with fallbacks
       const usageSummary = await this.safeApiCall(
-        () => this.getUsageSummary(days, departmentId, providerName),
+        () => this.getUsageSummary(days, departmentId, providerNames, modelNames),
         fallbackSummary
       );
       
       const topUsersByCost = await this.safeApiCall(
-        () => this.getTopUsers(days, 5, 'total_cost', departmentId, providerName),
+        () => this.getTopUsers(days, 5, 'total_cost', departmentId, providerNames, modelNames),
         { ...fallbackTopUsers, sort_metric: 'total_cost' }
       );
       
       const topUsersByTokens = await this.safeApiCall(
-        () => this.getTopUsers(days, 5, 'total_tokens', departmentId, providerName),
+        () => this.getTopUsers(days, 5, 'total_tokens', departmentId, providerNames, modelNames),
         { ...fallbackTopUsers, sort_metric: 'total_tokens' }
       );
       
       const topUsersByRequests = await this.safeApiCall(
-        () => this.getTopUsers(days, 5, 'request_count', departmentId, providerName),
+        () => this.getTopUsers(days, 5, 'request_count', departmentId, providerNames, modelNames),
         { ...fallbackTopUsers, sort_metric: 'request_count' }
       );
       
@@ -825,12 +881,12 @@ class UsageAnalyticsService {
       
       // Load most used models (with fallback)
       const mostUsedModels = await this.safeApiCall(
-        () => this.getMostUsedModels(days, 10, departmentId, providerName),
+        () => this.getMostUsedModels(days, 10, departmentId, providerNames, modelNames),
         {
           period: fallbackSummary.period,
           models: [],
           limit: 10,
-          filters_applied: { department_id: departmentId, provider_name: providerName },
+          filters_applied: { department_id: departmentId, provider_name: providerNames?.[0] },
           generated_at: new Date().toISOString()
         }
       );
@@ -1136,6 +1192,13 @@ export interface Department {
 export interface Provider {
   value: string;
   label: string;
+}
+
+export interface Model {
+  value: string;
+  label: string;
+  provider: string;
+  usage_count: number;
 }
 
 export interface MostUsedModelsResponse {

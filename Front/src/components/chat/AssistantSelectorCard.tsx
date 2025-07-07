@@ -152,7 +152,7 @@ export const AssistantSelectorCard: React.FC<AssistantSelectorCardProps> = ({
               {isDefaultChat ? (
                 <Bot className="w-6 h-6 text-blue-300" />
               ) : (
-                <Sparkles 
+                <Bot 
                   className="w-6 h-6" 
                   style={{ color: selectedAssistant.color }}
                 />

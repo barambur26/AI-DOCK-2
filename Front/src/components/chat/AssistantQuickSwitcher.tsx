@@ -291,15 +291,14 @@ export const AssistantQuickSwitcher: React.FC<AssistantQuickSwitcherProps> = ({
       >
         <div className="flex items-center space-x-3">
           {/* Assistant Icon */}
-          <div className={`
-            flex-shrink-0 w-12 h-12 rounded-full
-            flex items-center justify-center
-            ${isSelected
-              ? 'bg-blue-500/20 border-2 border-blue-400/40'
-              : 'bg-purple-500/20 border-2 border-purple-400/30'
-            }
-          `}>
-            <Sparkles className={`w-6 h-6 ${isSelected ? 'text-blue-400' : 'text-purple-300'}`} />
+          <div 
+            className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center border-2"
+            style={{
+              backgroundColor: `${assistant.color}20`, // 20% opacity background
+              borderColor: `${assistant.color}50` // 50% opacity border
+            }}
+          >
+            <Bot className="w-6 h-6" style={{ color: assistant.color }} />
           </div>
           
           {/* Assistant Details */}

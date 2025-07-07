@@ -26,7 +26,8 @@ async def get_provider_usage_stats_fixed(
     start_date: datetime,
     end_date: datetime,
     department_id: Optional[int] = None,
-    provider_name: Optional[str] = None
+    provider_names: Optional[List[str]] = None,
+    model_names: Optional[List[str]] = None
 ) -> List[Dict[str, Any]]:
     """
     🔧 FIXED provider usage statistics with proper cost calculation.
@@ -71,7 +72,9 @@ async def get_provider_usage_stats_fixed(
                     # Add department filter if specified
                     *([UsageLog.department_id == department_id] if department_id else []),
                     # Add provider filter if specified
-                    *([UsageLog.provider == provider_name.lower()] if provider_name else [])
+                    *([UsageLog.provider.in_([p.lower() for p in provider_names])] if provider_names else []),
+                    # Add model filter if specified
+                    *([UsageLog.model.in_(model_names)] if model_names else [])
                 )
             ).group_by(UsageLog.provider).params(cache_buster=cache_buster)
             
@@ -142,7 +145,8 @@ async def get_provider_usage_stats_fixed(
 async def get_usage_summary(
     days: int = Query(30, description="Number of days to analyze", ge=1, le=365),
     department_id: Optional[int] = Query(None, description="Filter by department ID"),
-    provider_name: Optional[str] = Query(None, description="Filter by provider name"),
+    provider_names: Optional[List[str]] = Query(None, description="Filter by provider names"),
+    model_names: Optional[List[str]] = Query(None, description="Filter by model names"),
     current_admin: User = Depends(get_current_admin_user),
     session: AsyncSession = Depends(get_async_db)
 ) -> Dict[str, Any]:
@@ -175,7 +179,7 @@ async def get_usage_summary(
         logger.info(f"🔍 Getting usage summary for {days} days: {start_date} to {end_date}")
         
         # 🔧 FIX: Use improved provider statistics with NULL cost handling
-        provider_stats = await get_provider_usage_stats_fixed(start_date, end_date, department_id, provider_name)
+        provider_stats = await get_provider_usage_stats_fixed(start_date, end_date, department_id, provider_names, model_names)
         
         # Calculate overall totals from provider stats
         total_requests = sum(p["requests"]["total"] for p in provider_stats)
@@ -506,7 +510,8 @@ async def get_top_users_by_usage(
     limit: int = Query(10, description="Number of top users to return", ge=1, le=50),
     metric: str = Query("total_cost", description="Metric to sort by: total_cost, total_tokens, or request_count"),
     department_id: Optional[int] = Query(None, description="Filter by department ID"),
-    provider_name: Optional[str] = Query(None, description="Filter by provider name"),
+    provider_names: Optional[List[str]] = Query(None, description="Filter by provider names"),
+    model_names: Optional[List[str]] = Query(None, description="Filter by model names"),
     current_admin: User = Depends(get_current_admin_user),
     session: AsyncSession = Depends(get_async_db)
 ) -> Dict[str, Any]:
@@ -572,7 +577,9 @@ async def get_top_users_by_usage(
                 # Add department filter if specified
                 *([UsageLog.department_id == department_id] if department_id else []),
                 # Add provider filter if specified
-                *([UsageLog.provider == provider_name.lower()] if provider_name else [])
+                *([UsageLog.provider.in_([p.lower() for p in provider_names])] if provider_names else []),
+                # Add model filter if specified
+                *([UsageLog.model.in_(model_names)] if model_names else [])
             )
         ).group_by(
             UsageLog.user_id,
@@ -762,7 +769,8 @@ async def get_most_used_models(
     days: int = Query(30, description="Number of days to analyze", ge=1, le=365),
     limit: int = Query(20, description="Number of top models to return", ge=1, le=100),
     department_id: Optional[int] = Query(None, description="Filter by department ID"),
-    provider_name: Optional[str] = Query(None, description="Filter by provider name"),
+    provider_names: Optional[List[str]] = Query(None, description="Filter by provider names"),
+    model_names: Optional[List[str]] = Query(None, description="Filter by model names"),
     current_admin: User = Depends(get_current_admin_user),
     session: AsyncSession = Depends(get_async_db)
 ) -> Dict[str, Any]:
@@ -818,7 +826,9 @@ async def get_most_used_models(
                 # Add department filter if specified
                 *([UsageLog.department_id == department_id] if department_id else []),
                 # Add provider filter if specified
-                *([UsageLog.provider == provider_name.lower()] if provider_name else [])
+                *([UsageLog.provider.in_([p.lower() for p in provider_names])] if provider_names else []),
+                # Add model filter if specified
+                *([UsageLog.model.in_(model_names)] if model_names else [])
             )
         ).group_by(
             UsageLog.model,
@@ -873,7 +883,8 @@ async def get_most_used_models(
             "limit": limit,
             "filters_applied": {
                 "department_id": department_id,
-                "provider_name": provider_name
+                "provider_names": provider_names,
+                "model_names": model_names
             },
             "generated_at": datetime.utcnow().isoformat()
         }
@@ -929,6 +940,81 @@ async def get_providers_list(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to get providers list: {str(e)}"
+        )
+
+@router.get("/models/list")
+async def get_models_list(
+    current_admin: User = Depends(get_current_admin_user),
+    session: AsyncSession = Depends(get_async_db)
+) -> Dict[str, Any]:
+    """
+    Get list of models for filtering dropdown.
+    
+    Returns list of models that have been used in the system,
+    formatted for frontend dropdowns and grouped by provider.
+    
+    Returns:
+        List of available models with provider grouping
+    """
+    try:
+        from sqlalchemy import select, func, distinct, and_
+        from ...models.usage_log import UsageLog
+        
+        # Get distinct model-provider combinations from usage logs
+        query = select(
+            UsageLog.model,
+            UsageLog.provider,
+            func.count(UsageLog.id).label('usage_count')
+        ).where(
+            and_(
+                UsageLog.model.isnot(None),
+                UsageLog.provider.isnot(None)
+            )
+        ).group_by(
+            UsageLog.model,
+            UsageLog.provider
+        ).order_by(
+            UsageLog.provider,
+            func.count(UsageLog.id).desc()
+        )
+        
+        result = await session.execute(query)
+        models = result.fetchall()
+        
+        # Format for frontend with provider grouping
+        models_by_provider = {}
+        all_models = []
+        
+        for model_data in models:
+            model = model_data.model
+            provider = model_data.provider
+            usage_count = model_data.usage_count
+            
+            if provider not in models_by_provider:
+                models_by_provider[provider] = []
+                
+            model_item = {
+                "value": model,
+                "label": f"{model} ({usage_count:,} uses)",
+                "provider": provider,
+                "usage_count": usage_count
+            }
+            
+            models_by_provider[provider].append(model_item)
+            all_models.append(model_item)
+        
+        return {
+            "models": all_models,
+            "models_by_provider": models_by_provider,
+            "count": len(all_models),
+            "providers_count": len(models_by_provider),
+            "generated_at": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get models list: {str(e)}"
         )
 
 # =============================================================================
