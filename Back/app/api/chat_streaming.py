@@ -516,6 +516,7 @@ async def stream_chat_generator(
     chat_conversation = None
     assistant = None
     accumulated_response_content = ""
+    assistant_file_context = ""
     
     try:
         # Process assistant integration if assistant_id provided
@@ -533,9 +534,14 @@ async def stream_chat_generator(
             chat_conversation = assistant_integration.get("chat_conversation")
             should_create_conversation = assistant_integration.get("should_create_conversation", False)
             
+            # 📁 NEW: Extract assistant file context
+            assistant_file_context = assistant_integration.get("assistant_file_context", "")
+            assistant_file_ids = assistant_integration.get("assistant_file_ids", [])
+            
             # Log assistant integration results
             if assistant:
                 logger.info(f"🤖 Streaming with assistant '{assistant.name}' (ID: {assistant.id})")
+                logger.info(f"📁 Assistant has {len(assistant_file_ids)} attached files, context length: {len(assistant_file_context)}")
             else:
                 logger.info(f"🌊 Streaming general chat (no assistant)")
                 
@@ -592,11 +598,11 @@ async def stream_chat_generator(
     
     try:
         # 📁 NEW: Process file attachments for streaming chat
-        file_context = ""
+        request_file_context = ""
         logger.info(f"🔍 DEBUG: Checking for file attachments in stream_request: {stream_request.file_attachment_ids}")
         
         if stream_request.file_attachment_ids:
-            logger.info(f"🔍 DEBUG: Starting file processing for {len(stream_request.file_attachment_ids)} files")
+            logger.info(f"🔍 DEBUG: Starting file processing for {len(stream_request.file_attachment_ids)} request files")
             
             try:
                 from ..models.file_upload import FileUpload
@@ -608,28 +614,42 @@ async def stream_chat_generator(
                 logger.info(f"🔍 DEBUG: About to call process_file_attachments with IDs: {stream_request.file_attachment_ids}")
                 
                 # Use the passed database session for file processing
-                file_context = await process_file_attachments(
+                request_file_context = await process_file_attachments(
                     file_ids=stream_request.file_attachment_ids,
                     user=current_user,
                     db=db
                 )
                 
-                logger.info(f"🔍 DEBUG: process_file_attachments returned context length: {len(file_context)}")
-                if file_context:
-                    logger.info(f"🔍 DEBUG: File context preview: {file_context[:100]}...")
+                logger.info(f"🔍 DEBUG: process_file_attachments returned context length: {len(request_file_context)}")
+                if request_file_context:
+                    logger.info(f"🔍 DEBUG: Request file context preview: {request_file_context[:100]}...")
                 else:
                     logger.warning(f"⚠️ DEBUG: process_file_attachments returned empty context!")
                     
-                logger.info(f"Processed {len(stream_request.file_attachment_ids)} file attachments for streaming, total context length: {len(file_context)} characters")
+                logger.info(f"Processed {len(stream_request.file_attachment_ids)} request file attachments for streaming, total context length: {len(request_file_context)} characters")
                 
             except Exception as file_error:
-                logger.error(f"❌ DEBUG: Error processing file attachments: {str(file_error)}")
+                logger.error(f"❌ DEBUG: Error processing request file attachments: {str(file_error)}")
                 import traceback
                 logger.error(f"❌ DEBUG: File processing traceback: {traceback.format_exc()}")
                 # Continue without file context instead of failing the entire request
-                file_context = ""
+                request_file_context = ""
         else:
-            logger.info(f"🔍 DEBUG: No file attachments to process")
+            logger.info(f"🔍 DEBUG: No request file attachments to process")
+        
+        # 📁 Combine assistant file context with request file context
+        combined_file_context = ""
+        if assistant_file_context and request_file_context:
+            combined_file_context = f"Assistant Files:\n{assistant_file_context}\n\nAttached Files:\n{request_file_context}"
+            logger.info(f"🔍 DEBUG: Combined assistant files ({len(assistant_file_context)} chars) and request files ({len(request_file_context)} chars)")
+        elif assistant_file_context:
+            combined_file_context = assistant_file_context
+            logger.info(f"🔍 DEBUG: Using only assistant file context ({len(assistant_file_context)} chars)")
+        elif request_file_context:
+            combined_file_context = request_file_context
+            logger.info(f"🔍 DEBUG: Using only request file context ({len(request_file_context)} chars)")
+        else:
+            logger.info(f"🔍 DEBUG: No file context available")
         
         # 📝 Convert to service format (same as regular chat)
         messages = [
@@ -637,16 +657,16 @@ async def stream_chat_generator(
             for msg in stream_request.messages
         ]
         
-        # 📁 Add file context to the last user message if we have attachments
-        logger.info(f"🔍 DEBUG: About to add file context to messages. file_context length: {len(file_context)}, messages count: {len(messages)}")
+        # 📁 Add combined file context to the last user message if we have attachments
+        logger.info(f"🔍 DEBUG: About to add file context to messages. combined_file_context length: {len(combined_file_context)}, messages count: {len(messages)}")
         
-        if file_context and messages:
-            logger.info(f"🔍 DEBUG: Adding file context to last user message")
+        if combined_file_context and messages:
+            logger.info(f"🔍 DEBUG: Adding combined file context to last user message")
             # Find the last user message and append file context
             for i in range(len(messages) - 1, -1, -1):
                 if messages[i]["role"] == "user":
                     original_content = messages[i]["content"]
-                    messages[i]["content"] = f"{messages[i]['content']}\n\n{file_context}"
+                    messages[i]["content"] = f"{messages[i]['content']}\n\n{combined_file_context}"
                     logger.info(f"🔍 DEBUG: Updated user message. Original length: {len(original_content)}, New length: {len(messages[i]['content'])}")
                     break
             else:
@@ -654,12 +674,12 @@ async def stream_chat_generator(
                 logger.info(f"🔍 DEBUG: No user message found, adding system message with file context")
                 messages.insert(0, {
                     "role": "system", 
-                    "content": f"The user has provided the following files for context:\n\n{file_context}"
+                    "content": f"The user has provided the following files for context:\n\n{combined_file_context}"
                 })
-        elif file_context and not messages:
-            logger.warning(f"⚠️ DEBUG: Have file context but no messages!")
-        elif not file_context and stream_request.file_attachment_ids:
-            logger.warning(f"⚠️ DEBUG: Have file attachment IDs but no file context was generated!")
+        elif combined_file_context and not messages:
+            logger.warning(f"⚠️ DEBUG: Have combined file context but no messages!")
+        elif not combined_file_context and (stream_request.file_attachment_ids or assistant_file_context):
+            logger.warning(f"⚠️ DEBUG: Have file attachment sources but no combined file context was generated!")
         else:
             logger.info(f"🔍 DEBUG: No file context to add to messages")
         
@@ -724,12 +744,19 @@ async def stream_chat_generator(
                         break
                 
                 if last_user_message:
+                    # Combine request file IDs with assistant file IDs for metadata
+                    all_file_ids = (stream_request.file_attachment_ids or []) + (assistant_file_ids if 'assistant_file_ids' in locals() else [])
+                    
                     await conversation_service.save_message_to_conversation(
                         db=db,
                         conversation_id=chat_conversation.id,
                         role="user",
                         content=last_user_message,
-                        metadata={"file_attachments": stream_request.file_attachment_ids or []}
+                        metadata={
+                            "file_attachments": stream_request.file_attachment_ids or [],
+                            "assistant_file_attachments": assistant_file_ids if 'assistant_file_ids' in locals() else [],
+                            "all_file_attachments": all_file_ids
+                        }
                     )
                     logger.info(f"💾 Saved user message to conversation {chat_conversation.id}")
                 

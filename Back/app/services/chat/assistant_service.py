@@ -38,8 +38,9 @@ async def process_assistant_integration(
     1. **Validation**: Ensure user owns the assistant
     2. **System Prompt**: Extract assistant's system prompt for LLM
     3. **Model Preferences**: Get assistant's preferred LLM settings
-    4. **Conversation Management**: Link or create chat conversations
-    5. **Error Handling**: Graceful fallback for missing/invalid assistants
+    4. **File Processing**: Fetch and process assistant's attached files
+    5. **Conversation Management**: Link or create chat conversations
+    6. **Error Handling**: Graceful fallback for missing/invalid assistants
     
     Args:
         assistant_id: Optional ID of assistant to use
@@ -54,6 +55,8 @@ async def process_assistant_integration(
         - model_preferences: Dict of LLM preferences
         - chat_conversation: ChatConversation object or None
         - should_create_conversation: Whether to auto-create conversation
+        - assistant_file_ids: List of file IDs attached to assistant
+        - assistant_file_context: Processed file content for LLM context
         - error: Error message if validation failed
         
     Raises:
@@ -67,6 +70,8 @@ async def process_assistant_integration(
         "model_preferences": {},
         "chat_conversation": None,
         "should_create_conversation": False,
+        "assistant_file_ids": [],
+        "assistant_file_context": "",
         "error": None
     }
     
@@ -104,6 +109,39 @@ async def process_assistant_integration(
         result["system_prompt"] = assistant.system_prompt
         result["model_preferences"] = assistant.get_effective_model_preferences()
         
+        # 📁 NEW: Process assistant's attached files
+        try:
+            # Get file IDs attached to this assistant
+            assistant_file_ids = assistant.attached_file_ids
+            result["assistant_file_ids"] = assistant_file_ids
+            
+            logger.info(f"🔍 DEBUG: Assistant '{assistant.name}' has {len(assistant_file_ids)} attached files: {assistant_file_ids}")
+            
+            if assistant_file_ids:
+                # Process the attached files into context
+                from .file_service import process_file_attachments
+                
+                assistant_file_context = await process_file_attachments(
+                    file_ids=assistant_file_ids,
+                    user=user,
+                    db=db
+                )
+                
+                result["assistant_file_context"] = assistant_file_context
+                logger.info(f"🔍 DEBUG: Processed assistant files into context. Length: {len(assistant_file_context)} characters")
+                
+                if assistant_file_context:
+                    logger.info(f"🔍 DEBUG: Assistant file context preview: {assistant_file_context[:200]}...")
+                else:
+                    logger.warning(f"⚠️ DEBUG: Assistant has attached files but no context was generated")
+            else:
+                logger.info(f"🔍 DEBUG: Assistant '{assistant.name}' has no attached files")
+                
+        except Exception as file_error:
+            logger.error(f"❌ DEBUG: Error processing assistant files: {str(file_error)}")
+            # Don't fail the entire request if file processing fails
+            result["assistant_file_context"] = ""
+        
         # Handle conversation integration
         if conversation_id:
             # User specified an existing conversation - validate and load it
@@ -126,13 +164,15 @@ async def process_assistant_integration(
             result["should_create_conversation"] = True
             logger.info(f"🔍 DEBUG: Will auto-create conversation for assistant chat")
         
-        logger.info(f"🎉 DEBUG: Assistant integration successful - system_prompt length: {len(result['system_prompt']) if result['system_prompt'] else 0}")
+        logger.info(f"🎉 DEBUG: Assistant integration successful - system_prompt length: {len(result['system_prompt']) if result['system_prompt'] else 0}, file_context length: {len(result['assistant_file_context'])}")
         
     except HTTPException:
         # Re-raise HTTP exceptions (validation errors)
         raise
     except Exception as e:
         logger.error(f"❌ DEBUG: Error processing assistant integration: {str(e)}")
+        import traceback
+        logger.error(f"❌ DEBUG: Full traceback: {traceback.format_exc()}")
         result["error"] = f"Assistant integration failed: {str(e)}"
     
     return result

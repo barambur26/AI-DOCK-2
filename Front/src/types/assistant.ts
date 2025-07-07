@@ -40,6 +40,10 @@ export interface Assistant {
   is_new: boolean;
   status_label: string;
   has_custom_preferences: boolean;
+  
+  // File attachments
+  file_count: number;  // Number of files attached to this assistant
+  has_files: boolean;  // Whether this assistant has any attached files
 }
 
 /**
@@ -58,6 +62,10 @@ export interface AssistantSummary {
   
   // Color personalization
   color: string;  // Hex color code (e.g., #3B82F6)
+  
+  // File attachments
+  file_count: number;  // Number of files attached to this assistant
+  has_files: boolean;  // Whether this assistant has any attached files
 }
 
 // =============================================================================
@@ -446,7 +454,6 @@ export const ASSISTANT_COLOR_PALETTE = [
   '#60A5FA',  // Blue Light
   '#34D399',  // Emerald Light
   '#A78BFA',  // Violet Light
-  '#FBBF24',  // Amber Light
   '#FB7185',  // Rose
   '#38BDF8'   // Sky
 ] as const;

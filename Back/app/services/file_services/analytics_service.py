@@ -49,6 +49,82 @@ class FileAnalyticsService:
         pass
     
     # =============================================================================
+    # USER FILE LISTING (PAGINATED)
+    # =============================================================================
+    
+    def get_user_files(
+        self, 
+        user: User, 
+        db: Session,
+        page: int = 1,
+        page_size: int = 20,
+        include_deleted: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Get paginated list of user's files.
+        
+        🎓 LEARNING: Paginated Query Implementation
+        ==========================================
+        This method provides efficient pagination:
+        - Calculates total count for pagination metadata
+        - Uses OFFSET and LIMIT for database efficiency
+        - Filters by user ownership and deletion status
+        - Returns comprehensive pagination information
+        
+        Args:
+            user: User object to get files for
+            db: Database session
+            page: Page number (1-based)
+            page_size: Number of files per page
+            include_deleted: Whether to include soft-deleted files
+            
+        Returns:
+            Dictionary with files list and pagination metadata
+        """
+        try:
+            # Build base query for user's files
+            query = db.query(FileUpload).filter(FileUpload.user_id == user.id)
+            
+            # Filter out deleted files unless explicitly requested
+            if not include_deleted:
+                query = query.filter(FileUpload.upload_status != FileUploadStatus.DELETED)
+            
+            # Get total count before pagination
+            total_count = query.count()
+            
+            # Calculate pagination values
+            total_pages = (total_count + page_size - 1) // page_size
+            has_next = page < total_pages
+            has_previous = page > 1
+            
+            # Apply pagination
+            offset = (page - 1) * page_size
+            files = query.order_by(FileUpload.upload_date.desc()).offset(offset).limit(page_size).all()
+            
+            return {
+                "files": files,
+                "total_count": total_count,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": total_pages,
+                "has_next": has_next,
+                "has_previous": has_previous
+            }
+            
+        except Exception as e:
+            # Return empty result with error info for debugging
+            return {
+                "files": [],
+                "total_count": 0,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": 0,
+                "has_next": False,
+                "has_previous": False,
+                "error": str(e)
+            }
+    
+    # =============================================================================
     # MAIN STATISTICS METHODS
     # =============================================================================
     

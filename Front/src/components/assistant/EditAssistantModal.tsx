@@ -15,6 +15,7 @@ import {
   FormActions,
   useEditAssistantForm
 } from './edit-modal';
+import { FileManagementSection } from './edit-modal/FileManagementSection';
 
 interface EditAssistantModalProps {
   isOpen: boolean;
@@ -67,6 +68,8 @@ export const EditAssistantModal: React.FC<EditAssistantModalProps> = ({
     
     // UI state
     showAdvancedSettings,
+    showFileManagement,
+    setShowFileManagement,
     
     // Actions
     handleInputChange,
@@ -75,6 +78,7 @@ export const EditAssistantModal: React.FC<EditAssistantModalProps> = ({
     resetForm,
     validateField,
     toggleAdvancedSettings,
+    toggleFileManagement,
     
     // Utilities
     hasFormChanged,
@@ -169,6 +173,14 @@ export const EditAssistantModal: React.FC<EditAssistantModalProps> = ({
               showAdvancedSettings={showAdvancedSettings}
               onToggleAdvancedSettings={toggleAdvancedSettings}
               onModelPreferenceChange={handleModelPreferenceChange}
+            />
+
+            {/* File Management Section - New Component */}
+            <FileManagementSection
+              assistantId={assistant.id}
+              assistantName={assistant.name}
+              isVisible={showFileManagement}
+              onToggle={toggleFileManagement}
             />
 
             {/* Form Actions - Extracted Component */}

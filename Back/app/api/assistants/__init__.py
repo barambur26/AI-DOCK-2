@@ -29,6 +29,7 @@ from .conversations import router as conversations_router
 from .statistics import router as statistics_router
 from .search import router as search_router
 from .bulk_operations import router as bulk_operations_router
+from .files import router as files_router
 from .health import router as health_router
 
 # =============================================================================
@@ -72,6 +73,10 @@ router.include_router(search_router, prefix="")
 # Include bulk operations
 # These allow managing multiple assistants at once
 router.include_router(bulk_operations_router, prefix="")
+
+# Include file management endpoints
+# These handle file attachments on assistants
+router.include_router(files_router, prefix="")
 
 # Include health check endpoints
 # Note: These don't require authentication, so we include them separately
@@ -124,7 +129,13 @@ Module Organization:
 6. **bulk_operations.py**: Multi-assistant operations
    - POST /assistants/bulk - Perform bulk actions
 
-7. **health.py**: System health and info
+7. **files.py**: File attachment management
+   - POST /assistants/{id}/files/attach - Attach files to assistant
+   - POST /assistants/{id}/files/detach - Detach files from assistant
+   - GET /assistants/{id}/files/ - List assistant files
+   - DELETE /assistants/{id}/files/all - Remove all files
+
+8. **health.py**: System health and info
    - GET /assistants/health - Health check
    - GET /assistants/info - API information
 
@@ -144,7 +155,7 @@ Benefits of This Structure:
 if __name__ == "__main__":
     print("🤖 Assistant API Module Information:")
     print(f"   Main router prefix: {router.prefix}")
-    print(f"   Total sub-modules: 6")
+    print(f"   Total sub-modules: 7")
     print(f"   Authentication: Required (except health endpoints)")
     print("\n📁 Module Structure:")
     print("   - crud.py: Basic CRUD operations")
@@ -152,5 +163,6 @@ if __name__ == "__main__":
     print("   - statistics.py: Analytics endpoints")
     print("   - search.py: Search functionality")
     print("   - bulk_operations.py: Bulk operations")
+    print("   - files.py: File attachment management")
     print("   - health.py: Health checks")
     print("\n✅ Module successfully refactored into atomic components!")

@@ -33,6 +33,9 @@ export * from './file';
 // Custom assistants types
 export * from './assistant';
 
+// Assistant file attachments types
+export * from './assistant-file';
+
 // =============================================================================
 // CONVENIENCE RE-EXPORTS
 // =============================================================================

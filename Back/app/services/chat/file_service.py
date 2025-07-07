@@ -22,7 +22,8 @@ logger = logging.getLogger(__name__)
 async def process_file_attachments(
     file_ids: List[int],
     user: User,
-    db: AsyncSession
+    db: AsyncSession,
+    assistant_id: Optional[int] = None
 ) -> str:
     """
     Process uploaded file attachments and return their content as context.
@@ -35,11 +36,13 @@ async def process_file_attachments(
     3. Formats content for LLM context
     4. Handles different file types appropriately
     5. Provides clear structure for the AI
+    6. Includes assistant files if assistant is being used
     
     Args:
         file_ids: List of file IDs to process
         user: Current user (for access control)
         db: Database session
+        assistant_id: Optional assistant ID to include assistant files
         
     Returns:
         Formatted string containing all file contents
@@ -47,16 +50,36 @@ async def process_file_attachments(
     Raises:
         HTTPException: If file access denied or file not found
     """
-    logger.info(f"🔍 DEBUG: process_file_attachments called with file_ids: {file_ids}, user: {user.email}")
+    logger.info(f"🔍 DEBUG: process_file_attachments called with file_ids: {file_ids}, user: {user.email}, assistant_id: {assistant_id}")
     
-    if not file_ids:
-        logger.info(f"🔍 DEBUG: No file IDs provided, returning empty context")
+    # Combine user-attached files with assistant files
+    all_file_ids = list(file_ids) if file_ids else []
+    
+    # Add assistant files if assistant is being used
+    if assistant_id:
+        logger.info(f"🔍 DEBUG: Including assistant files for assistant {assistant_id}")
+        from ...services.assistant_file_service import assistant_file_service
+        try:
+            assistant_files = await assistant_file_service.get_assistant_files_for_chat(
+                db=db,
+                assistant_id=assistant_id,
+                user_id=user.id
+            )
+            assistant_file_ids = [f.id for f in assistant_files]
+            logger.info(f"🔍 DEBUG: Found {len(assistant_file_ids)} assistant files: {assistant_file_ids}")
+            # Add assistant files to the beginning so they appear first in context
+            all_file_ids = assistant_file_ids + all_file_ids
+        except Exception as e:
+            logger.error(f"❌ DEBUG: Error loading assistant files: {str(e)}")
+    
+    if not all_file_ids:
+        logger.info(f"🔍 DEBUG: No file IDs to process (user files: {len(file_ids or [])}, assistant files: 0)")
         return ""
     
     file_context_parts = []
     file_service = get_file_service()
     
-    for file_id in file_ids:
+    for file_id in all_file_ids:
         try:
             logger.info(f"🔍 DEBUG: Processing file ID: {file_id}")
             
@@ -90,7 +113,7 @@ async def process_file_attachments(
             continue  # Skip this file but continue with others
     
     if not file_context_parts:
-        logger.warning(f"❌ DEBUG: No file context parts generated from {len(file_ids)} file IDs")
+        logger.warning(f"❌ DEBUG: No file context parts generated from {len(all_file_ids)} file IDs")
         return ""
     
     # Combine all file contents with clear separation

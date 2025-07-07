@@ -115,10 +115,6 @@ class AssistantService:
                 is_active=True
             )
             
-            # Validate the assistant data
-            if not assistant.is_valid():
-                raise ValueError("Assistant data validation failed")
-            
             # Save to database
             db.add(assistant)
             await db.commit()
@@ -157,11 +153,13 @@ class AssistantService:
                 .label("conversation_count")
             )
             
-            # Base query
+            # Base query with eager loading of assistant files
             stmt = select(
                 Assistant,
                 conversation_count_subquery
-            ).where(Assistant.user_id == user_id)
+            ).where(Assistant.user_id == user_id).options(
+                selectinload(Assistant.assistant_files)
+            )
             
             # Apply filters
             if request.search:
@@ -280,6 +278,8 @@ class AssistantService:
                     Assistant.id == assistant_id,
                     Assistant.user_id == user_id  # Ownership validation
                 )
+            ).options(
+                selectinload(Assistant.assistant_files)
             )
             
             result = await db.execute(stmt)
@@ -359,7 +359,7 @@ class AssistantService:
                 updated_fields.append("description")
             
             if update_data.system_prompt is not None:
-                assistant.update_system_prompt(update_data.system_prompt.strip())
+                assistant.system_prompt = update_data.system_prompt.strip()
                 updated_fields.append("system_prompt")
             
             if update_data.model_preferences is not None:
@@ -368,15 +368,8 @@ class AssistantService:
             
             if update_data.is_active is not None:
                 if update_data.is_active != assistant.is_active:
-                    if update_data.is_active:
-                        assistant.activate()
-                    else:
-                        assistant.deactivate()
+                    assistant.is_active = update_data.is_active
                     updated_fields.append("is_active")
-            
-            # Validate the updated assistant
-            if not assistant.is_valid():
-                raise ValueError("Updated assistant data validation failed")
             
             # Save changes
             await db.commit()
@@ -449,8 +442,8 @@ class AssistantService:
             )
             
             # Delete the assistant (cascade will handle related records)
-            # 🔧 CRITICAL FIX: In async SQLAlchemy, db.delete() IS async and must be awaited!
-            await db.delete(assistant)
+            # 🔧 CRITICAL FIX: In async SQLAlchemy, db.delete() is NOT async
+            db.delete(assistant)
             await db.commit()
             
             logger.info(f"Successfully deleted assistant {assistant_id}")

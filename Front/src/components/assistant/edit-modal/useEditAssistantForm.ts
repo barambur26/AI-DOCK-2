@@ -40,6 +40,8 @@ interface UseEditAssistantFormReturn {
   
   // UI state
   showAdvancedSettings: boolean;
+  showFileManagement: boolean;
+  setShowFileManagement: (show: boolean) => void;
   
   // Actions
   handleInputChange: (field: keyof AssistantFormData, value: any) => void;
@@ -48,6 +50,7 @@ interface UseEditAssistantFormReturn {
   resetForm: () => void;
   validateField: (fieldName: keyof AssistantFormData) => void;
   toggleAdvancedSettings: () => void;
+  toggleFileManagement: () => void;
   
   // Utilities
   hasFormChanged: () => boolean;
@@ -101,6 +104,7 @@ export const useEditAssistantForm = ({
 
   // UI state
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+  const [showFileManagement, setShowFileManagement] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   // Character counters for better UX
@@ -362,6 +366,13 @@ export const useEditAssistantForm = ({
     setShowAdvancedSettings(!showAdvancedSettings);
   };
 
+  /**
+   * Toggle file management section
+   */
+  const toggleFileManagement = () => {
+    setShowFileManagement(!showFileManagement);
+  };
+
   // =============================================================================
   // EFFECTS
   // =============================================================================
@@ -394,6 +405,7 @@ export const useEditAssistantForm = ({
       setSubmitSuccess(false);
       setSubmitError(null);
       setShowAdvancedSettings(false);
+      setShowFileManagement(false);
       setIsLoading(false);
       setNameLength(0);
       setDescriptionLength(0);
@@ -426,6 +438,8 @@ export const useEditAssistantForm = ({
     
     // UI state
     showAdvancedSettings,
+    showFileManagement,
+    setShowFileManagement,
     
     // Actions
     handleInputChange,
@@ -434,6 +448,7 @@ export const useEditAssistantForm = ({
     resetForm,
     validateField,
     toggleAdvancedSettings,
+    toggleFileManagement,
     
     // Utilities
     hasFormChanged,

@@ -22,6 +22,7 @@ import { getShortProviderName } from '../../../utils/llmUtils';
 import { ModelSelector } from './ModelSelector';
 import { StatusIndicators } from './StatusIndicators';
 import { UnifiedTraversalButtons } from '../../ui/UnifiedTraversalButtons';
+import { AssistantFilesIndicator } from '../AssistantFilesIndicator';
 
 export interface ChatHeaderProps {
   // Model selection
@@ -252,6 +253,16 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
               </div>
             )}
           </div>
+        </div>
+      )}
+      
+      {/* 📁 Assistant Files Indicator */}
+      {selectedAssistant && (
+        <div className="mt-2">
+          <AssistantFilesIndicator 
+            assistant={selectedAssistant}
+            className="" 
+          />
         </div>
       )}
       

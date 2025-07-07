@@ -14,7 +14,8 @@ import {
   Clock,
   Settings,
   ChevronRight,
-  Loader2
+  Loader2,
+  Paperclip
 } from 'lucide-react';
 import { 
   AssistantSummary, 
@@ -267,6 +268,14 @@ export const AssistantCard: React.FC<AssistantCardProps> = ({
             <MessageSquare className="w-3 h-3" />
             <span>{formatConversationCount(assistant.conversation_count)}</span>
           </div>
+          
+          {/* File count */}
+          {assistant.file_count > 0 && (
+            <div className="flex items-center space-x-1">
+              <Paperclip className="w-3 h-3" />
+              <span>{assistant.file_count} files</span>
+            </div>
+          )}
           
           {/* Creation date */}
           <div className="flex items-center space-x-1">

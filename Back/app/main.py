@@ -235,23 +235,26 @@ app.include_router(
 )
 
 # Include file upload endpoints
-# This adds all /files/* endpoints to our application
+# This adds all /api/files/* endpoints to our application
 from .api.files import router as files_router
 app.include_router(
     files_router,
+    prefix="/api",
     tags=["Files"]
 )
 
 # Include assistant endpoints
-# This adds all /assistants/* endpoints to our application
+# This adds all /api/assistants/* endpoints to our application
 from .api.assistants import router as assistants_router, health_router_public as assistants_health_router
 app.include_router(
     assistants_router,
+    prefix="/api",
     tags=["Assistants"]
 )
 # Include assistant health endpoints (no auth required)
 app.include_router(
     assistants_health_router,
+    prefix="/api",
     tags=["Assistants"]
 )
 

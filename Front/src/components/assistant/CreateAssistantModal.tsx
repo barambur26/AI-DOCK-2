@@ -6,6 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Bot, Eye, EyeOff, AlertCircle, CheckCircle, Settings, Wand2 } from 'lucide-react';
 
 import { assistantService } from '../../services/assistantService';
+import { assistantFileService } from '../../services/assistantFileService';
 import { 
   AssistantCreate, 
   AssistantFormData,
@@ -18,6 +19,7 @@ import {
   getRandomAssistantColor,
   isValidHexColor
 } from '../../types/assistant';
+import { FileManagementSection } from './create-modal/FileManagementSection';
 
 interface CreateAssistantModalProps {
   isOpen: boolean;
@@ -63,6 +65,10 @@ export const CreateAssistantModal: React.FC<CreateAssistantModalProps> = ({
 
   // UI state
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+  const [showFileManagement, setShowFileManagement] = useState(false);
+  
+  // File management state
+  const [selectedFileIds, setSelectedFileIds] = useState<number[]>([]);
 
   // Character counters for better UX
   const nameLength = formData.name.length;
@@ -183,7 +189,17 @@ export const CreateAssistantModal: React.FC<CreateAssistantModalProps> = ({
       };
 
       // Create assistant via service
-      await assistantService.createAssistant(createData);
+      const newAssistant = await assistantService.createAssistant(createData);
+      
+      // Attach selected files if any
+      if (selectedFileIds.length > 0) {
+        try {
+          await assistantFileService.attachFiles(newAssistant.id, selectedFileIds);
+        } catch (fileError) {
+          console.warn('Failed to attach files:', fileError);
+          // Don't fail the whole creation if file attachment fails
+        }
+      }
       
       // Show success state
       setSubmitSuccess(true);
@@ -229,6 +245,8 @@ export const CreateAssistantModal: React.FC<CreateAssistantModalProps> = ({
     setValidationErrors({});
     setHasAttemptedSubmit(false);
     setShowAdvancedSettings(false);
+    setShowFileManagement(false);
+    setSelectedFileIds([]);
     setSubmitError(null);
     setSubmitSuccess(false);
     
@@ -604,6 +622,14 @@ export const CreateAssistantModal: React.FC<CreateAssistantModalProps> = ({
                 </ul>
               </div>
             </div>
+
+            {/* File Attachments */}
+            <FileManagementSection
+              selectedFileIds={selectedFileIds}
+              onFileIdsChange={setSelectedFileIds}
+              isVisible={showFileManagement}
+              onToggle={() => setShowFileManagement(!showFileManagement)}
+            />
 
             {/* Advanced Settings */}
             <div>

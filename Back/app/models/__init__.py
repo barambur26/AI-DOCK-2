@@ -51,6 +51,7 @@ from .quota import DepartmentQuota, QuotaType, QuotaPeriod, QuotaStatus
 from .conversation import Conversation, ConversationMessage
 from .chat_conversation import ChatConversation  # NEW: Custom Assistants chat conversations
 from .assistant import Assistant
+from .assistant_file import AssistantFile
 from .file_upload import FileUpload
 from .folder import Folder
 from .chat import Chat
@@ -77,6 +78,7 @@ __all__ = [
     "ConversationMessage",
     "ChatConversation",  # NEW: Custom Assistants chat conversations
     "Assistant",
+    "AssistantFile",
     "FileUpload",
     "Folder",
     "Chat",
@@ -99,6 +101,7 @@ def get_all_models():
         ConversationMessage,
         ChatConversation,  # NEW: Custom Assistants chat conversations
         Assistant,
+        AssistantFile,
         FileUpload,
         Folder,
         Chat,

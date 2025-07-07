@@ -10,4 +10,5 @@ export { SystemPromptSection } from './SystemPromptSection';
 export { AdvancedSettingsSection } from './AdvancedSettingsSection';
 export { FormActions } from './FormActions';
 export { ModalHeader } from './ModalHeader';
+export { FileManagementSection } from './FileManagementSection';
 export { useEditAssistantForm } from './useEditAssistantForm';

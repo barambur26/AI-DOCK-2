@@ -37,7 +37,7 @@ export class AssistantApiClient {
    */
   private buildUrl(endpoint: string): string {
     const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
-    return `${this.baseUrl}/assistants/${cleanEndpoint}`;
+    return `${this.baseUrl}/api/assistants/${cleanEndpoint}`;
   }
 
   /**

@@ -248,7 +248,8 @@ async def send_chat_message(
             file_context = await process_file_attachments(
                 file_ids=chat_request.file_attachment_ids,
                 user=current_user,
-                db=db
+                db=db,
+                assistant_id=chat_request.assistant_id  # Include assistant files
             )
             
             logger.info(f"📄 File context result - Length: {len(file_context)} characters")

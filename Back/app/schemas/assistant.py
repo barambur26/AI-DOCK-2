@@ -320,6 +320,10 @@ class AssistantResponse(BaseModel):
     status_label: str = Field(..., description="Human-readable status")
     has_custom_preferences: bool = Field(..., description="Whether assistant has custom model preferences")
     
+    # File attachment information
+    file_count: int = Field(0, description="Number of files attached to this assistant")
+    has_files: bool = Field(False, description="Whether this assistant has any attached files")
+    
     class Config:
         from_attributes = True
         json_encoders = {
@@ -345,7 +349,9 @@ class AssistantResponse(BaseModel):
                 "updated_at": "2025-06-18T14:30:00Z",
                 "is_new": False,
                 "status_label": "Active",
-                "has_custom_preferences": True
+                "has_custom_preferences": True,
+                "file_count": 3,
+                "has_files": True
             }
         }
 
@@ -361,6 +367,10 @@ class AssistantSummary(BaseModel):
     conversation_count: int = Field(..., description="Number of conversations")
     created_at: datetime = Field(..., description="Creation timestamp")
     is_new: bool = Field(..., description="Whether created recently")
+    
+    # File attachment information
+    file_count: int = Field(0, description="Number of files attached to this assistant")
+    has_files: bool = Field(False, description="Whether this assistant has any attached files")
     
     class Config:
         from_attributes = True
@@ -682,5 +692,7 @@ def create_assistant_response_from_model(
         updated_at=assistant_model.updated_at,
         is_new=is_new,
         status_label="Active" if assistant_model.is_active else "Inactive",
-        has_custom_preferences=bool(assistant_model.model_preferences)
+        has_custom_preferences=bool(assistant_model.model_preferences),
+        file_count=assistant_model.file_count,
+        has_files=assistant_model.has_files
     )

@@ -153,6 +153,14 @@ class Assistant(Base):
         order_by="ChatConversation.updated_at.desc()"
     )
     
+    # Relationship to AssistantFiles - file attachments for this assistant
+    assistant_files = relationship(
+        "AssistantFile",
+        back_populates="assistant",
+        cascade="all, delete-orphan",  # Delete file relationships when assistant is deleted
+        order_by="AssistantFile.created_at.desc()"
+    )
+    
     # =============================================================================
     # MODEL METHODS
     # =============================================================================
@@ -226,6 +234,26 @@ class Assistant(Base):
         
         # Generate a color based on assistant name/id for consistency
         return generate_assistant_color(self.name or str(self.id))
+    
+    @property
+    def file_count(self) -> int:
+        """Get the number of files attached to this assistant."""
+        return len(self.assistant_files) if self.assistant_files else 0
+    
+    @property
+    def has_files(self) -> bool:
+        """Check if this assistant has any attached files."""
+        return self.file_count > 0
+    
+    @property
+    def attached_files(self) -> List[Any]:
+        """Get list of file objects attached to this assistant."""
+        return [af.file for af in self.assistant_files] if self.assistant_files else []
+    
+    @property
+    def attached_file_ids(self) -> List[int]:
+        """Get list of file IDs attached to this assistant."""
+        return [af.file_id for af in self.assistant_files] if self.assistant_files else []
     
     # =============================================================================
     # COLOR MANAGEMENT METHODS
@@ -320,6 +348,21 @@ class Assistant(Base):
             self.validate_color()
         )
     
+    def get_effective_model_preferences(self) -> Dict[str, Any]:
+        """Get the effective model preferences, with defaults for missing values."""
+        # Start with default preferences
+        defaults = {
+            "temperature": 0.7,
+            "max_tokens": 2048,
+            "model": None  # Will use LLM config's default model
+        }
+        
+        # Override with assistant's custom preferences
+        if self.model_preferences:
+            defaults.update(self.model_preferences)
+        
+        return defaults
+    
     # =============================================================================
     # SERIALIZATION METHODS
     # =============================================================================
@@ -335,6 +378,8 @@ class Assistant(Base):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             "conversation_count": self.conversation_count,
+            "file_count": self.file_count,
+            "has_files": self.has_files,
             "user_id": self.user_id
         }
         

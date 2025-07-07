@@ -53,9 +53,9 @@ export const ColorPickerField: React.FC<ColorPickerFieldProps> = ({
       
       {/* Color palette grid */}
       <div className="grid grid-cols-8 gap-2 mb-3">
-        {ASSISTANT_COLOR_PALETTE.map((color) => (
+        {ASSISTANT_COLOR_PALETTE.map((color, index) => (
           <button
-            key={color}
+            key={`color-${index}-${color}`}
             type="button"
             onClick={() => onChange(color)}
             className={`
