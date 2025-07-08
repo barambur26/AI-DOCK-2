@@ -1,0 +1,181 @@
+#!/usr/bin/env node
+
+/**
+ * AI Dock: Debug Issue
+ * Systematic debugging workflow for AI Dock issues
+ */
+
+const [, , issueType, description] = process.argv;
+
+if (!issueType || !description) {
+  console.log("Usage: /ai-dock:debug-issue <issue-type> <description>");
+  console.log("Issue Types: auth, streaming, quota, file-upload, database, frontend, api");
+  console.log("Example: /ai-dock:debug-issue streaming 'chat responses cutting off mid-sentence'");
+  console.log("Example: /ai-dock:debug-issue auth 'users getting logged out unexpectedly'");
+  process.exit(1);
+}
+
+const getDebugPrompt = (issueType, description) => {
+  const basePrompt = `
+Debug the ${issueType} issue: "${description}" in AI Dock following systematic troubleshooting:
+
+1. **Reproduce the Issue:**
+   - Help me reproduce the exact issue described
+   - Identify the specific user flow that triggers the problem
+   - Document any error messages or unexpected behavior
+
+2. **Initial Investigation:**`;
+
+  const issueSpecificPrompts = {
+    auth: `
+   **Authentication Flow Debugging:**
+   - Check JWT token status in browser localStorage
+   - Examine /Back/app/core/security.py for token validation logic
+   - Verify token refresh mechanism in /Front/src/services/authService.ts
+   - Check middleware in /Back/app/middleware/security.py
+   - Test authentication endpoints: /auth/login, /auth/refresh, /auth/logout
+   - Examine useAuth hook in /Front/src/hooks/useAuth.ts
+   - Check for CORS issues in /Back/app/main.py
+
+   **Common Auth Issues to Check:**
+   - Token expiration and refresh timing
+   - Role-based access control logic
+   - Session storage vs localStorage issues
+   - API request header authentication
+   - Route protection in frontend
+   `,
+
+    streaming: `
+   **Streaming Response Debugging:**
+   - Monitor Server-Sent Events in browser Network tab
+   - Check streaming service in /Back/app/services/llm_service.py
+   - Examine frontend streaming handling in /Front/src/services/chat/streaming.ts
+   - Verify EventSource connection in chat components
+   - Check for connection interruptions or timeouts
+   - Monitor streaming state management in chat hooks
+
+   **Common Streaming Issues to Check:**
+   - SSE connection establishment and maintenance
+   - Partial response handling and accumulation
+   - Error state management during streaming
+   - Network connectivity and proxy issues
+   - Rate limiting affecting streaming responses
+   `,
+
+    quota: `
+   **Quota System Debugging:**
+   - Check quota enforcement in /Back/app/services/quota_service.py
+   - Examine usage tracking in /Back/app/models/usage_log.py
+   - Verify department quota limits in database
+   - Check quota calculation logic and token counting
+   - Monitor quota checks before and after requests
+   - Examine frontend quota display in components
+
+   **Common Quota Issues to Check:**
+   - Incorrect token counting for different models
+   - Department quota limits not properly enforced
+   - Usage calculation errors or missing logs
+   - Quota refresh timing and reset logic
+   - Cost calculation accuracy per provider
+   `,
+
+    'file-upload': `
+   **File Upload System Debugging:**
+   - Check file processing services in /Back/app/services/file_services/
+   - Verify file validation and security checks
+   - Examine upload endpoints in /Back/app/api/files/
+   - Test file extraction for different formats (PDF, Word, text)
+   - Check frontend file upload in /Front/src/components/chat/FileUpload.tsx
+   - Monitor file storage and retrieval
+
+   **Common File Upload Issues to Check:**
+   - File size limits and validation errors
+   - MIME type detection and processing
+   - File content extraction failures
+   - Storage path and permission issues
+   - Frontend drag-and-drop functionality
+   `,
+
+    database: `
+   **Database Connection Debugging:**
+   - Check database connection in /Back/app/core/database.py
+   - Verify SQLAlchemy session management
+   - Examine database model relationships
+   - Check for migration issues or schema problems
+   - Monitor database queries and performance
+   - Verify environment variables and connection string
+
+   **Common Database Issues to Check:**
+   - Connection pool exhaustion
+   - Transaction rollback and commit issues
+   - Foreign key constraint violations
+   - Index performance and query optimization
+   - Database migration state and conflicts
+   `,
+
+    frontend: `
+   **Frontend Application Debugging:**
+   - Check browser console for JavaScript errors
+   - Examine React component state management
+   - Verify API service calls and responses
+   - Check custom hooks for state issues
+   - Monitor component re-rendering and performance
+   - Verify TypeScript compilation and type errors
+
+   **Common Frontend Issues to Check:**
+   - Component lifecycle and useEffect dependencies
+   - State management in custom hooks
+   - API response handling and error states
+   - Routing and navigation issues
+   - UI responsiveness and styling problems
+   `,
+
+    api: `
+   **API Endpoint Debugging:**
+   - Check FastAPI endpoint definitions and routing
+   - Verify request/response schema validation
+   - Examine service layer business logic
+   - Check database operations and transactions
+   - Monitor API request/response cycle
+   - Verify authentication and authorization
+
+   **Common API Issues to Check:**
+   - Request validation and Pydantic schema errors
+   - Service layer exception handling
+   - Database transaction and rollback issues
+   - Response serialization problems
+   - CORS and preflight request issues
+   `
+  };
+
+  return basePrompt + (issueSpecificPrompts[issueType] || issueSpecificPrompts.api) + `
+
+3. **Systematic Debugging Steps:**
+   - Step through the request/response flow from frontend to backend
+   - Check logs in both browser console and backend server
+   - Verify environment configuration and dependencies
+   - Test with different user roles and scenarios
+   - Isolate the issue to specific components or services
+
+4. **Fix Implementation:**
+   - Identify the root cause of the issue
+   - Implement fix following AI Dock patterns
+   - Ensure fix doesn't introduce regressions
+   - Add appropriate error handling and logging
+
+5. **Verification:**
+   - Test the fix across different scenarios
+   - Verify integration with other AI Dock systems
+   - Check for any side effects or performance impacts
+   - Document the issue and solution for future reference
+
+6. **Prevention:**
+   - Suggest improvements to prevent similar issues
+   - Recommend additional error handling or monitoring
+   - Consider adding tests to catch this type of issue
+
+Start with step 1 - let's reproduce the issue and understand exactly what's happening.
+`;
+};
+
+console.log(getDebugPrompt(issueType, description));

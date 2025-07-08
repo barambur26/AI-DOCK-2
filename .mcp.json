@@ -1,0 +1,9 @@
+{
+  "servers": {
+    "puppeteer": {
+      "command": "npx",
+      "args": ["@mcp-tools/puppeteer"],
+      "description": "Web automation for testing AI Dock UI"
+    }
+  }
+}

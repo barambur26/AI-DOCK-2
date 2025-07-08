@@ -1,0 +1,153 @@
+#!/usr/bin/env node
+
+/**
+ * AI Dock: Modularize Component
+ * Refactor large components into modular architecture following AI Dock patterns
+ */
+
+const [, , componentPath, targetSize] = process.argv;
+
+if (!componentPath) {
+  console.log("Usage: /ai-dock:modularize-component <component-path> [target-size]");
+  console.log("Target sizes: small (100-200 lines), medium (200-400 lines), atomic (50-100 lines)");
+  console.log("Example: /ai-dock:modularize-component /Front/src/components/admin/UserManagement.tsx atomic");
+  console.log("Example: /ai-dock:modularize-component /Front/src/pages/Dashboard.tsx medium");
+  process.exit(1);
+}
+
+const target = targetSize || 'atomic';
+
+const prompt = `
+Refactor the component at "${componentPath}" into modular architecture following AI Dock patterns:
+
+1. **Analyze Current Component:**
+   - Read and understand the current component structure
+   - Identify responsibilities and concerns within the component
+   - Look for opportunities to extract reusable parts
+   - Note any anti-patterns or tight coupling
+
+2. **Study AI Dock Refactoring Examples:**
+   - Examine how ChatInterface.tsx was refactored from 1,496 lines to 12 focused modules
+   - Look at assistantService.ts modularization from 914 lines to 10 atomic services
+   - Review QuotaManagement.tsx breakdown into 8 focused files
+   - Study DepartmentModals.tsx atomic component extraction
+
+3. **Plan Modular Architecture (Target: ${target} components):**
+
+   **For Atomic Refactoring (50-100 lines each):**
+   - Break into smallest possible reusable units
+   - Extract every logical concern into separate components
+   - Create highly focused, single-responsibility modules
+   - Maximum reusability and testability
+
+   **For Medium Refactoring (200-400 lines each):**
+   - Group related functionality into logical modules
+   - Separate container and presentation components
+   - Extract business logic into custom hooks
+   - Maintain reasonable component sizes
+
+   **Modular Structure to Create:**
+   
+   **Main Entry Point** (Original component path):
+   - Orchestrator component (50-100 lines)
+   - Imports and composes all modules
+   - Minimal logic, mostly composition
+   - Maintains backward compatibility
+
+   **Atomic Components** (New modular structure):
+   - UI Components: Pure presentation components
+   - Container Components: Logic and state management
+   - Modal Components: Dialog and overlay management
+   - Display Components: Data visualization and formatting
+
+   **Custom Hooks** (/Front/src/hooks/):
+   - State management hooks
+   - Business logic extraction
+   - API integration hooks
+   - Utility and helper hooks
+
+   **Services** (If applicable):
+   - Extract API calls into service modules
+   - Business logic operations
+   - Data transformation utilities
+
+   **Types** (/Front/src/types/):
+   - Component prop interfaces
+   - State type definitions
+   - API response types
+
+   **Utilities** (If needed):
+   - Pure functions for formatting
+   - Validation logic
+   - Helper functions
+
+4. **Implementation Strategy:**
+
+   **Step 1: Extract Business Logic**
+   - Move state management to custom hooks
+   - Extract API calls to service layer
+   - Create utility functions for complex operations
+
+   **Step 2: Component Decomposition**
+   - Break UI into atomic presentation components
+   - Create container components for logic
+   - Separate modal and dialog components
+   - Extract reusable display components
+
+   **Step 3: Create Clean Interfaces**
+   - Define minimal, focused prop interfaces
+   - Use TypeScript for type safety
+   - Create clean import/export structure
+   - Add index.ts files for easy imports
+
+   **Step 4: Maintain Integration**
+   - Ensure main component still works as entry point
+   - Preserve all existing functionality
+   - Maintain backward compatibility
+   - Update any parent component imports if needed
+
+5. **AI Dock Quality Standards:**
+   - ✅ Single Responsibility Principle
+   - ✅ Container-Component Pattern
+   - ✅ Custom Hooks for Business Logic
+   - ✅ TypeScript Strict Mode Compliance
+   - ✅ Clean Import/Export Structure
+   - ✅ Glassmorphism UI Theme Consistency
+   - ✅ Mobile Responsive Design
+   - ✅ Error Handling and Loading States
+   - ✅ Integration with Auth and Services
+   - ✅ Zero Functionality Regression
+
+6. **File Organization:**
+   Create a modular folder structure like:
+   ```
+   components/[feature]/
+   ├── index.ts                 # Main entry point
+   ├── [Feature]Container.tsx   # Main orchestrator
+   ├── components/             # Atomic UI components
+   │   ├── [Feature]Header.tsx
+   │   ├── [Feature]Content.tsx
+   │   └── [Feature]Actions.tsx
+   ├── modals/                 # Dialog components
+   │   ├── [Feature]Modal.tsx
+   │   └── DeleteModal.tsx
+   ├── hooks/                  # Custom hooks
+   │   ├── use[Feature].ts
+   │   └── use[Feature]Form.ts
+   └── utils/                  # Utility functions
+       ├── [feature]Utils.ts
+       └── validation.ts
+   ```
+
+7. **Benefits to Achieve:**
+   - Improved testability with focused units
+   - Enhanced maintainability with isolated changes
+   - Better performance through optimized re-renders
+   - Increased reusability across the application
+   - Easier debugging and development
+   - Cleaner code organization and structure
+
+Start by analyzing the current component structure and creating a detailed refactoring plan. Then implement the modular architecture while maintaining 100% functionality.
+`;
+
+console.log(prompt);

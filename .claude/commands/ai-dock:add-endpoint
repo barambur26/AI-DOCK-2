@@ -1,0 +1,67 @@
+#!/usr/bin/env node
+
+/**
+ * AI Dock: Add API Endpoint
+ * Creates a complete backend API endpoint following AI Dock service layer patterns
+ */
+
+const [, , featureName, description] = process.argv;
+
+if (!featureName || !description) {
+  console.log("Usage: /ai-dock:add-endpoint <feature-name> <description>");
+  console.log("Example: /ai-dock:add-endpoint user-preferences 'user customization settings'");
+  process.exit(1);
+}
+
+const prompt = `
+Create a complete backend API endpoint for ${featureName} (${description}) following AI Dock patterns:
+
+1. **Read Existing Patterns First:**
+   - Examine /Back/app/api/auth.py and /Back/app/api/admin/users.py for API patterns
+   - Look at /Back/app/services/auth_service.py for service layer examples
+   - Check /Back/app/models/user.py for database model patterns
+
+2. **Create the following files following AI Dock patterns:**
+
+   **Database Model** (/Back/app/models/${featureName.replace('-', '_')}.py):
+   - SQLAlchemy model with proper relationships
+   - Include id, created_at, updated_at timestamps
+   - Add proper constraints and indexes
+   - Follow naming conventions from existing models
+
+   **Pydantic Schemas** (/Back/app/schemas/${featureName.replace('-', '_')}.py):
+   - Request/response schemas with comprehensive validation
+   - Use Field() with proper validation rules
+   - Include proper TypeScript-compatible types
+
+   **Service Layer** (/Back/app/services/${featureName.replace('-', '_')}_service.py):
+   - Business logic implementation
+   - Proper error handling with user-friendly messages
+   - Integration with auth and quota systems if applicable
+   - Async functions for database operations
+
+   **API Endpoints** (/Back/app/api/${featureName.replace('-', '_')}.py):
+   - RESTful endpoints (GET, POST, PUT, DELETE)
+   - Proper authentication with get_current_user dependency
+   - Role-based access control if needed
+   - Comprehensive error handling
+   - OpenAPI documentation
+
+3. **Integration:**
+   - Add model import to /Back/app/models/__init__.py
+   - Register router in /Back/app/main.py
+   - Follow security patterns from existing endpoints
+   - Ensure proper database session handling
+
+4. **Quality Checks:**
+   - ✅ Follows service layer pattern (api → service → model)
+   - ✅ Proper authentication and authorization
+   - ✅ Comprehensive error handling
+   - ✅ Consistent with existing AI Dock patterns
+   - ✅ Database relationships and constraints
+   - ✅ OpenAPI documentation
+
+Think through the implementation first, then create all the necessary files following the established AI Dock backend patterns.
+`;
+
+console.log(prompt);

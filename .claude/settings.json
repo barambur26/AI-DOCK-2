@@ -1,0 +1,13 @@
+{
+  "allowedTools": [
+    "Edit",
+    "Bash(npm:*)",
+    "Bash(uvicorn:*)",
+    "Bash(python:*)",
+    "Bash(alembic:*)",
+    "Bash(git:*)",
+    "mcp__puppeteer__puppeteer_navigate"
+  ],
+  "model": "claude-3-5-sonnet-20241022",
+  "maxTokens": 8192
+}

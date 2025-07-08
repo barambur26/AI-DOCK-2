@@ -1,0 +1,133 @@
+#!/usr/bin/env node
+
+/**
+ * AI Dock: Add LLM Provider
+ * Creates complete LLM provider integration with backend and frontend support
+ */
+
+const [, , providerName] = process.argv;
+
+if (!providerName) {
+  console.log("Usage: /ai-dock:add-llm-provider <provider-name>");
+  console.log("Example: /ai-dock:add-llm-provider claude-haiku");
+  console.log("Example: /ai-dock:add-llm-provider gemini-pro");
+  process.exit(1);
+}
+
+const prompt = `
+Create complete LLM provider integration for "${providerName}" following AI Dock patterns:
+
+1. **Read Existing Integration Patterns:**
+   - Examine /Back/app/services/llm_service.py for provider integration patterns
+   - Look at /Back/app/models/llm_config.py for configuration models
+   - Check /Front/src/services/chat/ for frontend LLM integration
+   - Review /Front/src/components/chat/ui/ModelSelector.tsx for model selection UI
+
+2. **Backend Implementation:**
+
+   **LLM Service Integration** (/Back/app/services/llm_service.py):
+   - Add ${providerName} provider class following existing patterns
+   - Implement streaming response handling
+   - Add proper error handling and retry logic
+   - Include token counting and cost calculation
+   - Support for different model variants
+
+   **Configuration Model** (/Back/app/models/llm_config.py):
+   - Add ${providerName} specific configuration fields
+   - Include API key management
+   - Model-specific parameters (temperature, max_tokens, etc.)
+   - Rate limiting and quota integration
+
+   **API Endpoints** (/Back/app/api/admin/llm_configs.py):
+   - Add endpoints for ${providerName} configuration
+   - Admin interface for managing provider settings
+   - Model discovery and validation endpoints
+   - Health check for provider connectivity
+
+   **Schemas** (/Back/app/schemas/llm_config.py):
+   - Request/response schemas for ${providerName} configuration
+   - Model selection and parameter validation
+   - Provider-specific settings schema
+
+3. **Frontend Implementation:**
+
+   **Service Integration** (/Front/src/services/chat/models.ts):
+   - Add ${providerName} model fetching and processing
+   - Integration with existing model filtering logic
+   - Provider-specific model naming and display
+
+   **Model Selector Update** (/Front/src/components/chat/ui/ModelSelector.tsx):
+   - Add ${providerName} models to selection dropdown
+   - Provider-specific model grouping and display
+   - Model availability and status indicators
+
+   **Admin Configuration** (/Front/src/components/admin/LLMConfiguration.tsx):
+   - Add ${providerName} configuration form
+   - Provider setup wizard if complex
+   - API key management interface
+   - Connection testing and validation
+
+   **Types** (/Front/src/types/chat.ts):
+   - Add ${providerName} specific model types
+   - Provider configuration interfaces
+   - Streaming response type definitions
+
+4. **Integration Requirements:**
+
+   **Streaming Integration:**
+   - Implement Server-Sent Events for ${providerName} streaming
+   - Handle partial responses and error states
+   - Integrate with existing chat streaming architecture
+
+   **Quota System Integration:**
+   - Add token counting for ${providerName} models
+   - Cost calculation based on provider pricing
+   - Usage tracking and quota enforcement
+
+   **Authentication:**
+   - Secure API key storage and management
+   - Provider-specific authentication methods
+   - Integration with AI Dock role-based access
+
+   **Error Handling:**
+   - Provider-specific error codes and messages
+   - Graceful fallback to other providers if needed
+   - User-friendly error messages in frontend
+
+5. **Configuration Files:**
+
+   **Environment Variables** (/Back/.env):
+   - Add ${providerName.toUpperCase()}_API_KEY configuration
+   - Provider-specific environment settings
+
+   **Frontend Configuration**:
+   - Add provider to available models list
+   - Configure default settings and limits
+
+6. **Testing Integration:**
+   - Create test endpoints for ${providerName} connectivity
+   - Add model discovery and validation
+   - Test streaming responses and error handling
+   - Verify quota system integration
+
+7. **Quality Checks:**
+   - ✅ Streaming responses work correctly
+   - ✅ Token counting and cost calculation accurate
+   - ✅ Quota system properly enforced
+   - ✅ Error handling comprehensive
+   - ✅ Admin configuration interface functional
+   - ✅ Model selection UI updated
+   - ✅ Authentication and security proper
+   - ✅ Follows existing AI Dock patterns
+
+Think through the complete integration flow first:
+1. Provider API integration and streaming
+2. Database configuration and admin interface  
+3. Frontend model selection and display
+4. Quota and usage tracking integration
+5. Error handling and fallback mechanisms
+
+Then implement all components following the established AI Dock LLM provider patterns.
+`;
+
+console.log(prompt);

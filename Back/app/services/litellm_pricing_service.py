@@ -180,24 +180,176 @@ class LiteLLMPricingService:
         """
         provider_lower = provider.lower()
         
-        # OpenAI fallback pricing (as of January 2025)
+        # OpenAI fallback pricing (as of July 2025, from official docs)
         if provider_lower == "openai":
-            if "gpt-4" in model.lower():
-                if "turbo" in model.lower():
-                    return {
-                        "input_cost_per_1k": 0.01,
-                        "output_cost_per_1k": 0.03,
-                        "request_cost": 0
-                    }
-                else:
-                    return {
-                        "input_cost_per_1k": 0.03,
-                        "output_cost_per_1k": 0.06,
-                        "request_cost": 0
-                    }
-            elif "gpt-3.5" in model.lower():
+            model_lower = model.lower()
+            # GPT-4.1 series
+            if "gpt-4.1-2025-04-14" in model_lower or model_lower == "gpt-4.1":
+                return {
+                    "input_cost_per_1k": 0.002,
+                    "output_cost_per_1k": 0.008,
+                    "request_cost": 0
+                }
+            elif "gpt-4.1-mini-2025-04-14" in model_lower or model_lower == "gpt-4.1-mini":
+                return {
+                    "input_cost_per_1k": 0.0004,
+                    "output_cost_per_1k": 0.0016,
+                    "request_cost": 0
+                }
+            elif "gpt-4.1-nano-2025-04-14" in model_lower or model_lower == "gpt-4.1-nano":
+                return {
+                    "input_cost_per_1k": 0.0001,
+                    "output_cost_per_1k": 0.0004,
+                    "request_cost": 0
+                }
+            elif "gpt-4.5-preview-2025-02-27" in model_lower or model_lower == "gpt-4.5-preview":
+                return {
+                    "input_cost_per_1k": 0.075,
+                    "output_cost_per_1k": 0.15,
+                    "request_cost": 0
+                }
+            # GPT-4o series
+            elif "gpt-4o-2024-08-06" in model_lower or model_lower == "gpt-4o":
+                return {
+                    "input_cost_per_1k": 0.0025,
+                    "output_cost_per_1k": 0.01,
+                    "request_cost": 0
+                }
+            elif "gpt-4o-realtime-preview-2025-06-03" in model_lower:
+                return {
+                    "input_cost_per_1k": 0.005,
+                    "output_cost_per_1k": 0.02,
+                    "request_cost": 0
+                }
+            elif "gpt-4o-mini-2024-07-18" in model_lower or model_lower == "gpt-4o-mini":
+                return {
+                    "input_cost_per_1k": 0.00015,
+                    "output_cost_per_1k": 0.0006,
+                    "request_cost": 0
+                }
+            elif "gpt-4o-mini-realtime-preview-2024-12-17" in model_lower:
+                return {
+                    "input_cost_per_1k": 0.0006,
+                    "output_cost_per_1k": 0.0024,
+                    "request_cost": 0
+                }
+            # o1, o3, o4-mini, etc.
+            elif "o1-2024-12-17" in model_lower or model_lower == "o1":
+                return {
+                    "input_cost_per_1k": 0.015,
+                    "output_cost_per_1k": 0.06,
+                    "request_cost": 0
+                }
+            elif "o1-pro-2025-03-19" in model_lower or model_lower == "o1-pro":
+                return {
+                    "input_cost_per_1k": 0.15,
+                    "output_cost_per_1k": 0.6,
+                    "request_cost": 0
+                }
+            elif "o3-pro-2025-06-10" in model_lower or model_lower == "o3-pro":
+                return {
+                    "input_cost_per_1k": 0.02,
+                    "output_cost_per_1k": 0.08,
+                    "request_cost": 0
+                }
+            elif "o3-2025-04-16" in model_lower or model_lower == "o3":
+                return {
+                    "input_cost_per_1k": 0.002,
+                    "output_cost_per_1k": 0.008,
+                    "request_cost": 0
+                }
+            elif "o3-deep-research-2025-06-26" in model_lower:
+                return {
+                    "input_cost_per_1k": 0.01,
+                    "output_cost_per_1k": 0.04,
+                    "request_cost": 0
+                }
+            elif "o4-mini-2025-04-16" in model_lower or model_lower == "o4-mini":
+                return {
+                    "input_cost_per_1k": 0.0011,
+                    "output_cost_per_1k": 0.0044,
+                    "request_cost": 0
+                }
+            elif "o4-mini-deep-research-2025-06-26" in model_lower:
+                return {
+                    "input_cost_per_1k": 0.002,
+                    "output_cost_per_1k": 0.008,
+                    "request_cost": 0
+                }
+            elif "o3-mini-2025-01-31" in model_lower or model_lower == "o3-mini":
+                return {
+                    "input_cost_per_1k": 0.0011,
+                    "output_cost_per_1k": 0.0044,
+                    "request_cost": 0
+                }
+            elif "o1-mini-2024-09-12" in model_lower or model_lower == "o1-mini":
+                return {
+                    "input_cost_per_1k": 0.0011,
+                    "output_cost_per_1k": 0.0044,
+                    "request_cost": 0
+                }
+            # Codex
+            elif "codex-mini-latest" in model_lower:
                 return {
                     "input_cost_per_1k": 0.0015,
+                    "output_cost_per_1k": 0.006,
+                    "request_cost": 0
+                }
+            # gpt-3.5 series
+            elif "gpt-3.5-turbo-0125" in model_lower or model_lower == "gpt-3.5-turbo":
+                return {
+                    "input_cost_per_1k": 0.0005,
+                    "output_cost_per_1k": 0.0015,
+                    "request_cost": 0
+                }
+            elif "gpt-3.5-turbo-instruct" in model_lower:
+                return {
+                    "input_cost_per_1k": 0.0015,
+                    "output_cost_per_1k": 0.002,
+                    "request_cost": 0
+                }
+            elif "gpt-3.5-turbo-16k-0613" in model_lower:
+                return {
+                    "input_cost_per_1k": 0.003,
+                    "output_cost_per_1k": 0.004,
+                    "request_cost": 0
+                }
+            # gpt-4-turbo, gpt-4, gpt-4-32k
+            elif "gpt-4-turbo-2024-04-09" in model_lower or model_lower == "gpt-4-turbo":
+                return {
+                    "input_cost_per_1k": 0.01,
+                    "output_cost_per_1k": 0.03,
+                    "request_cost": 0
+                }
+            elif "gpt-4-0613" in model_lower or model_lower == "gpt-4":
+                return {
+                    "input_cost_per_1k": 0.03,
+                    "output_cost_per_1k": 0.06,
+                    "request_cost": 0
+                }
+            elif "gpt-4-32k" in model_lower:
+                return {
+                    "input_cost_per_1k": 0.06,
+                    "output_cost_per_1k": 0.12,
+                    "request_cost": 0
+                }
+            # davinci, babbage
+            elif "davinci-002" in model_lower:
+                return {
+                    "input_cost_per_1k": 0.002,
+                    "output_cost_per_1k": 0.002,
+                    "request_cost": 0
+                }
+            elif "babbage-002" in model_lower:
+                return {
+                    "input_cost_per_1k": 0.0004,
+                    "output_cost_per_1k": 0.0004,
+                    "request_cost": 0
+                }
+            # Default OpenAI fallback
+            else:
+                return {
+                    "input_cost_per_1k": 0.001,
                     "output_cost_per_1k": 0.002,
                     "request_cost": 0
                 }

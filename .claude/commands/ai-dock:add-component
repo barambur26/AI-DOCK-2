@@ -1,0 +1,104 @@
+#!/usr/bin/env node
+
+/**
+ * AI Dock: Add React Component
+ * Creates a React component following AI Dock modular architecture patterns
+ */
+
+const [, , componentName, componentType, location] = process.argv;
+
+if (!componentName || !componentType || !location) {
+  console.log("Usage: /ai-dock:add-component <component-name> <type> <location>");
+  console.log("Types: container, component, modal, hook");
+  console.log("Locations: components/admin, components/chat, components/ui, hooks, pages");
+  console.log("Example: /ai-dock:add-component NotificationCenter container components/admin");
+  process.exit(1);
+}
+
+const prompt = `
+Create a React component "${componentName}" of type "${componentType}" in "/Front/src/${location}/" following AI Dock modular architecture patterns:
+
+1. **Read Existing Patterns First:**
+   - Examine the modular architecture in /Front/src/components/chat/ui/ (ChatInterface refactoring)
+   - Look at /Front/src/components/admin/ for admin component patterns
+   - Check /Front/src/hooks/chat/ for custom hook examples
+   - Review /Front/src/services/ for API integration patterns
+
+2. **Create Component Following AI Dock Patterns:**
+
+   **For Container Components:**
+   - Use container-component pattern (logic vs presentation separation)
+   - Extract business logic into custom hooks
+   - Integrate with existing services and auth
+   - Handle loading states and error boundaries
+
+   **For Presentation Components:**
+   - Focus on UI rendering only
+   - Accept props with proper TypeScript interfaces
+   - Use glassmorphism theme classes (bg-white/10 backdrop-blur-md)
+   - Ensure mobile responsiveness
+   - Include proper accessibility attributes
+
+   **For Modal Components:**
+   - Follow patterns from /Front/src/components/admin/components/department/modals/
+   - Use shadcn/ui Dialog components
+   - Include proper keyboard navigation
+   - Handle modal state management
+   - Apply glassmorphism styling
+
+   **For Custom Hooks:**
+   - Extract business logic from components
+   - Return state and action objects
+   - Use proper TypeScript return types
+   - Integrate with existing services
+   - Handle error states and loading
+
+3. **Required Files:**
+   
+   **Main Component** (/Front/src/${location}/${componentName}.tsx):
+   - Proper TypeScript interfaces for props
+   - Component implementation following AI Dock patterns
+   - Integration with authentication using useAuth hook
+   - Error handling and loading states
+   - Glassmorphism UI theme classes
+
+   **Types** (/Front/src/types/${componentName.toLowerCase()}.ts):
+   - TypeScript interfaces for component props
+   - Data type definitions
+   - API response types if applicable
+
+   **Service Integration** (if needed):
+   - Add methods to existing service files or create new service
+   - Follow API client patterns from existing services
+   - Proper error handling and type safety
+
+   **Custom Hook** (if container component):
+   - Extract business logic into /Front/src/hooks/use${componentName}.ts
+   - State management and action handlers
+   - API integration and error handling
+
+4. **Styling Requirements:**
+   - Use Tailwind CSS with glassmorphism theme
+   - Responsive design (mobile-first approach)
+   - Consistent with existing component styling
+   - Apply proper hover states and animations
+
+5. **Integration:**
+   - Add to index.ts exports where applicable
+   - Import and use in parent components
+   - Integrate with existing navigation if applicable
+   - Ensure proper routing setup
+
+6. **Quality Checks:**
+   - ✅ TypeScript strict mode compliance
+   - ✅ Follows container-component pattern
+   - ✅ Proper error handling and loading states
+   - ✅ Mobile responsive glassmorphism design
+   - ✅ Integration with existing auth and services
+   - ✅ Consistent with AI Dock component patterns
+   - ✅ Accessibility features included
+
+Think through the component architecture first, then implement following the established AI Dock frontend patterns. Examine the recent modular refactoring examples for guidance.
+`;
+
+console.log(prompt);
