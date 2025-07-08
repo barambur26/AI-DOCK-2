@@ -1,0 +1,30 @@
+# Simplified Railway Nixpacks Configuration
+# Alternative approach if the main nixpacks.toml fails
+
+[build]
+provider = "python"
+pythonVersion = "3.11"
+
+[phases.setup]
+nixPkgs = ["python311", "nodejs_18", "curl"]
+
+[phases.install]
+dependsOn = ["setup"]
+cmds = [
+    "python --version",
+    "which python",
+    "python -m pip --version",
+    "cd Back && python -m pip install --no-cache-dir -r requirements.txt",
+    "cd Front && npm install"
+]
+
+[phases.build]
+dependsOn = ["install"]
+cmds = [
+    "cd Front && npm run build",
+    "mkdir -p Back/static",
+    "cp -r Front/dist/* Back/static/ 2>/dev/null || echo 'No frontend dist found'"
+]
+
+[start]
+cmd = "cd Back && python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT"

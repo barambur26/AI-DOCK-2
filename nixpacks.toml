@@ -2,6 +2,10 @@ providers = ["python"]
 
 [variables]
 PYTHONPATH = "/app/Back"
+DATABASE_URL = "sqlite:///./ai_dock_dev.db"
+SECRET_KEY = "temp-railway-deployment-key-replace-in-production"
+ENVIRONMENT = "development"
+DEBUG = "true"
 
 [phases.install]
 cmd = "cd Back && pip install -r requirements.txt"
