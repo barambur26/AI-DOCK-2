@@ -24,7 +24,8 @@ class Settings(BaseSettings):
     # Main database connection string
     # Format: postgresql://username:password@host:port/database_name
     # Or for development: sqlite:///./database_name.db
-    database_url: str = "sqlite:///./ai_dock_dev.db"
+    # Railway automatically provides DATABASE_URL for PostgreSQL
+    database_url: str = os.getenv("DATABASE_URL", "sqlite:///./ai_dock_dev.db")
     
     # For async database operations (SQLAlchemy 2.0+ style)
     # We'll use this for our actual database connections
@@ -34,9 +35,12 @@ class Settings(BaseSettings):
         Convert regular database URL to async version.
         SQLite: sqlite+aiosqlite:///./file.db
         PostgreSQL: postgresql+asyncpg://user:pass@host/db
+        Railway PostgreSQL: postgres://... -> postgresql+asyncpg://...
         """
         if self.database_url.startswith("postgresql://"):
             return self.database_url.replace("postgresql://", "postgresql+asyncpg://")
+        elif self.database_url.startswith("postgres://"):  # Railway format
+            return self.database_url.replace("postgres://", "postgresql+asyncpg://")
         elif self.database_url.startswith("sqlite:///"):
             return self.database_url.replace("sqlite:///", "sqlite+aiosqlite:///")
         return self.database_url
