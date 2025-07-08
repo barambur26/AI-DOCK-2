@@ -3,8 +3,12 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 import uvicorn
 import logging
+import os
+from pathlib import Path
 
 # Import our database and configuration
 from .core.config import settings, validate_config
@@ -68,6 +72,39 @@ app.add_middleware(
     expose_headers=["*"],  # Expose all headers to frontend
     max_age=86400,  # Cache preflight response for 24 hours
 )
+
+# =============================================================================
+# STATIC FILE SERVING - Serve React Frontend
+# =============================================================================
+
+# Define static file paths
+STATIC_DIR = Path(__file__).parent.parent / "static"
+STATIC_INDEX = STATIC_DIR / "index.html"
+
+# Serve static files for React frontend (if they exist)
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+    logger.info(f"📁 Serving static files from: {STATIC_DIR}")
+    
+    # Serve React frontend at root path (catch-all for SPA routing)
+    @app.get("/{path:path}")
+    async def serve_frontend(path: str):
+        """
+        Serve React frontend for all non-API routes.
+        This enables client-side routing to work properly.
+        """
+        # Skip API routes
+        if path.startswith(("api/", "auth/", "admin/", "health", "docs", "redoc", "openapi.json")):
+            from fastapi import HTTPException
+            raise HTTPException(status_code=404, detail="API endpoint not found")
+        
+        # Serve index.html for all frontend routes
+        if STATIC_INDEX.exists():
+            return FileResponse(str(STATIC_INDEX))
+        else:
+            return {"message": "Frontend not built. Run 'npm run build' in /Front directory."}
+else:
+    logger.info("📁 Static directory not found - frontend not built")
 
 # Health check endpoint - like a "ping" to see if the server is alive
 # This is often the first endpoint you create in any API

@@ -1,0 +1,2 @@
+# This file ensures the static directory is tracked by Git
+# The directory is needed for Railway deployment to copy built frontend assets
