@@ -264,6 +264,10 @@ fix_*.py
 setup_*.py
 reset_*.py
 
+# Railway deployment test files
+test_railway.db
+*.backup.toml
+
 # Additional debug patterns
 test_manager_setup.sh
 cleanup_debug_files.py

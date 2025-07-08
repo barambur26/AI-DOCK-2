@@ -85,24 +85,6 @@ STATIC_INDEX = STATIC_DIR / "index.html"
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
     logger.info(f"📁 Serving static files from: {STATIC_DIR}")
-    
-    # Serve React frontend at root path (catch-all for SPA routing)
-    @app.get("/{path:path}")
-    async def serve_frontend(path: str):
-        """
-        Serve React frontend for all non-API routes.
-        This enables client-side routing to work properly.
-        """
-        # Skip API routes
-        if path.startswith(("api/", "auth/", "admin/", "health", "docs", "redoc", "openapi.json")):
-            from fastapi import HTTPException
-            raise HTTPException(status_code=404, detail="API endpoint not found")
-        
-        # Serve index.html for all frontend routes
-        if STATIC_INDEX.exists():
-            return FileResponse(str(STATIC_INDEX))
-        else:
-            return {"message": "Frontend not built. Run 'npm run build' in /Front directory."}
 else:
     logger.info("📁 Static directory not found - frontend not built")
 
@@ -438,6 +420,30 @@ def read_root():
             }
         }
     }
+
+# =============================================================================
+# FRONTEND SERVING - MUST BE LAST!
+# =============================================================================
+
+# Serve React frontend for all non-API routes (catch-all route)
+# This MUST be defined AFTER all API routes to avoid conflicts
+if STATIC_DIR.exists() and STATIC_INDEX.exists():
+    @app.get("/{path:path}")
+    async def serve_frontend(path: str):
+        """
+        Serve React frontend for all non-API routes.
+        This enables client-side routing to work properly.
+        
+        IMPORTANT: This route is defined LAST to ensure it doesn't
+        interfere with API endpoints.
+        """
+        # Only serve frontend for paths that don't look like API endpoints
+        if not path.startswith(("api", "auth", "admin", "manager", "chat", "health", "docs", "redoc", "openapi.json", "conversations", "files", "assistants", "projects", "usage", "static")):
+            return FileResponse(str(STATIC_INDEX))
+        
+        # For API-like paths, return 404
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="API endpoint not found")
 
 # =============================================================================
 # APPLICATION LIFECYCLE EVENTS

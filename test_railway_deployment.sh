@@ -14,7 +14,13 @@ if [ ! -f "nixpacks.toml" ]; then
     exit 1
 fi
 
-# Step 1: Install backend dependencies
+# Step 1: Validate Python environment
+echo "🐍 Validating Python Environment..."
+echo "Python version: $(python3 --version)"
+echo "Python location: $(which python3)"
+echo "Pip version: $(python3 -m pip --version)"
+
+# Step 2: Install backend dependencies
 echo "📦 Installing Backend Dependencies..."
 cd Back
 if [ ! -d "ai_dock_env" ]; then
@@ -22,24 +28,28 @@ if [ ! -d "ai_dock_env" ]; then
     python3 -m venv ai_dock_env
 fi
 source ai_dock_env/bin/activate
-pip install -r requirements.txt
+echo "Activated virtual environment"
+echo "Virtual env python: $(which python)"
+echo "Virtual env pip: $(which pip)"
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 
-# Step 2: Install frontend dependencies
+# Step 3: Install frontend dependencies
 echo "📦 Installing Frontend Dependencies..."
 cd ../Front
 npm ci
 
-# Step 3: Build frontend
+# Step 4: Build frontend
 echo "🏗️ Building Frontend..."
 npm run build
 
-# Step 4: Copy frontend build to backend static
+# Step 5: Copy frontend build to backend static
 echo "📁 Copying Frontend to Backend Static Directory..."
 cd ..
 mkdir -p Back/static
 cp -r Front/dist/* Back/static/
 
-# Step 5: Test backend startup
+# Step 6: Test backend startup
 echo "🚀 Testing Backend Startup..."
 cd Back
 export PYTHONPATH=.
