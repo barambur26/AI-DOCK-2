@@ -8,6 +8,8 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy import text
 from typing import AsyncGenerator, Generator
 import logging
+import asyncio
+import time
 
 from .config import settings
 
@@ -36,82 +38,107 @@ if not hasattr(Base, 'metadata') or Base.metadata is None:
 # DATABASE ENGINE CONFIGURATION (ASYNC)
 # =============================================================================
 
-# Create the async database engine for async operations
-async_engine = create_async_engine(
-    settings.async_database_url,
-    
-    # Echo SQL queries in development (helpful for learning!)
-    echo=settings.debug,
-    
-    # Connection pool settings - these control how many database connections we keep open
-    pool_size=10,                    # Keep 10 connections ready
-    max_overflow=20,                 # Allow 20 more if needed
-    pool_pre_ping=True,             # Test connections before using them
-    pool_recycle=3600,              # Refresh connections every hour
-    
-    # For SQLite only - allows multiple threads to access the database
-    connect_args=(
-        {
-            "check_same_thread": False,
-            "timeout": 30,  # 30 second timeout for lock waits
-            "isolation_level": None  # Use autocommit for better concurrency
-        } 
-        if settings.database_url.startswith("sqlite") 
-        else {}
-    )
-)
+# Lazy-loaded async engine to prevent connection attempts during import
+async_engine = None
+
+def create_async_engine_instance():
+    """Create the async database engine when needed."""
+    global async_engine
+    if async_engine is None:
+        async_engine = create_async_engine(
+            settings.async_database_url,
+            
+            # Echo SQL queries in development (helpful for learning!)
+            echo=settings.debug,
+            
+            # Connection pool settings - these control how many database connections we keep open
+            pool_size=10,                    # Keep 10 connections ready
+            max_overflow=20,                 # Allow 20 more if needed
+            pool_pre_ping=True,             # Test connections before using them
+            pool_recycle=3600,              # Refresh connections every hour
+            
+            # For SQLite only - allows multiple threads to access the database
+            connect_args=(
+                {
+                    "check_same_thread": False,
+                    "timeout": 30,  # 30 second timeout for lock waits
+                    "isolation_level": None  # Use autocommit for better concurrency
+                } 
+                if settings.database_url.startswith("sqlite") 
+                else {}
+            )
+        )
+    return async_engine
 
 # =============================================================================
 # DATABASE ENGINE CONFIGURATION (SYNC)
 # =============================================================================
 
-# Create the synchronous database engine for sync operations
-# This is needed for the AdminService and other sync operations
-sync_engine = create_engine(
-    settings.database_url,  # Note: using the sync URL, not async
-    
-    # Echo SQL queries in development
-    echo=settings.debug,
-    
-    # Connection pool settings
-    pool_size=10,
-    max_overflow=20,
-    pool_pre_ping=True,
-    pool_recycle=3600,
-    
-    # For SQLite only
-    connect_args=(
-        {
-            "check_same_thread": False,
-            "timeout": 30,  # 30 second timeout for lock waits
-            "isolation_level": None  # Use autocommit for better concurrency
-        } 
-        if settings.database_url.startswith("sqlite") 
-        else {}
-    )
-)
+# Lazy-loaded sync engine to prevent connection attempts during import
+sync_engine = None
+
+def create_sync_engine_instance():
+    """Create the synchronous database engine when needed."""
+    global sync_engine
+    if sync_engine is None:
+        sync_engine = create_engine(
+            settings.database_url,  # Note: using the sync URL, not async
+            
+            # Echo SQL queries in development
+            echo=settings.debug,
+            
+            # Connection pool settings
+            pool_size=10,
+            max_overflow=20,
+            pool_pre_ping=True,
+            pool_recycle=3600,
+            
+            # For SQLite only
+            connect_args=(
+                {
+                    "check_same_thread": False,
+                    "timeout": 30,  # 30 second timeout for lock waits
+                    "isolation_level": None  # Use autocommit for better concurrency
+                } 
+                if settings.database_url.startswith("sqlite") 
+                else {}
+            )
+        )
+    return sync_engine
 
 # =============================================================================
 # SESSION FACTORIES
 # =============================================================================
 
-# Create async session factory
-AsyncSessionLocal = async_sessionmaker(
-    async_engine,
-    class_=AsyncSession,
-    expire_on_commit=False,         # Keep objects accessible after commit
-    autoflush=True,                 # Automatically sync changes to DB
-    autocommit=False                # Require explicit commits (safer!)
-)
+# Lazy session factories - created when engines are ready
+AsyncSessionLocal = None
+SyncSessionLocal = None
 
-# Create sync session factory
-SyncSessionLocal = sessionmaker(
-    sync_engine,
-    class_=Session,
-    expire_on_commit=False,
-    autoflush=True,
-    autocommit=False
-)
+def get_async_session_factory():
+    """Get or create the async session factory."""
+    global AsyncSessionLocal
+    if AsyncSessionLocal is None:
+        AsyncSessionLocal = async_sessionmaker(
+            create_async_engine_instance(),
+            class_=AsyncSession,
+            expire_on_commit=False,         # Keep objects accessible after commit
+            autoflush=True,                 # Automatically sync changes to DB
+            autocommit=False                # Require explicit commits (safer!)
+        )
+    return AsyncSessionLocal
+
+def get_sync_session_factory():
+    """Get or create the sync session factory."""
+    global SyncSessionLocal
+    if SyncSessionLocal is None:
+        SyncSessionLocal = sessionmaker(
+            create_sync_engine_instance(),
+            class_=Session,
+            expire_on_commit=False,
+            autoflush=True,
+            autocommit=False
+        )
+    return SyncSessionLocal
 
 # =============================================================================
 # DATABASE SESSION DEPENDENCIES
@@ -128,7 +155,8 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
     
     Use this for async route handlers and services.
     """
-    async with AsyncSessionLocal() as session:
+    session_factory = get_async_session_factory()
+    async with session_factory() as session:
         try:
             yield session
             # 🔧 KEY FIX: If we get here, everything succeeded
@@ -151,7 +179,8 @@ def get_sync_db() -> Generator[Session, None, None]:
     
     Use this for sync route handlers and services like AdminService.
     """
-    session = SyncSessionLocal()
+    session_factory = get_sync_session_factory()
+    session = session_factory()
     try:
         yield session
     except Exception as e:
@@ -164,8 +193,13 @@ def get_sync_db() -> Generator[Session, None, None]:
 # Default to sync for backward compatibility with existing code
 get_db = get_sync_db
 
-# Export engines for scripts that need direct access
-engine = sync_engine  # For backward compatibility
+# Export engine getter for scripts that need direct access
+def get_engine():
+    """Get the sync engine for backward compatibility."""
+    return create_sync_engine_instance()
+
+# Legacy compatibility - use get_engine() for new code
+engine = get_engine
 
 # =============================================================================
 # DATABASE INITIALIZATION
@@ -178,7 +212,8 @@ async def create_database_tables():
     This function looks at all the model classes that inherit from Base
     and creates the corresponding tables in the database.
     """
-    async with async_engine.begin() as conn:
+    engine = create_async_engine_instance()
+    async with engine.begin() as conn:
         # Import all models here to ensure they're registered with Base
         # This imports all model files which registers them with SQLAlchemy
         from ..models import (
@@ -202,7 +237,8 @@ def create_database_tables_sync():
     )
     
     # Create all tables using sync engine
-    Base.metadata.create_all(sync_engine)
+    engine = create_sync_engine_instance()
+    Base.metadata.create_all(engine)
     logger.info("✅ Database tables created successfully (sync)")
 
 async def drop_database_tables():
@@ -210,7 +246,8 @@ async def drop_database_tables():
     Drop all database tables. 
     USE WITH CAUTION - this deletes all data!
     """
-    async with async_engine.begin() as conn:
+    engine = create_async_engine_instance()
+    async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         logger.info("🗑️  Database tables dropped")
 
@@ -218,7 +255,8 @@ def drop_database_tables_sync():
     """
     Synchronous version of table dropping.
     """
-    Base.metadata.drop_all(sync_engine)
+    engine = create_sync_engine_instance()
+    Base.metadata.drop_all(engine)
     logger.info("🗑️  Database tables dropped (sync)")
 
 # =============================================================================
@@ -231,7 +269,8 @@ async def check_database_connection() -> bool:
     Returns True if connection is successful, False otherwise.
     """
     try:
-        async with async_engine.begin() as conn:
+        engine = create_async_engine_instance()
+        async with engine.begin() as conn:
             result = await conn.execute(text("SELECT 1"))
             return result is not None
     except Exception as e:
@@ -244,7 +283,8 @@ def check_database_connection_sync() -> bool:
     Returns True if connection is successful, False otherwise.
     """
     try:
-        with sync_engine.connect() as conn:
+        engine = create_sync_engine_instance()
+        with engine.connect() as conn:
             result = conn.execute(text("SELECT 1"))
             return result is not None
     except Exception as e:
@@ -257,34 +297,63 @@ def check_database_connection_sync() -> bool:
 
 async def startup_database():
     """
-    Initialize database on application startup.
+    Initialize database on application startup with retry logic for Railway.
     
     This function should be called when the FastAPI app starts up.
+    Railway database services may take time to be ready, so we retry with exponential backoff.
     """
     logger.info("🔗 Connecting to database...")
     
-    # Test both async and sync connections
-    async_healthy = await check_database_connection()
-    sync_healthy = check_database_connection_sync()
+    # Retry logic for Railway database readiness
+    max_retries = 10
+    base_delay = 1  # Start with 1 second
     
-    if async_healthy and sync_healthy:
-        logger.info(f"✅ Connected to database: {settings.database_url}")
-    else:
-        logger.error(f"❌ Failed to connect to database: {settings.database_url}")
-        logger.error(f"   Async connection: {'✅' if async_healthy else '❌'}")
-        logger.error(f"   Sync connection: {'✅' if sync_healthy else '❌'}")
-        raise Exception("Database connection failed")
+    for attempt in range(max_retries):
+        try:
+            # Test both async and sync connections
+            async_healthy = await check_database_connection()
+            sync_healthy = check_database_connection_sync()
+            
+            if async_healthy and sync_healthy:
+                logger.info(f"✅ Connected to database: {settings.database_url}")
+                break
+            else:
+                raise Exception(f"Connection test failed - Async: {'✅' if async_healthy else '❌'}, Sync: {'✅' if sync_healthy else '❌'}")
+                
+        except Exception as e:
+            if attempt == max_retries - 1:
+                # Last attempt failed
+                logger.error(f"❌ Failed to connect to database after {max_retries} attempts: {settings.database_url}")
+                logger.error(f"   Final error: {e}")
+                raise Exception("Database connection failed after all retries")
+            
+            # Calculate delay with exponential backoff
+            delay = base_delay * (2 ** attempt)
+            logger.warning(f"⚠️  Database connection attempt {attempt + 1}/{max_retries} failed: {e}")
+            logger.info(f"🔄 Retrying in {delay} seconds...")
+            await asyncio.sleep(delay)
     
     # Create tables using sync method (more reliable for startup)
-    create_database_tables_sync()
+    try:
+        create_database_tables_sync()
+        logger.info("✅ Database initialization completed successfully")
+    except Exception as e:
+        logger.error(f"❌ Failed to create database tables: {e}")
+        raise
 
 async def shutdown_database():
     """
     Clean up database connections on application shutdown.
     """
     logger.info("🔌 Closing database connections...")
-    await async_engine.dispose()
-    sync_engine.dispose()
+    
+    # Dispose engines if they were created
+    global async_engine, sync_engine
+    if async_engine:
+        await async_engine.dispose()
+    if sync_engine:
+        sync_engine.dispose()
+    
     logger.info("✅ Database connections closed")
 
 # =============================================================================
@@ -317,7 +386,8 @@ def get_sync_session() -> Session:
     
     Remember to close the session when done!
     """
-    return SyncSessionLocal()
+    session_factory = get_sync_session_factory()
+    return session_factory()
 
 async def get_async_session() -> AsyncSession:
     """
@@ -325,8 +395,8 @@ async def get_async_session() -> AsyncSession:
     
     Remember to close the session when done!
     """
-    session = AsyncSessionLocal()
-    return session
+    session_factory = get_async_session_factory()
+    return session_factory()
 
 # =============================================================================
 # DEBUGGING INFORMATION

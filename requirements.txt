@@ -1,0 +1,6 @@
+# This file forces Railway to detect this as a Python project
+# The actual requirements are in Back/requirements.txt
+# This is a temporary workaround for deployment
+
+fastapi>=0.100.0
+uvicorn>=0.20.0
