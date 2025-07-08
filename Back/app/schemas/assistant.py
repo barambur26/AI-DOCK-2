@@ -26,7 +26,7 @@ Why separate schemas from models?
 - Security = Control what data can be sent/received
 """
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Dict, Any, Union
 from datetime import datetime
 from enum import Enum
@@ -121,7 +121,7 @@ class AssistantBase(BaseModel):
         }
     )
     
-    @validator('name')
+    @field_validator('name')
     def validate_name(cls, v):
         """Validate assistant name format and content."""
         if not v or not v.strip():
@@ -136,7 +136,7 @@ class AssistantBase(BaseModel):
         
         return v
     
-    @validator('description')
+    @field_validator('description')
     def validate_description(cls, v):
         """Validate description content if provided."""
         if v is not None:
@@ -145,7 +145,7 @@ class AssistantBase(BaseModel):
                 return None  # Convert empty string to None
         return v
     
-    @validator('color')
+    @field_validator('color')
     def validate_color(cls, v):
         """Validate color format if provided."""
         if v is not None:
@@ -154,7 +154,7 @@ class AssistantBase(BaseModel):
                 raise ValueError('Color must be a valid hex code (e.g., #3B82F6)')
         return v
     
-    @validator('system_prompt')
+    @field_validator('system_prompt')
     def validate_system_prompt(cls, v):
         """Validate system prompt content and security."""
         if not v or not v.strip():
@@ -178,7 +178,7 @@ class AssistantBase(BaseModel):
         
         return v
     
-    @validator('model_preferences')
+    @field_validator('model_preferences')
     def validate_model_preferences(cls, v):
         """Validate model preferences structure and values."""
         if v is None:
@@ -276,11 +276,11 @@ class AssistantUpdate(BaseModel):
     )
     
     # Apply same validators as base schema
-    _validate_name = validator('name', allow_reuse=True)(AssistantBase.validate_name)
-    _validate_description = validator('description', allow_reuse=True)(AssistantBase.validate_description)
-    _validate_color = validator('color', allow_reuse=True)(AssistantBase.validate_color)
-    _validate_system_prompt = validator('system_prompt', allow_reuse=True)(AssistantBase.validate_system_prompt)
-    _validate_model_preferences = validator('model_preferences', allow_reuse=True)(AssistantBase.validate_model_preferences)
+    _validate_name = field_validator('name')(AssistantBase.validate_name)
+    _validate_description = field_validator('description')(AssistantBase.validate_description)
+    _validate_color = field_validator('color')(AssistantBase.validate_color)
+    _validate_system_prompt = field_validator('system_prompt')(AssistantBase.validate_system_prompt)
+    _validate_model_preferences = field_validator('model_preferences')(AssistantBase.validate_model_preferences)
     
     class Config:
         json_schema_extra = {
@@ -564,14 +564,14 @@ class AssistantBulkAction(BaseModel):
     action: str = Field(..., description="Action to perform: 'delete', 'activate', 'deactivate'")
     assistant_ids: List[int] = Field(..., description="List of assistant IDs to operate on")
     
-    @validator('action')
+    @field_validator('action')
     def validate_action(cls, v):
         allowed_actions = ['delete', 'activate', 'deactivate']
         if v not in allowed_actions:
             raise ValueError(f'Action must be one of: {allowed_actions}')
         return v
     
-    @validator('assistant_ids')
+    @field_validator('assistant_ids')
     def validate_ids(cls, v):
         if len(v) < 1:
             raise ValueError('At least one assistant ID is required')
@@ -626,7 +626,7 @@ class AssistantImport(BaseModel):
     assistants: List[AssistantCreate]
     import_mode: str = Field("create", description="Import mode: 'create' or 'update'")
     
-    @validator('import_mode')
+    @field_validator('import_mode')
     def validate_import_mode(cls, v):
         if v not in ['create', 'update']:
             raise ValueError('Import mode must be "create" or "update"')
