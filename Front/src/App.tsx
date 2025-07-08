@@ -1,4 +1,4 @@
-import React from 'react'
+// React import removed as it's not needed with React 17+ JSX transform
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { LoginPage } from './pages/Login'

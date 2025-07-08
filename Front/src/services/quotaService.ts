@@ -25,7 +25,7 @@ import {
 // CONFIGURATION
 // =============================================================================
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8000';
 const QUOTA_API_BASE = `${API_BASE_URL}/admin/quotas`;
 
 // =============================================================================

@@ -24,6 +24,11 @@ export interface LLMProviderInfo {
   description: string;
   default_endpoint: string;
   documentation_url?: string;
+  default_version?: string;
+  default_model?: string;
+  available_models?: string[];
+  default_input_cost?: number;
+  default_output_cost?: number;
 }
 
 export interface LLMConfigurationSummary {
@@ -190,7 +195,7 @@ async function apiRequest<T>(
   }
 
   // Build full URL
-  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  const baseUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8000';
   const url = `${baseUrl}/admin/llm-configs${endpoint}`;
 
   // Set up headers

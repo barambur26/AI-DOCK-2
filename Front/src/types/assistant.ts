@@ -531,7 +531,9 @@ export function assistantToSummary(assistant: Assistant): AssistantSummary {
     conversation_count: assistant.conversation_count,
     created_at: assistant.created_at,
     is_new: assistant.is_new,
-    color: assistant.color
+    color: assistant.color,
+    file_count: assistant.file_count,
+    has_files: assistant.has_files
   };
 }
 

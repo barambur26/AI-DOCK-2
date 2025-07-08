@@ -251,8 +251,8 @@ export const AssistantSuggestions: React.FC<AssistantSuggestionsProps> = ({
   
   // 🧠 Generate smart suggestions (memoized for performance)
   const enhancedSuggestions = useMemo(() => {
-    return generateSuggestions(suggestions, user?.department_name, maxSuggestions);
-  }, [suggestions, user?.department_name, maxSuggestions]);
+    return generateSuggestions(suggestions, user?.department, maxSuggestions);
+  }, [suggestions, user?.department, maxSuggestions]);
   
   // 🚫 Don't render if dismissed or no suggestions
   if (isDismissed || !isVisible || enhancedSuggestions.length === 0) {

@@ -24,6 +24,7 @@ import { getProjectDefaultAssistantById } from '../../../hooks/folder/getProject
 import { DEFAULT_AUTO_SAVE_CONFIG, shouldAutoSave } from '../../../types/conversation';
 import type { FileAttachment } from '../../../types/file';
 import { assistantService } from '../../../services/assistantService';
+import { ChatMessage } from '../../../types/chat';
 
 export const ChatContainer: React.FC = () => {
   const { user } = useAuth();

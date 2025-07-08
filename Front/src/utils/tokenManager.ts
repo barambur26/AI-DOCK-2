@@ -15,7 +15,7 @@ export interface TokenPayload {
 }
 
 export class TokenManager {
-  private refreshTimer: NodeJS.Timeout | null = null;
+  private refreshTimer: number | null = null;
 
   /**
    * Store JWT token in localStorage
@@ -136,7 +136,7 @@ export class TokenManager {
     if (timeToRefresh > 0) {
       console.log(`🔄 Token refresh scheduled in ${Math.round(timeToRefresh / 60)} minutes`);
       
-      this.refreshTimer = setTimeout(() => {
+      this.refreshTimer = window.setTimeout(() => {
         this.handleTokenRefresh();
       }, timeToRefresh * 1000);
     }

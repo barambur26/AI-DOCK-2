@@ -5,6 +5,7 @@
 // from users while maintaining full functionality underneath.
 
 import React, { useState } from 'react';
+import { LLMProvider } from '../../services/llmConfigService';
 
 interface LLMProviderInfo {
   value: string;
@@ -14,7 +15,7 @@ interface LLMProviderInfo {
 }
 
 interface LLMSimpleCreateData {
-  provider: string;
+  provider: LLMProvider;
   name: string;
   api_key: string;
   description?: string;
@@ -60,7 +61,7 @@ const LLMSimpleCreateModal: React.FC<LLMSimpleCreateModalProps> = ({
   // SMART PROVIDER HINTS (Help users with context)
   // =============================================================================
 
-  const getProviderHints = (provider: string) => {
+  const getProviderHints = (provider: LLMProvider) => {
     const hints = {
       openai: {
         apiKeyHint: "Starts with 'sk-' and is about 51 characters long",
@@ -216,7 +217,7 @@ const LLMSimpleCreateModal: React.FC<LLMSimpleCreateModalProps> = ({
             </label>
             <select
               value={formData.provider}
-              onChange={(e) => handleFieldChange('provider', e.target.value)}
+              onChange={(e) => handleFieldChange('provider', e.target.value as LLMProvider)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {providerInfo.map(provider => (

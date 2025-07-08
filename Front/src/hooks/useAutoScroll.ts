@@ -85,8 +85,8 @@ export const useAutoScroll = (
   });
   
   // ⏱️ Timers for debouncing and timeouts
-  const scrollTimeoutRef = useRef<NodeJS.Timeout>();
-  const userScrollTimeoutRef = useRef<NodeJS.Timeout>();
+  const scrollTimeoutRef = useRef<number>();
+  const userScrollTimeoutRef = useRef<number>();
   const programmaticScrollRef = useRef<boolean>(false); // 🎯 Track programmatic scrolls
   
   // 🎯 Calculate if scroll position is near bottom
@@ -170,7 +170,7 @@ export const useAutoScroll = (
         clearTimeout(userScrollTimeoutRef.current);
       }
       
-      userScrollTimeoutRef.current = setTimeout(() => {
+      userScrollTimeoutRef.current = window.setTimeout(() => {
         // Check current position when timeout fires
         const containerNow = scrollContainerRef.current;
         if (containerNow) {
@@ -199,7 +199,7 @@ export const useAutoScroll = (
       clearTimeout(scrollTimeoutRef.current);
     }
     
-    scrollTimeoutRef.current = setTimeout(() => {
+    scrollTimeoutRef.current = window.setTimeout(() => {
       handleScroll();
     }, finalConfig.scrollDebounceMs);
   }, [handleScroll, finalConfig.scrollDebounceMs]);

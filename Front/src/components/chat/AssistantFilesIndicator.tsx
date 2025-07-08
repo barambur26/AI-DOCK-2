@@ -3,8 +3,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Paperclip, File, ChevronDown, ChevronUp } from 'lucide-react';
-import { AssistantSummary } from '../../../types/assistant';
-import { AssistantFileInfo } from '../../../types/assistant-file';
+import { AssistantSummary } from '../../types/assistant';
+import { AssistantFileInfo } from '../../types/assistant-file';
 import { assistantFileService } from '../../services/assistantFileService';
 
 interface AssistantFilesIndicatorProps {
