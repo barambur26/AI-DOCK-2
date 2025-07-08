@@ -1,16 +1,17 @@
 providers = ["python"]
 
 [variables]
-PYTHONPATH = "/app/Back"
+PYTHON_VERSION = "3.11"
+PYTHONPATH = "/app"
 
 [phases.setup]
-nixPkgs = ["python311"]
+nixPkgs = ["python311", "postgresql"]
 
 [phases.install]
-cmd = "cd Back && pip install -r requirements.txt"
+cmd = "pip install -r requirements.txt"
 
 [phases.build]
-cmd = "echo 'Skipping frontend build - backend only deployment'"
+cmd = "echo 'Backend deployment ready'"
 
 [start]
-cmd = "cd Back && python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+cmd = "python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT"
