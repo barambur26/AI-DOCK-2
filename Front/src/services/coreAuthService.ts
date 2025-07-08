@@ -5,7 +5,7 @@ import { LoginCredentials, LoginResponse } from '../types/auth';
 import { tokenManager } from '../utils/tokenManager';
 
 // Configuration - where our backend lives
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 class CoreAuthService {
   constructor() {
