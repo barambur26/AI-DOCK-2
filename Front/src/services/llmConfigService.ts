@@ -666,15 +666,4 @@ class LLMConfigService {
  */
 export const llmConfigService = new LLMConfigService();
 
-// Export types for use in components
-export type {
-  LLMConfigurationSummary,
-  LLMConfigurationResponse,
-  LLMConfigurationCreate,
-  LLMConfigurationSimpleCreate,
-  LLMConfigurationUpdate,
-  LLMConfigurationTest,
-  LLMConfigurationTestResult,
-  LLMProviderInfo,
-  LLMProvider,
-};
+// Types are imported from their original locations - no need for re-export

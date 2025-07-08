@@ -473,34 +473,4 @@ export function isQuotaHealthy(quota: QuotaResponse): boolean {
   return quota.status === 'active' && !isQuotaExceeded(quota) && !isQuotaNearLimit(quota);
 }
 
-// =============================================================================
-// EXPORT ALL TYPES
-// =============================================================================
-
-export type {
-  // Core types
-  QuotaResponse,
-  QuotaCreateRequest,
-  QuotaUpdateRequest,
-  QuotaSearchFilters,
-  QuotaListResponse,
-  
-  // Status and analytics
-  DepartmentQuotaStatusResponse,
-  QuotaAnalyticsSummary,
-  
-  // Operations
-  QuotaResetResponse,
-  BulkQuotaOperationResponse,
-  
-  // UI helpers
-  QuotaFormState,
-  QuotaFormErrors,
-  DepartmentOption,
-  LLMConfigOption,
-  
-  // Utility types
-  QuotaType,
-  QuotaPeriod,
-  QuotaStatus
-};
+// All types are already exported above - no need for re-export
