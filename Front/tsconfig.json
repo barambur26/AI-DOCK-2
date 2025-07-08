@@ -29,10 +29,8 @@
     "allowUnusedLabels": true,
     "noPropertyAccessFromIndexSignature": false,
 
-    /* Additional relaxed settings */
-    "suppressImplicitAnyIndexErrors": true,
-    "suppressExcessPropertyErrors": true,
-    "ignoreDeprecations": true,
+    /* Deployment settings */
+    "noEmitOnError": false,
 
     /* Path mapping */
     "baseUrl": ".",
@@ -46,7 +44,7 @@
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": false
   },
-  "include": ["src", "**/*.ts", "**/*.tsx"],
-  "exclude": ["node_modules", "dist"],
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "vite.config.ts", "*.config.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
