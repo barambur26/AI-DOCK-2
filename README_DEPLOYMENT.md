@@ -35,7 +35,7 @@ Railway's Nixpacks couldn't find the `pip` command because:
    Go to your Railway project → **Variables** tab → Add:
    ```
    DATABASE_URL=${RAILWAY_POSTGRESQL_URL}
-   SECRET_KEY=your-super-secret-jwt-key-here
+   SECRET_KEY=uQhHgSbl5f0ZdY37o9UB4nvCpRW5QEX4k3TaQQeGF4U
    OPENAI_API_KEY=sk-your-openai-key-here
    ENVIRONMENT=production
    DEBUG=False

@@ -54,7 +54,7 @@ echo "🚀 Testing Backend Startup..."
 cd Back
 export PYTHONPATH=.
 export DATABASE_URL="sqlite:///./test_railway.db"
-export SECRET_KEY="test-secret-key-for-local-testing"
+export SECRET_KEY="uQhHgSbl5f0ZdY37o9UB4nvCpRW5QEX4k3TaQQeGF4U"
 export ENVIRONMENT="development"
 export DEBUG="True"
 export API_HOST="0.0.0.0"

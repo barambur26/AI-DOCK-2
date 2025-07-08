@@ -27,7 +27,7 @@ In Railway's dashboard, go to **Variables** tab and add:
 DATABASE_URL=${RAILWAY_POSTGRESQL_URL}
 
 # Security
-SECRET_KEY=your-super-secret-jwt-key-change-this-in-production
+SECRET_KEY=uQhHgSbl5f0ZdY37o9UB4nvCpRW5QEX4k3TaQQeGF4U
 
 # LLM APIs
 OPENAI_API_KEY=sk-your-openai-key-here
