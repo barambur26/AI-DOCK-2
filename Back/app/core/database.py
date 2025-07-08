@@ -81,8 +81,13 @@ def create_sync_engine_instance():
     """Create the synchronous database engine when needed."""
     global sync_engine
     if sync_engine is None:
+        # Convert Railway's postgres:// to postgresql:// for sync engine
+        sync_db_url = settings.database_url
+        if sync_db_url.startswith("postgres://"):
+            sync_db_url = sync_db_url.replace("postgres://", "postgresql://")
+        
         sync_engine = create_engine(
-            settings.database_url,  # Note: using the sync URL, not async
+            sync_db_url,  # Note: using the converted sync URL
             
             # Echo SQL queries in development
             echo=settings.debug,
@@ -272,9 +277,10 @@ async def check_database_connection() -> bool:
         engine = create_async_engine_instance()
         async with engine.begin() as conn:
             result = await conn.execute(text("SELECT 1"))
+            logger.info("✅ Async database connection successful")
             return result is not None
     except Exception as e:
-        logger.error(f"Async database connection failed: {e}")
+        logger.warning(f"⚠️ Async database connection failed: {e}")
         return False
 
 def check_database_connection_sync() -> bool:
@@ -286,9 +292,10 @@ def check_database_connection_sync() -> bool:
         engine = create_sync_engine_instance()
         with engine.connect() as conn:
             result = conn.execute(text("SELECT 1"))
+            logger.info("✅ Sync database connection successful")
             return result is not None
     except Exception as e:
-        logger.error(f"Sync database connection failed: {e}")
+        logger.warning(f"⚠️ Sync database connection failed: {e}")
         return False
 
 # =============================================================================
@@ -303,10 +310,12 @@ async def startup_database():
     Railway database services may take time to be ready, so we retry with exponential backoff.
     """
     logger.info("🔗 Connecting to database...")
+    logger.info(f"🔧 Database URL: {settings.database_url[:50]}...")
+    logger.info(f"🔧 Database Type: {'PostgreSQL' if is_postgresql() else 'SQLite' if is_sqlite() else 'Unknown'}")
     
-    # Retry logic for Railway database readiness
-    max_retries = 10
-    base_delay = 1  # Start with 1 second
+    # Retry logic for Railway database readiness (more retries for Railway)
+    max_retries = 15  # Increased for Railway
+    base_delay = 2   # Start with 2 seconds
     
     for attempt in range(max_retries):
         try:
@@ -335,10 +344,18 @@ async def startup_database():
     
     # Create tables using sync method (more reliable for startup)
     try:
+        if is_postgresql():
+            logger.info("🐘 PostgreSQL detected - creating tables...")
+        else:
+            logger.info("💾 SQLite detected - creating tables...")
+            
         create_database_tables_sync()
         logger.info("✅ Database initialization completed successfully")
     except Exception as e:
         logger.error(f"❌ Failed to create database tables: {e}")
+        # Log more details for debugging
+        logger.error(f"Database URL: {settings.database_url}")
+        logger.error(f"Database Type: {'PostgreSQL' if is_postgresql() else 'SQLite'}")
         raise
 
 async def shutdown_database():
@@ -374,7 +391,7 @@ def is_sqlite() -> bool:
 
 def is_postgresql() -> bool:
     """Check if we're using PostgreSQL database."""
-    return settings.database_url.startswith("postgresql")
+    return settings.database_url.startswith(("postgresql", "postgres"))
 
 # =============================================================================
 # TESTING AND DEVELOPMENT HELPERS

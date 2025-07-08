@@ -67,14 +67,17 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     
     # Environment (development, staging, production)
-    environment: str = "development"
+    # Railway automatically sets RAILWAY_ENVIRONMENT
+    environment: str = os.getenv("ENVIRONMENT", os.getenv("RAILWAY_ENVIRONMENT", "development"))
     
     # Debug mode - enables detailed error messages
-    debug: bool = True
+    # Auto-disable debug in production
+    debug: bool = os.getenv("DEBUG", "true").lower() == "true" and os.getenv("ENVIRONMENT", "development") != "production"
     
     # API server configuration
     api_host: str = "0.0.0.0"
-    api_port: int = 8000
+    # Railway automatically provides PORT environment variable
+    api_port: int = int(os.getenv("PORT", "8000"))
     
     # Frontend URL for CORS (Cross-Origin Resource Sharing)
     frontend_url: str = "http://localhost:8080"

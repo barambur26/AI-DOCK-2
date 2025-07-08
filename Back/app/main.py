@@ -90,6 +90,26 @@ else:
 
 # Health check endpoint - like a "ping" to see if the server is alive
 # This is often the first endpoint you create in any API
+# Basic status endpoint (no database required) - useful for Railway debugging
+@app.get("/status")
+async def status_check():
+    """
+    Basic status check without database dependency.
+    Useful for Railway deployment debugging.
+    """
+    return {
+        "status": "running",
+        "message": "AI Dock API is alive! 📡",
+        "version": settings.app_version,
+        "environment": settings.environment,
+        "port": settings.api_port,
+        "debug_mode": settings.debug,
+        "railway_detected": bool(os.getenv("RAILWAY_ENVIRONMENT")),
+        "database_url_configured": bool(os.getenv("DATABASE_URL"))
+    }
+
+# Health check endpoint - like a "ping" to see if the server is alive
+# This is often the first endpoint you create in any API
 @app.get("/health")
 async def health_check():
     """
@@ -457,6 +477,16 @@ async def startup_event():
     """
     logger.info(f"🚀 Starting {settings.app_name} v{settings.app_version}")
     logger.info(f"📍 Environment: {settings.environment}")
+    logger.info(f"🔧 Port: {settings.api_port}")
+    logger.info(f"🔧 Debug Mode: {settings.debug}")
+    logger.info(f"🔧 Database Type: {'PostgreSQL' if settings.database_url.startswith(('postgresql', 'postgres')) else 'SQLite'}")
+    
+    # Railway-specific logging
+    railway_env = os.getenv("RAILWAY_ENVIRONMENT")
+    if railway_env:
+        logger.info(f"🚂 Railway Environment: {railway_env}")
+    if os.getenv("DATABASE_URL"):
+        logger.info("🚂 Railway DATABASE_URL detected")
     
     # Validate configuration
     try:
