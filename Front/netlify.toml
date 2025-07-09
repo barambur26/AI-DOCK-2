@@ -2,6 +2,9 @@
   publish = "dist"
   command = "npm run build"
 
+[build.environment]
+  VITE_API_URL = "https://ai-dock-2-production.up.railway.app"
+
 [[headers]]
   for = "*.js"
   [headers.values]

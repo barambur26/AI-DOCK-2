@@ -1,6 +1,8 @@
 // React import removed as it's not needed with React 17+ JSX transform
+import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
+import { debugService } from './services/debugService' // 🐛 Debug service for environment checks
 import { LoginPage } from './pages/Login'
 import { Dashboard } from './pages/Dashboard'
 import { ChatInterface } from './pages/ChatInterface'
@@ -17,6 +19,19 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 // This is the root of our application with proper routing
 
 function App() {
+  // 🐛 Run diagnostics on app load to check environment configuration
+  useEffect(() => {
+    // Only run in development mode to avoid console spam in production
+    if (import.meta.env.DEV) {
+      console.log('🎆 AI Dock Frontend Starting - Running Environment Diagnostics...');
+      debugService.runFullDiagnostics();
+    } else {
+      // In production, just log basic info
+      console.log('🎆 AI Dock Frontend Started');
+      console.log('API URL:', import.meta.env.VITE_API_URL || 'http://localhost:8000');
+    }
+  }, []);
+
   return (
     // 🔐 AuthProvider provides global authentication state to entire app
     // All components can now access auth state without props drilling
