@@ -28,7 +28,23 @@ This script will:
 - ✅ Create admin user with secure credentials
 - ✅ Verify setup completion
 
-### Option 2: Test Dependencies First
+### Option 2: Railway/Automatic Setup
+
+For Railway deployments, the database setup happens automatically when the app starts. No manual setup is needed.
+
+### Option 3: Manual Database Setup
+
+If you need to manually set up the database:
+
+```bash
+# Navigate to the backend directory
+cd Back
+
+# Run the database setup script
+python scripts/setup_database.py
+```
+
+### Option 4: Test Dependencies First
 
 If you want to verify everything will work before running the setup:
 
@@ -95,7 +111,37 @@ After running the setup script, you can login with:
    - Configure LLM provider API keys
    - Set up department quotas
 
+## Railway Deployment
+
+For Railway deployments, the database setup is **automatic**:
+
+1. **No manual setup required** - The app automatically sets up the database when it starts
+2. **Database seeding happens at runtime** - Not during build time
+3. **Admin user is created automatically** - Default credentials: `admin@aidock.dev` / `admin123`
+
+The app will:
+- ✅ Connect to the Railway PostgreSQL database
+- ✅ Create all necessary tables
+- ✅ Seed initial data (roles, departments, admin user)
+- ✅ Start serving the API
+
+### Railway Environment Variables
+
+Make sure these are set in Railway:
+- `DATABASE_URL` - Automatically provided by Railway PostgreSQL
+- `SECRET_KEY` - Your JWT signing key
+- `ENVIRONMENT` - Set to "production"
+- `DEBUG` - Set to "false"
+
 ## Troubleshooting
+
+### Railway Deployment Issues
+
+If Railway deployment fails:
+1. Check that `DATABASE_URL` is set correctly
+2. Ensure all environment variables are configured
+3. Check the Railway logs for specific error messages
+4. The app will retry database connections automatically
 
 ### Database Connection Issues
 

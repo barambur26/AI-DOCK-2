@@ -502,13 +502,22 @@ async def startup_database():
             logger.info("💾 SQLite detected - creating tables...")
             
         create_database_tables_sync()
-        logger.info("✅ Database initialization completed successfully")
+        logger.info("✅ Database tables created successfully")
     except Exception as e:
         logger.error(f"❌ Failed to create database tables: {e}")
         # Log more details for debugging
         logger.error(f"Database URL: {settings.database_url}")
         logger.error(f"Database Type: {'PostgreSQL' if is_postgresql() else 'SQLite'}")
         raise
+    
+    # Seed initial data (roles, departments, admin user) if needed
+    try:
+        await seed_initial_data()
+        logger.info("✅ Database seeding completed successfully")
+    except Exception as e:
+        logger.error(f"❌ Failed to seed initial data: {e}")
+        # Don't raise exception - let app continue even if seeding fails
+        logger.error(f"Database seeding failed, but application will continue")
 
 async def shutdown_database():
     """
