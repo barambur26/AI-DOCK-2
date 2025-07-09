@@ -23,7 +23,7 @@ import { ChatMessage } from '../types/chat';
 import { authService } from './authService';
 
 // Configuration - using same base URL as other services
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 class ConversationService {
   
