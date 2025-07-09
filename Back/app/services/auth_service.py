@@ -36,7 +36,7 @@ import logging
 from app.models.user import User
 from app.schemas.auth import LoginRequest, LoginResponse, UserInfo, TokenPayload
 from app.core.security import verify_password, create_access_token, create_refresh_token
-from app.core.database import AsyncSessionLocal
+from app.core.database import get_async_session_factory
 
 # Initialize logger
 logger = logging.getLogger(__name__)
@@ -86,7 +86,8 @@ async def authenticate_user(login_data: LoginRequest) -> LoginResponse:
     
     # Step 1: Get a database session
     # This is how we connect to the database to query data
-    async with AsyncSessionLocal() as db:
+    async_session_factory = get_async_session_factory()
+    async with async_session_factory() as db:
         
         # Step 2: Find the user by email (include relationships for complete user info)
         user = await find_user_by_email(db, login_data.email, include_relationships=True)
@@ -422,7 +423,8 @@ async def get_current_user_from_token(token: str) -> Optional[User]:
             return None
         
         # Step 3: Find user in database with relationships
-        async with AsyncSessionLocal() as db:
+        async_session_factory = get_async_session_factory()
+        async with async_session_factory() as db:
             result = await db.execute(
                 select(User)
                 .where(User.id == user_id)
@@ -500,7 +502,8 @@ async def update_user_profile(user_id: int, profile_data) -> Dict[str, Any]:
     Raises:
         ValueError: For validation errors (wrong password, duplicate email)
     """
-    async with AsyncSessionLocal() as db:
+    async_session_factory = get_async_session_factory()
+    async with async_session_factory() as db:
         # Get current user with relationships
         from sqlalchemy.orm import selectinload
         
@@ -592,7 +595,8 @@ async def change_user_password(user_id: int, current_password: str, new_password
     Raises:
         ValueError: If current password is wrong or user not found
     """
-    async with AsyncSessionLocal() as db:
+    async_session_factory = get_async_session_factory()
+    async with async_session_factory() as db:
         # Get user with relationships
         from sqlalchemy.orm import selectinload
         
