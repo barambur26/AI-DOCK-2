@@ -61,7 +61,7 @@ async def verify_admin_setup():
             # Check admin user
             print("\n4. Checking admin user...")
             admin_user = await session.execute(
-                select(User).where(User.email == "admin@aidock.local")
+                select(User).where(User.email == "admin@aidock.dev")
             )
             admin = admin_user.scalar_one_or_none()
             
@@ -96,7 +96,7 @@ async def verify_admin_setup():
                 print("\n🎉 Admin setup verification PASSED!")
                 print("\nYou can now:")
                 print("  1. Start the backend: uvicorn app.main:app --reload")
-                print("  2. Login with admin@aidock.local / admin123")
+                print("  2. Login with admin@aidock.dev / admin123")
                 print("  3. Access the admin panel")
                 return True
             else:

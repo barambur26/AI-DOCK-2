@@ -166,7 +166,7 @@ async def create_default_department() -> Department:
                     description="Administrative Department - Default department for system administrators",
                     monthly_budget=10000.00,
                     cost_center="ADMIN-001",
-                    manager_email="admin@aidock.local",
+                    manager_email="admin@aidock.dev",
                     location="System Default",
                     created_by="system"
                 )
@@ -191,7 +191,7 @@ async def create_admin_user(roles: dict, department: Department) -> User:
         try:
             # Check if admin user already exists
             admin_check = await session.execute(
-                select(User).where(User.email == "admin@aidock.local")
+                select(User).where(User.email == "admin@aidock.dev")
             )
             existing_admin = admin_check.scalar_one_or_none()
             
@@ -215,7 +215,7 @@ async def create_admin_user(roles: dict, department: Department) -> User:
             
             # Create new admin user
             admin_user = User(
-                email="admin@aidock.local",
+                email="admin@aidock.dev",
                 username="admin",
                 full_name="System Administrator",
                 password_hash=get_password_hash("admin123"),
@@ -232,7 +232,7 @@ async def create_admin_user(roles: dict, department: Department) -> User:
             await session.commit()
             
             print("   ✅ Admin user created successfully!")
-            print("   📧 Email: admin@aidock.local")
+            print("   📧 Email: admin@aidock.dev")
             print("   👤 Username: admin")
             print("   🔑 Password: admin123")
             print("   ⚠️  IMPORTANT: Change this password after first login!")
@@ -264,7 +264,7 @@ async def verify_setup() -> bool:
             
             # Check admin user
             admin_user = await session.execute(
-                select(User).where(User.email == "admin@aidock.local")
+                select(User).where(User.email == "admin@aidock.dev")
             )
             admin = admin_user.scalar_one_or_none()
             
@@ -305,7 +305,7 @@ async def show_setup_summary():
             
             # Show admin user details
             admin_user = await session.execute(
-                select(User).where(User.email == "admin@aidock.local")
+                select(User).where(User.email == "admin@aidock.dev")
             )
             admin = admin_user.scalar_one_or_none()
             
@@ -370,7 +370,7 @@ async def main():
         print("\n🎉 ADMIN SETUP COMPLETE!")
         print("\n🔑 LOGIN CREDENTIALS")
         print("-" * 30)
-        print("Email: admin@aidock.local")
+        print("Email: admin@aidock.dev")
         print("Username: admin")
         print("Password: admin123")
         

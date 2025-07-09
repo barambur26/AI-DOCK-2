@@ -10,6 +10,7 @@ from typing import AsyncGenerator, Generator
 import logging
 import asyncio
 import time
+import os
 
 from .config import settings
 
@@ -297,6 +298,157 @@ def check_database_connection_sync() -> bool:
     except Exception as e:
         logger.warning(f"⚠️ Sync database connection failed: {e}")
         return False
+
+# =============================================================================
+# DATABASE SEEDING FUNCTIONS
+# =============================================================================
+
+async def seed_initial_data():
+    """
+    Seed initial data for Railway deployments.
+    
+    Creates default roles, departments, and admin user if they don't exist.
+    This is idempotent - safe to run multiple times.
+    """
+    # Only run seeding in production/Railway environment
+    if not os.getenv("RAILWAY_ENVIRONMENT") and not os.getenv("DATABASE_URL", "").startswith("postgresql"):
+        logger.info("🌱 Skipping data seeding - not in Railway environment")
+        return
+    
+    logger.info("🌱 Starting initial data seeding...")
+    
+    try:
+        async_session_factory = get_async_session_factory()
+        async with async_session_factory() as session:
+            # Import models here to avoid circular imports
+            from ..models.role import Role
+            from ..models.department import Department
+            from ..models.user import User
+            from ..core.security import get_password_hash
+            from sqlalchemy import select, func
+            
+            # Check if seeding is needed
+            user_count = await session.scalar(select(func.count(User.id)))
+            if user_count > 0:
+                logger.info("🌱 Data already exists, skipping seeding")
+                return
+            
+            logger.info("🌱 Creating default roles...")
+            
+            # Create default roles
+            roles_data = [
+                {
+                    "name": "admin",
+                    "display_name": "Administrator",
+                    "description": "Full system access with all permissions",
+                    "level": 100,
+                    "is_system_role": True,
+                    "permissions": {
+                        "can_manage_users": True,
+                        "can_manage_departments": True,
+                        "can_manage_roles": True,
+                        "can_view_all_usage": True,
+                        "can_manage_quotas": True,
+                        "can_configure_llms": True,
+                        "can_access_admin_panel": True,
+                        "can_use_llms": True,
+                        "can_view_admin_panel": True,
+                        "can_manage_system_settings": True,
+                        "can_view_system_logs": True
+                    }
+                },
+                {
+                    "name": "manager",
+                    "display_name": "Department Manager",
+                    "description": "Can manage department users, quotas, and view usage reports",
+                    "level": 50,
+                    "is_system_role": True,
+                    "permissions": {
+                        "can_manage_department_users": True,
+                        "can_view_department_usage": True,
+                        "can_use_llms": True,
+                        "can_access_admin_panel": True,
+                        "can_manage_department_quotas": True
+                    }
+                },
+                {
+                    "name": "user",
+                    "display_name": "Standard User",
+                    "description": "Basic AI chat access with personal usage tracking",
+                    "level": 10,
+                    "is_system_role": True,
+                    "permissions": {
+                        "can_use_llms": True,
+                        "can_view_own_usage": True,
+                        "can_access_ai_history": True
+                    }
+                }
+            ]
+            
+            created_roles = {}
+            for role_data in roles_data:
+                role = Role(
+                    name=role_data["name"],
+                    display_name=role_data["display_name"],
+                    description=role_data["description"],
+                    level=role_data["level"],
+                    is_system_role=role_data["is_system_role"],
+                    permissions=role_data["permissions"],
+                    created_by="system"
+                )
+                session.add(role)
+                created_roles[role_data["name"]] = role
+                logger.info(f"🌱 Created role: {role_data['display_name']}")
+            
+            # Flush to get role IDs
+            await session.flush()
+            
+            logger.info("🌱 Creating default department...")
+            
+            # Create default department
+            department = Department(
+                name="Administration",
+                code="ADMIN",
+                description="Administrative Department - Default department for system administrators",
+                monthly_budget=10000.00,
+                cost_center="ADMIN-001",
+                manager_email="admin@aidock.dev",
+                location="System Default",
+                created_by="system"
+            )
+            session.add(department)
+            await session.flush()
+            
+            logger.info("🌱 Creating admin user...")
+            
+            # Create admin user
+            admin_user = User(
+                email="admin@aidock.dev",
+                username="admin",
+                full_name="System Administrator",
+                password_hash=get_password_hash("admin123"),
+                is_admin=True,
+                is_active=True,
+                is_verified=True,
+                role_id=created_roles["admin"].id,
+                department_id=department.id,
+                job_title="System Administrator",
+                bio="Default system administrator account"
+            )
+            session.add(admin_user)
+            
+            # Commit all changes
+            await session.commit()
+            
+            logger.info("🌱 ✅ Initial data seeding completed successfully!")
+            logger.info("🌱 👑 Admin credentials: admin@aidock.dev / admin123")
+            logger.info("🌱 ⚠️  IMPORTANT: Change admin password after first login!")
+            
+    except Exception as e:
+        logger.error(f"🌱 ❌ Failed to seed initial data: {e}")
+        # Don't raise exception - let app continue even if seeding fails
+        import traceback
+        logger.error(f"🌱 Traceback: {traceback.format_exc()}")
 
 # =============================================================================
 # STARTUP AND SHUTDOWN HANDLERS

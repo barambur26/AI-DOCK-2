@@ -455,7 +455,7 @@ def create_sample_user(role_id: int = None, department_id: int = None) -> User:
         Sample User object
     """
     return User(
-        email="admin@aidock.local",
+        email="admin@aidock.dev",
         username="admin",
         full_name="AI Dock Administrator",
         role_id=role_id,            # Now required - must have a role

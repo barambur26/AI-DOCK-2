@@ -44,7 +44,7 @@ python scripts/create_admin_user.py
 
 After running the setup script, you can login with:
 
-- **Email**: `admin@aidock.local`
+- **Email**: `admin@aidock.dev`
 - **Username**: `admin`
 - **Password**: `admin123`
 
