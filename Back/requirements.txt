@@ -9,6 +9,7 @@ asyncpg==0.30.0
 attrs==25.3.0
 axios==0.4.0
 bcrypt==4.3.0
+passlib[bcrypt]==1.7.4
 certifi==2025.4.26
 cffi==1.17.1
 chardet==5.2.0
@@ -50,7 +51,7 @@ multidict==6.5.0
 olefile==0.46
 openai==1.84.0
 packaging==25.0
-passlib==1.7.4
+
 pdfminer.six==20231228
 pdfplumber==0.11.0
 pillow==11.2.1
