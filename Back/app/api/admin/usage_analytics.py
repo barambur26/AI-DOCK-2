@@ -49,10 +49,49 @@ async def get_provider_usage_stats_fixed(
     from sqlalchemy import select, func, and_
     from ...models.usage_log import UsageLog
     
+    # 🔧 FIX: Add database connectivity test first
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"🔍 [PROVIDER STATS] Testing database connectivity...")
+    
+    try:
+        async with AsyncSessionLocal() as test_session:
+            # Simple connectivity test
+            test_result = await test_session.execute(select(func.count(UsageLog.id)))
+            total_logs = test_result.scalar()
+            logger.info(f"🔍 [PROVIDER STATS] Database test successful - found {total_logs} total usage logs")
+            
+            # Test for logs in the date range
+            date_range_result = await test_session.execute(
+                select(func.count(UsageLog.id)).where(
+                    and_(
+                        UsageLog.created_at >= start_date,
+                        UsageLog.created_at <= end_date
+                    )
+                )
+            )
+            logs_in_range = date_range_result.scalar()
+            logger.info(f"🔍 [PROVIDER STATS] Found {logs_in_range} usage logs in date range {start_date} to {end_date}")
+            
+            if logs_in_range == 0:
+                logger.warning(f"⚠️ [PROVIDER STATS] No usage logs found in the specified date range - returning empty stats")
+                return []
+            
+    except Exception as db_error:
+        logger.error(f"❌ [PROVIDER STATS] Database connectivity test failed: {str(db_error)}")
+        import traceback
+        logger.error(f"❌ [PROVIDER STATS] Database test traceback: {traceback.format_exc()}")
+        return []
+    
     async with AsyncSessionLocal() as session:
         try:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"🔍 [PROVIDER STATS] Starting with session: {session}")
+            
             # 🔧 FIX: Add cache-busting parameter and handle NULL costs properly
             cache_buster = datetime.utcnow().microsecond
+            logger.info(f"🔍 [PROVIDER STATS] Cache buster: {cache_buster}")
             
             provider_stats_query = select(
                 UsageLog.provider,
@@ -79,25 +118,24 @@ async def get_provider_usage_stats_fixed(
                     *([UsageLog.model.in_(model_names)] if model_names else [])
                 )
             ).group_by(UsageLog.provider).params(cache_buster=cache_buster)
+            logger.info(f"🔍 [PROVIDER STATS] Query built successfully")
             
             # 🔧 FIX: Add null safety checks for query execution
             if provider_stats_query is None:
-                import logging
-                logger = logging.getLogger(__name__)
                 logger.error("Provider stats query is None")
                 return []
             
+            logger.info(f"🔍 [PROVIDER STATS] About to execute query...")
             result = await session.execute(provider_stats_query)
+            logger.info(f"🔍 [PROVIDER STATS] Query executed, result: {result}")
             if result is None:
-                import logging
-                logger = logging.getLogger(__name__)
                 logger.error("Query result is None")
                 return []
                 
+            logger.info(f"🔍 [PROVIDER STATS] About to call fetchall()...")
             providers = result.fetchall()
+            logger.info(f"🔍 [PROVIDER STATS] Fetchall completed, got {len(providers) if providers else 0} providers")
             if providers is None:
-                import logging
-                logger = logging.getLogger(__name__)
                 logger.warning("Query fetchall() returned None - using empty list")
                 providers = []
             
@@ -105,38 +143,37 @@ async def get_provider_usage_stats_fixed(
             
             # Get pricing service for cost validation/updates
             # 🔧 FIX: Add null safety check for pricing service
+            logger.info(f"🔍 [PROVIDER STATS] About to get pricing service...")
             try:
                 pricing_service = get_pricing_service()
+                logger.info(f"🔍 [PROVIDER STATS] Pricing service obtained: {pricing_service}")
                 if pricing_service is None:
-                    import logging
-                    logger = logging.getLogger(__name__)
                     logger.warning("Pricing service is None - continuing without pricing validation")
             except Exception as pricing_error:
-                import logging
-                logger = logging.getLogger(__name__)
                 logger.warning(f"Failed to get pricing service: {str(pricing_error)}")
                 pricing_service = None
             
             # 🔧 FIX: Ensure providers is iterable and handle None values
             if not providers:
-                import logging
-                logger = logging.getLogger(__name__)
                 logger.info("No providers found in query results")
                 return []
             
-            for provider in providers:
+            logger.info(f"🔍 [PROVIDER STATS] About to iterate through {len(providers)} providers...")
+            for i, provider in enumerate(providers):
+                logger.info(f"🔍 [PROVIDER STATS] Processing provider {i+1}/{len(providers)}: {provider}")
                 # 🔧 FIX: Skip None providers
                 if provider is None:
+                    logger.warning(f"Provider {i+1} is None, skipping")
                     continue
                 # 🔧 FIX: Add defensive attribute access with None safety
+                logger.info(f"🔍 [PROVIDER STATS] About to access provider attributes for provider {i+1}...")
                 try:
                     total_requests = getattr(provider, 'total_requests', 0) or 0
                     successful_requests = getattr(provider, 'successful_requests', 0) or 0
                     total_cost = float(getattr(provider, 'total_cost', 0) or 0)
+                    logger.info(f"🔍 [PROVIDER STATS] Provider {i+1} basic stats: requests={total_requests}, successful={successful_requests}, cost={total_cost}")
                 except Exception as attr_error:
-                    import logging
-                    logger = logging.getLogger(__name__)
-                    logger.error(f"Error accessing provider attributes: {str(attr_error)}")
+                    logger.error(f"Error accessing provider {i+1} attributes: {str(attr_error)}")
                     continue
                 
                 # 🔧 FIX: Get all provider attributes safely
