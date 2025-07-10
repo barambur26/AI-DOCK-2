@@ -186,12 +186,12 @@ export const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
         
         {/* Streaming indicator with glassmorphism */}
         {isStreaming && (
-          <div className="mx-4 mb-4 p-3 bg-amber-500/20 backdrop-blur-sm border border-amber-400/30 rounded-xl flex-shrink-0 shadow-lg">
+          <div className="mx-4 mb-4 p-3 bg-blue-500/20 backdrop-blur-sm border border-blue-400/30 rounded-xl flex-shrink-0 shadow-lg">
             <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-amber-300 rounded-full animate-pulse shadow-lg"></div>
-              <p className="text-sm text-amber-100 font-medium">AI is responding...</p>
+              <div className="w-2 h-2 bg-blue-300 rounded-full animate-pulse shadow-lg"></div>
+              <p className="text-sm text-blue-100 font-medium">AI is responding...</p>
             </div>
-            <p className="text-xs text-amber-200 mt-1">
+            <p className="text-xs text-blue-200 mt-1">
               {mode === 'conversations' ? 'Chat switching disabled while streaming' : 
                mode === 'projects' ? 'Folder switching disabled while streaming' : 
                'Assistant switching disabled while streaming'}
