@@ -14,4 +14,4 @@ cmd = "pip install -r requirements.txt"
 cmd = "echo 'Backend deployment ready'"
 
 [start]
-cmd = "python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+cmd = "python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1"

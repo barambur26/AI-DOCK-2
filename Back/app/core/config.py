@@ -80,7 +80,7 @@ class Settings(BaseSettings):
     api_port: int = int(os.getenv("PORT", "8000"))
     
     # Frontend URL for CORS (Cross-Origin Resource Sharing)
-    frontend_url: str = "http://localhost:8080"
+    frontend_url: str = os.getenv("FRONTEND_URL", "http://localhost:8080")
     
     # =============================================================================
     # LLM PROVIDER CONFIGURATION
