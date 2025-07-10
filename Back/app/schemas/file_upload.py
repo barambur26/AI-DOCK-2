@@ -20,7 +20,7 @@ Why separate schemas from models?
 - They can differ (some fields private, some computed)
 """
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
@@ -122,7 +122,7 @@ class FileUploadValidation(BaseModel):
         description="MIME type of the file"
     )
     
-    @validator('filename')
+    @field_validator('filename')
     def validate_filename(cls, v):
         """Validate filename format and security."""
         if not v.strip():
@@ -136,8 +136,8 @@ class FileUploadValidation(BaseModel):
         
         return v.strip()
     
-    @validator('file_size')
-    def validate_file_size_by_type(cls, v, values):
+    @model_validator(mode='after')
+    def validate_file_size_by_type(self):
         """
         Validate file size based on file type.
         
@@ -146,28 +146,29 @@ class FileUploadValidation(BaseModel):
         - Word docs: 20MB (for document processing)
         - Other files: 10MB (for text processing)
         """
-        mime_type = values.get('mime_type')
+        mime_type = self.mime_type
+        file_size = self.file_size
         
         if mime_type == AllowedFileType.PDF.value:
             # PDF files can be up to 25MB
             max_size = 26_214_400  # 25MB
-            if v > max_size:
-                raise ValueError(f'PDF file size {v} bytes exceeds maximum of 25MB ({max_size} bytes)')
+            if file_size > max_size:
+                raise ValueError(f'PDF file size {file_size} bytes exceeds maximum of 25MB ({max_size} bytes)')
         elif mime_type in [AllowedFileType.DOCX.value, AllowedFileType.DOC.value]:
             # Word documents can be up to 20MB
             max_size = 20_971_520  # 20MB
-            if v > max_size:
+            if file_size > max_size:
                 file_type_name = "Word document (.docx)" if mime_type == AllowedFileType.DOCX.value else "Word document (.doc)"
-                raise ValueError(f'{file_type_name} size {v} bytes exceeds maximum of 20MB ({max_size} bytes)')
+                raise ValueError(f'{file_type_name} size {file_size} bytes exceeds maximum of 20MB ({max_size} bytes)')
         else:
             # Other files limited to 10MB
             max_size = 10_485_760  # 10MB
-            if v > max_size:
-                raise ValueError(f'File size {v} bytes exceeds maximum of 10MB ({max_size} bytes)')
+            if file_size > max_size:
+                raise ValueError(f'File size {file_size} bytes exceeds maximum of 10MB ({max_size} bytes)')
         
-        return v
+        return self
     
-    @validator('mime_type')
+    @field_validator('mime_type')
     def validate_mime_type(cls, v):
         """Validate MIME type is allowed."""
         allowed_types = [e.value for e in AllowedFileType]
@@ -175,8 +176,8 @@ class FileUploadValidation(BaseModel):
             raise ValueError(f'File type {v} not allowed. Allowed types: {", ".join(allowed_types)}')
         return v
     
-    @validator('filename')
-    def validate_document_filename(cls, v, values):
+    @model_validator(mode='after')
+    def validate_document_filename(self):
         """
         Document-specific filename validation for PDFs and Word documents.
         
@@ -188,41 +189,42 @@ class FileUploadValidation(BaseModel):
         - Ensure .docx/.doc extension matches MIME type
         - Check for valid Word filename patterns
         """
-        mime_type = values.get('mime_type')
+        mime_type = self.mime_type
+        filename = self.filename
         
         if mime_type == AllowedFileType.PDF.value:
             # PDF files should have .pdf extension
-            if not v.lower().endswith('.pdf'):
+            if not filename.lower().endswith('.pdf'):
                 raise ValueError('PDF files must have .pdf extension')
             
             # Check for common PDF naming issues
-            if 'password' in v.lower() or 'protected' in v.lower():
+            if 'password' in filename.lower() or 'protected' in filename.lower():
                 # Warn about potentially password-protected PDFs
                 # Note: This is just a filename hint, actual protection check happens during processing
                 pass
         
         elif mime_type == AllowedFileType.DOCX.value:
             # Modern Word documents should have .docx extension
-            if not v.lower().endswith('.docx'):
+            if not filename.lower().endswith('.docx'):
                 raise ValueError('Modern Word documents must have .docx extension')
             
             # Check for common Word naming issues
-            if 'password' in v.lower() or 'protected' in v.lower() or 'readonly' in v.lower():
+            if 'password' in filename.lower() or 'protected' in filename.lower() or 'readonly' in filename.lower():
                 # Warn about potentially protected Word documents
                 # Note: This is just a filename hint, actual protection check happens during processing
                 pass
         
         elif mime_type == AllowedFileType.DOC.value:
             # Legacy Word documents should have .doc extension
-            if not v.lower().endswith('.doc'):
+            if not filename.lower().endswith('.doc'):
                 raise ValueError('Legacy Word documents must have .doc extension')
             
             # Check for common legacy Word naming issues
-            if 'password' in v.lower() or 'protected' in v.lower() or 'readonly' in v.lower():
+            if 'password' in filename.lower() or 'protected' in filename.lower() or 'readonly' in filename.lower():
                 # Warn about potentially protected Word documents
                 pass
         
-        return v
+        return self
     
     class Config:
         json_schema_extra = {
@@ -430,7 +432,7 @@ class FileSearchRequest(BaseModel):
         description="Sort order: asc or desc"
     )
     
-    @validator('sort_by')
+    @field_validator('sort_by')
     def validate_sort_by(cls, v):
         """Validate sort field."""
         allowed_fields = ['upload_date', 'filename', 'file_size', 'access_count']
@@ -438,19 +440,19 @@ class FileSearchRequest(BaseModel):
             raise ValueError(f'Invalid sort field. Allowed: {", ".join(allowed_fields)}')
         return v
     
-    @validator('sort_order')
+    @field_validator('sort_order')
     def validate_sort_order(cls, v):
         """Validate sort order."""
         if v not in ['asc', 'desc']:
             raise ValueError('Sort order must be "asc" or "desc"')
         return v
     
-    @validator('date_to')
-    def validate_date_range(cls, v, values):
+    @model_validator(mode='after')
+    def validate_date_range(self):
         """Validate date range is logical."""
-        if v and values.get('date_from') and v < values['date_from']:
+        if self.date_to and self.date_from and self.date_to < self.date_from:
             raise ValueError('date_to must be after date_from')
-        return v
+        return self
     
     class Config:
         json_schema_extra = {
