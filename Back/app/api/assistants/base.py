@@ -168,8 +168,8 @@ def compute_assistant_summary(assistant: Assistant) -> AssistantSummary:
     # Compute is_new safely
     is_new = False
     if assistant.created_at:
-        from datetime import datetime, timedelta
-        day_ago = datetime.utcnow() - timedelta(hours=24)
+        from datetime import datetime, timedelta, timezone
+        day_ago = datetime.now(timezone.utc) - timedelta(hours=24)
         is_new = assistant.created_at > day_ago
     
     return AssistantSummary(
