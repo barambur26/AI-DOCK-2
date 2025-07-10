@@ -3,9 +3,6 @@
   "build": {
     "builder": "NIXPACKS"
   },
-  "source": {
-    "root": "Back"
-  },
   "deploy": {
     "startCommand": "uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1",
     "healthcheckPath": "/status",
@@ -16,7 +13,7 @@
   "environments": {
     "production": {
       "variables": {
-        "ENVIRONMENT": "staging",
+        "ENVIRONMENT": "production",
         "DEBUG": "false"
       }
     },
