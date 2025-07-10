@@ -20,7 +20,7 @@ Why separate schemas from models?
 - They can differ (some fields private, some computed)
 """
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
