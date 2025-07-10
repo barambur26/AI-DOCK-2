@@ -115,7 +115,7 @@ async def get_provider_usage_stats_fixed(
                     # Add department filter if specified
                     *([UsageLog.department_id == department_id] if department_id else []),
                     # Add provider filter if specified
-                    *([UsageLog.provider.in_([p.lower() for p in provider_names])] if provider_names else []),
+                    *([UsageLog.provider.in_(provider_names)] if provider_names else []),
                     # Add model filter if specified
                     *([UsageLog.model.in_(model_names)] if model_names else [])
                 )
@@ -548,7 +548,7 @@ async def get_recent_usage_logs(
         if department_id:
             filters.append(UsageLog.department_id == department_id)
         if provider:
-            filters.append(UsageLog.provider == provider.lower())
+            filters.append(UsageLog.provider == provider)
         if success_only:
             filters.append(UsageLog.success == True)
         
@@ -715,7 +715,7 @@ async def get_top_users_by_usage(
                 # Add department filter if specified
                 *([UsageLog.department_id == department_id] if department_id else []),
                 # Add provider filter if specified
-                *([UsageLog.provider.in_([p.lower() for p in provider_names])] if provider_names else []),
+                *([UsageLog.provider.in_(provider_names)] if provider_names else []),
                 # Add model filter if specified
                 *([UsageLog.model.in_(model_names)] if model_names else [])
             )
@@ -964,7 +964,7 @@ async def get_most_used_models(
                 # Add department filter if specified
                 *([UsageLog.department_id == department_id] if department_id else []),
                 # Add provider filter if specified
-                *([UsageLog.provider.in_([p.lower() for p in provider_names])] if provider_names else []),
+                *([UsageLog.provider.in_(provider_names)] if provider_names else []),
                 # Add model filter if specified
                 *([UsageLog.model.in_(model_names)] if model_names else [])
             )

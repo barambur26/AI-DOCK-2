@@ -45,6 +45,7 @@ const UsageDashboard: React.FC = () => {
     data: null,
     lastUpdated: null,
     selectedPeriod: 30,
+    selectedProvider: null,
     selectedMetric: 'total_cost'
   });
 

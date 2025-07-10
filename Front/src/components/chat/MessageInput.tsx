@@ -485,21 +485,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
               )}
             </div>
           </div>
-          
-          {/* 🔍 DEBUG: Button state check */}
-          {console.log('🔍 DEBUG - Send button state:', {
-            hasUploadsInProgress,
-            canSend,
-            showCancelButton,
-            uploadsInProgressCount: fileUploadsInProgress.length,
-            uploadsInProgressDetails: fileUploadsInProgress.map(u => ({
-              id: u.id,
-              fileName: u.file.name,
-              status: u.status
-            })),
-            buttonWillBeDisabled: !canSend
-          })}
-          
+                    
           {/* 📤 Send/Cancel Button with Conditional Rendering */}
           {showCancelButton ? (
             // 🛑 CANCEL BUTTON: Show when streaming
