@@ -226,14 +226,14 @@ async def get_provider_usage_stats_fixed(
             
             return provider_stats
             
-        except Exception as e:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"Failed to get provider usage stats: {str(e)}")
-            import traceback
-            logger.error(f"Full traceback: {traceback.format_exc()}")
-            # 🔧 FIX: Return empty list instead of raising, to prevent cascading failures
-            return []
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Failed to get provider usage stats: {str(e)}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
+        # 🔧 FIX: Return empty list instead of raising, to prevent cascading failures
+        return []
 
 # =============================================================================
 # USAGE SUMMARY ENDPOINTS
