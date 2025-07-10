@@ -16,7 +16,7 @@ import { authService } from '../../authService';
  * - Type-safe request/response
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://idyllic-moxie-aedb62.netlify.app/0';
 
 export class AssistantApiClient {
   private readonly baseUrl: string;

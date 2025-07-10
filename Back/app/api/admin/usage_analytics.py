@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy import select, func, and_, desc, or_
 
 # Import our dependencies
-from ...core.database import get_async_db, AsyncSessionLocal
+from ...core.database import get_async_db, get_async_session_factory
 from ...core.security import get_current_admin_user
 from ...models.user import User
 # Import usage service from services package
@@ -56,35 +56,36 @@ async def get_provider_usage_stats_fixed(
     logger.info(f"🔍 [PROVIDER STATS] Testing database connectivity...")
     
     try:
+        AsyncSessionLocal = get_async_session_factory()
         async with AsyncSessionLocal() as test_session:
             # Simple connectivity test
             test_result = await test_session.execute(select(func.count(UsageLog.id)))
             total_logs = test_result.scalar()
             logger.info(f"🔍 [PROVIDER STATS] Database test successful - found {total_logs} total usage logs")
-            
-            # Test for logs in the date range
-            date_range_result = await test_session.execute(
-                select(func.count(UsageLog.id)).where(
-                    and_(
-                        UsageLog.created_at >= start_date,
-                        UsageLog.created_at <= end_date
+                
+                # Test for logs in the date range
+                date_range_result = await test_session.execute(
+                    select(func.count(UsageLog.id)).where(
+                        and_(
+                            UsageLog.created_at >= start_date,
+                            UsageLog.created_at <= end_date
+                        )
                     )
                 )
-            )
-            logs_in_range = date_range_result.scalar()
-            logger.info(f"🔍 [PROVIDER STATS] Found {logs_in_range} usage logs in date range {start_date} to {end_date}")
-            
-            if logs_in_range == 0:
-                logger.warning(f"⚠️ [PROVIDER STATS] No usage logs found in the specified date range - returning empty stats")
-                return []
-            
-    except Exception as db_error:
-        logger.error(f"❌ [PROVIDER STATS] Database connectivity test failed: {str(db_error)}")
-        import traceback
-        logger.error(f"❌ [PROVIDER STATS] Database test traceback: {traceback.format_exc()}")
-        return []
-    
-    async with AsyncSessionLocal() as session:
+                logs_in_range = date_range_result.scalar()
+                logger.info(f"🔍 [PROVIDER STATS] Found {logs_in_range} usage logs in date range {start_date} to {end_date}")
+                
+                if logs_in_range == 0:
+                    logger.warning(f"⚠️ [PROVIDER STATS] No usage logs found in the specified date range - returning empty stats")
+                    return []
+                
+        except Exception as db_error:
+            logger.error(f"❌ [PROVIDER STATS] Database connectivity test failed: {str(db_error)}")
+            import traceback
+            logger.error(f"❌ [PROVIDER STATS] Database test traceback: {traceback.format_exc()}")
+            return []
+        
+        async with get_async_session_factory()() as session:
         try:
             import logging
             logger = logging.getLogger(__name__)

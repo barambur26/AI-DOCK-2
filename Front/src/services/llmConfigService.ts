@@ -195,7 +195,7 @@ async function apiRequest<T>(
   }
 
   // Build full URL
-  const baseUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8000';
+  const baseUrl = (import.meta as any).env?.VITE_API_URL || 'https://idyllic-moxie-aedb62.netlify.app/0';
   const url = `${baseUrl}/admin/llm-configs${endpoint}`;
 
   // Set up headers

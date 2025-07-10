@@ -13,7 +13,7 @@ export class DebugService {
     console.log('🔍 Environment Debug Information:');
     console.log('NODE_ENV:', import.meta.env.MODE);
     console.log('VITE_API_URL from env:', import.meta.env.VITE_API_URL);
-    console.log('Current API URL being used:', import.meta.env.VITE_API_URL || 'http://localhost:8000');
+    console.log('Current API URL being used:', import.meta.env.VITE_API_URL || 'https://idyllic-moxie-aedb62.netlify.app/0');
     console.log('Available env vars:', Object.keys(import.meta.env));
     console.log('Full env object:', import.meta.env);
   }
@@ -27,7 +27,7 @@ export class DebugService {
     status?: number;
     message: string;
   }> {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const apiUrl = import.meta.env.VITE_API_URL || 'https://idyllic-moxie-aedb62.netlify.app/0';
     
     try {
       console.log('🔌 Testing API connection to:', apiUrl);
@@ -71,7 +71,7 @@ export class DebugService {
     actualApiUrl: string;
   } {
     const expectedApiUrl = 'https://ai-dock-2-production.up.railway.app';
-    const actualApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const actualApiUrl = import.meta.env.VITE_API_URL || 'https://idyllic-moxie-aedb62.netlify.app/0';
     
     return {
       isDevelopment: import.meta.env.DEV,

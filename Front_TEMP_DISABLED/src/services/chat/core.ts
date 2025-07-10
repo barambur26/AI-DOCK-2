@@ -6,7 +6,7 @@ import { authService } from '../authService';
 import { createChatServiceError, logChatError } from './errors';
 
 // Configuration - using same base URL as auth service
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'https://idyllic-moxie-aedb62.netlify.app/0';
 
 /**
  * Core Chat Service - handles basic chat operations

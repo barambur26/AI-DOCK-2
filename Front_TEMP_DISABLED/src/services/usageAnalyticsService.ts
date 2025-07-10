@@ -5,7 +5,7 @@
 import { authService } from './authService';
 
 // Base API configuration
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'https://idyllic-moxie-aedb62.netlify.app/0';
 
 /**
  * Usage Analytics Service

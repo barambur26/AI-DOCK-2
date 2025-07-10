@@ -1167,7 +1167,7 @@ Build a secure internal web application that lets company users access multiple 
 - **User Issue:** "The save changes button of the custom assistants panel when I'm editing an assistant loads forever when I click it. I think its not connected to anything."
 - **Root Cause Analysis:** ✅
   - **Backend Server Not Running:** uvicorn server not started, causing frontend requests to hang indefinitely
-  - **Request Hanging:** Frontend makes PUT request to `http://localhost:8000/assistants/{id}` but no server responds
+  - **Request Hanging:** Frontend makes PUT request to `https://idyllic-moxie-aedb62.netlify.app/0/assistants/{id}` but no server responds
   - **Loading State Stuck:** `isSubmitting` state never resets because `finally` block never executes
   - **No Error Handling:** Network timeouts not handled, requests hang forever instead of failing gracefully
 - **Technical Solution:** ✅
@@ -1183,7 +1183,7 @@ Build a secure internal web application that lets company users access multiple 
 - **Expected Outcome:** Save Changes button works properly when backend server is running ✅
 - **Testing Steps:** ✅
   1. Start backend server with `uvicorn app.main:app --reload`
-  2. Verify server running at `http://localhost:8000/health`
+  2. Verify server running at `https://idyllic-moxie-aedb62.netlify.app/0/health`
   3. Open assistant edit modal in frontend
   4. Make changes and click Save Changes
   5. Verify button completes successfully and modal closes

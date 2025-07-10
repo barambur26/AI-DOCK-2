@@ -5,7 +5,7 @@ import { ConversationDetail, ConversationOperationResponse } from '../types/conv
 import { ChatMessage } from '../types/chat';
 import { authService } from './authService';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://idyllic-moxie-aedb62.netlify.app/0';
 
 /**
  * State tracker to prevent concurrent saves and race conditions

@@ -12,7 +12,7 @@ import {
 import { authService } from './authService';
 
 // Use the same API base URL and auth as other services
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://idyllic-moxie-aedb62.netlify.app/0';
 
 /**
  * Assistant File Service

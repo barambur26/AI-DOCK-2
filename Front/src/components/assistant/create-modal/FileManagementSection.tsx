@@ -102,7 +102,7 @@ export const FileManagementSection: React.FC<FileManagementSectionProps> = ({
           reject(new Error('Upload failed'));
         });
 
-        xhr.open('POST', 'http://localhost:8000/api/files/upload');
+        xhr.open('POST', 'https://idyllic-moxie-aedb62.netlify.app/0/api/files/upload');
         xhr.setRequestHeader('Authorization', `Bearer ${localStorage.getItem('token')}`);
         xhr.send(formData);
       });

@@ -14,7 +14,7 @@ from ..models.usage_log import UsageLog
 from ..models.user import User
 from ..models.department import Department
 from ..models.llm_config import LLMConfiguration
-from ..core.database import AsyncSessionLocal
+from ..core.database import get_async_session_factory
 
 class UsageService:
     """
@@ -67,7 +67,7 @@ class UsageService:
         
         # DEDUPLICATION: Check if this request has already been logged
         if request_id:
-            async with AsyncSessionLocal() as check_session:
+            async with get_async_session_factory()() as check_session:
                 try:
                     existing_log_result = await check_session.execute(
                         select(UsageLog).where(UsageLog.request_id == request_id)
@@ -84,7 +84,7 @@ class UsageService:
         main_log = None
         
         # Get database session for main logging
-        async with AsyncSessionLocal() as session:
+        async with get_async_session_factory()() as session:
             try:
                 self.logger.debug(f"Starting usage log creation for user {user_id}, request {request_id}")
                 
@@ -252,7 +252,7 @@ class UsageService:
                         self.logger.warning(f"Creating emergency log for user {user_id} due to main logging failure")
                         
                         # Use a NEW session for emergency logging
-                        async with AsyncSessionLocal() as emergency_session:
+                        async with get_async_session_factory()() as emergency_session:
                             emergency_log = UsageLog(
                                 user_id=user_id,
                                 department_id=None,
@@ -341,7 +341,7 @@ class UsageService:
         if end_date.tzinfo is None:
             end_date = end_date.replace(tzinfo=timezone.utc)
         
-        async with AsyncSessionLocal() as session:
+        async with get_async_session_factory()() as session:
             # 🔧 FIX: Add cache-busting parameter to prevent query caching
             # This ensures fresh data by making each query unique
             cache_buster = datetime.utcnow().microsecond
@@ -517,7 +517,7 @@ class UsageService:
         if end_date.tzinfo is None:
             end_date = end_date.replace(tzinfo=timezone.utc)
         
-        async with AsyncSessionLocal() as session:
+        async with get_async_session_factory()() as session:
             # 🔧 FIX: Add cache-busting parameter to prevent query caching
             # This ensures fresh data by making each query unique
             cache_buster = datetime.utcnow().microsecond
@@ -593,7 +593,7 @@ class UsageService:
         if end_date.tzinfo is None:
             end_date = end_date.replace(tzinfo=timezone.utc)
         
-        async with AsyncSessionLocal() as session:
+        async with get_async_session_factory()() as session:
             # 🔧 FIX: Add cache-busting parameter to prevent query caching
             # This ensures fresh data by making each query unique
             cache_buster = datetime.utcnow().microsecond
@@ -739,7 +739,7 @@ class UsageService:
             # Step 1: Test database connectivity first
             try:
                 from sqlalchemy import select, func
-                async with AsyncSessionLocal() as test_session:
+                async with get_async_session_factory()() as test_session:
                     test_result = await test_session.execute(select(func.count(UsageLog.id)))
                     total_logs = test_result.scalar()
                     self.logger.info(f"🔧 [ISOLATED LOG] Database test passed, total logs: {total_logs}")
@@ -750,7 +750,7 @@ class UsageService:
                 raise
             
             # Step 2: Create completely separate database session
-            async with AsyncSessionLocal() as isolated_session:
+            async with get_async_session_factory()() as isolated_session:
                 try:
                     # Load user and related data using the isolated session with eager loading
                     from sqlalchemy.orm import selectinload

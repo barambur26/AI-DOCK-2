@@ -794,7 +794,7 @@ import { useDropzone } from 'react-dropzone';
 - **Backend**: `/Back/.env` (see `/Back/.env.example`)
   - `DATABASE_URL`, `SECRET_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`
 - **Frontend**: `/Front/.env.local`
-  - `VITE_API_BASE_URL=http://localhost:8000`
+  - `VITE_API_BASE_URL=https://idyllic-moxie-aedb62.netlify.app/0`
 
 ### Key Configuration Files
 - **Backend Config**: `/Back/app/core/config.py` - All environment settings

@@ -20,7 +20,7 @@ import { UserResponse } from '../types/admin';
 import { QuotaResponse } from '../types/quota';
 
 // Get the API base URL from environment
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://idyllic-moxie-aedb62.netlify.app/0';
 
 class ManagerService {
   private apiUrl: string;

@@ -28,7 +28,7 @@ function App() {
     } else {
       // In production, just log basic info
       console.log('🎆 AI Dock Frontend Started');
-      console.log('API URL:', import.meta.env.VITE_API_URL || 'http://localhost:8000');
+      console.log('API URL:', import.meta.env.VITE_API_URL || 'https://idyllic-moxie-aedb62.netlify.app/0');
     }
   }, []);
 
