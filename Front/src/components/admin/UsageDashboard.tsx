@@ -99,8 +99,8 @@ const UsageDashboard: React.FC = () => {
       const providerList = await usageAnalyticsService.getProviders();
       if (mountedRef.current) {
         setProviders(providerList);
-        // Initialize with all providers selected
-        setSelectedProviders(providerList.map(p => p.value));
+        // Initialize with NO providers selected (empty filters)
+        setSelectedProviders([]);
       }
     } catch (error) {
       console.error('Failed to load providers:', error);
@@ -124,8 +124,8 @@ const UsageDashboard: React.FC = () => {
       if (mountedRef.current) {
         setModels(modelList);
         setModelsByProvider(modelsByProviderMap);
-        // Initialize with all models selected
-        setSelectedModels(modelList.map(m => m.value));
+        // Initialize with NO models selected (empty filters)
+        setSelectedModels([]);
       }
     } catch (error) {
       console.error('Failed to load models:', error);
