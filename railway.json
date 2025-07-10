@@ -16,13 +16,13 @@
   "environments": {
     "production": {
       "variables": {
-        "ENVIRONMENT": "staging",
+        "ENVIRONMENT": "production",
         "DEBUG": "false"
       }
     },
     "staging": {
       "variables": {
-        "ENVIRONMENT": "staging", 
+        "ENVIRONMENT": "production", 
         "DEBUG": "true"
       }
     }

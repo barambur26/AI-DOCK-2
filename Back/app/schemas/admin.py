@@ -664,7 +664,7 @@ class SuccessResponse(BaseModel):
     data: Optional[Dict[str, Any]] = None
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "success": True,
                 "message": "User created successfully",
@@ -689,7 +689,7 @@ class ErrorResponse(BaseModel):
     error_code: Optional[str] = None
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "success": False,
                 "error": "User with this email already exists",
@@ -861,7 +861,7 @@ class BulkOperationResult(BaseModel):
     )
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "total_requested": 5,
                 "successful_count": 4,

@@ -77,7 +77,7 @@ class QuotaCreateRequest(BaseModel):
         return v.strip()
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "department_id": 1,
                 "llm_config_id": 1,
@@ -141,7 +141,7 @@ class QuotaUpdateRequest(BaseModel):
         return v.strip() if v else v
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "limit_value": 1500.00,
                 "name": "Engineering OpenAI Monthly Budget (Updated)",
@@ -282,7 +282,7 @@ class QuotaResponse(BaseModel):
     
     class Config:
         from_attributes = True
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "id": 1,
                 "department_id": 1,
@@ -331,7 +331,7 @@ class QuotaListResponse(BaseModel):
     summary: Dict[str, Any] = Field(description="Summary statistics about the quotas")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "quotas": [
                     # QuotaResponse examples would go here
@@ -383,7 +383,7 @@ class DepartmentQuotaStatusResponse(BaseModel):
     quotas: List[QuotaResponse]
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "department_id": 1,
                 "department_name": "Engineering",
@@ -428,7 +428,7 @@ class QuotaResetResponse(BaseModel):
     new_usage: float = 0.0
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "success": True,
                 "message": "Quota reset successfully",
@@ -451,7 +451,7 @@ class BulkQuotaOperationResponse(BaseModel):
     results: List[Dict[str, Any]]
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "success": True,
                 "message": "Bulk operation completed",
@@ -481,7 +481,7 @@ class QuotaErrorResponse(BaseModel):
     timestamp: datetime = Field(description="When the error occurred")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "error": "quota_not_found",
                 "message": "Quota with ID 123 not found",
@@ -502,7 +502,7 @@ class ValidationErrorResponse(BaseModel):
     timestamp: datetime = Field(description="When the error occurred")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "error": "validation_error",
                 "message": "Request validation failed",

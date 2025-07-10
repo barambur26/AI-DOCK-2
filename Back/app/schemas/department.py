@@ -350,7 +350,7 @@ class DepartmentListResponse(BaseModel):
     has_previous_page: bool
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "departments": [],  # Would contain DepartmentWithStats objects
                 "total_count": 25,
@@ -460,7 +460,7 @@ class DepartmentSearchFilters(BaseModel):
         return v.lower() if v else v
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "search_query": "eng",
                 "min_budget": 1000.00,
@@ -498,7 +498,7 @@ class DepartmentBudgetUpdate(BaseModel):
     )
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "monthly_budget": 7500.00,
                 "reason": "Increased team size and AI usage requirements"
@@ -533,7 +533,7 @@ class DepartmentBulkAction(BaseModel):
         return v
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "department_ids": [1, 2, 3],
                 "action": "activate"
@@ -557,7 +557,7 @@ class DepartmentDropdownOption(BaseModel):
     code: Optional[str] = Field(description="Department code")
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "value": 1,
                 "label": "Engineering",
@@ -603,7 +603,7 @@ class DepartmentOperationResponse(BaseModel):
     affected_users: Optional[int] = None
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "success": True,
                 "message": "Department created successfully",
@@ -626,7 +626,7 @@ class DepartmentInitializationResponse(BaseModel):
     created_departments: List[str] = Field(description="Names of created departments")
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "success": True,
                 "message": "Default departments initialization completed",

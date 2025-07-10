@@ -225,7 +225,7 @@ class FileUploadValidation(BaseModel):
         return v
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "filename": "document.pdf",
                 "file_size": 2097152,  # 2MB
@@ -284,7 +284,7 @@ class FileUploadResponse(BaseModel):
         json_encoders = {
             datetime: lambda v: v.isoformat()
         }
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "id": 123,
                 "original_filename": "my_document.txt",
@@ -348,7 +348,7 @@ class FileListResponse(BaseModel):
     has_previous: bool = Field(..., description="Whether there are previous pages")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "files": [
                     {
@@ -453,7 +453,7 @@ class FileSearchRequest(BaseModel):
         return v
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "query": "document",
                 "file_type": "text/plain",
@@ -493,7 +493,7 @@ class FileDeleteRequest(BaseModel):
     )
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "file_ids": [123, 124, 125],
                 "permanent": False
@@ -510,7 +510,7 @@ class FileDeleteResponse(BaseModel):
     errors: List[str] = Field(default_factory=list, description="Error messages for failed deletions")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "deleted_count": 3,
                 "failed_count": 0,
@@ -544,7 +544,7 @@ class FileStatistics(BaseModel):
     most_active_users: List[dict] = Field(..., description="Users with most uploads")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "total_files": 150,
                 "total_size_bytes": 52428800,
@@ -600,7 +600,7 @@ class FileUploadError(BaseModel):
     suggested_action: Optional[str] = Field(None, description="Suggested action for user")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "error": "pdf_password_protected",
                 "message": "This PDF is password-protected and cannot be processed",
@@ -682,7 +682,7 @@ class UploadLimits(BaseModel):
     max_total_size_per_user: Optional[int] = Field(None, description="Max total storage per user")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "max_file_size_bytes": 10485760,
                 "max_file_size_human": "10.0 MB",
@@ -711,7 +711,7 @@ class FileHealthCheck(BaseModel):
     errors: List[str] = Field(default_factory=list, description="Any health check errors")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "status": "healthy",
                 "upload_directory_exists": True,

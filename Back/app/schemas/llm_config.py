@@ -96,7 +96,7 @@ class LLMConfigurationSimpleCreate(BaseModel):
     
     class Config:
         """Pydantic configuration."""
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "provider": "openai",
                 "name": "OpenAI Production",
@@ -471,7 +471,7 @@ class LLMConfigurationCreate(BaseModel):
     
     class Config:
         """Pydantic configuration."""
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "name": "OpenAI GPT-4 Production",
                 "description": "Primary OpenAI configuration for production use",
@@ -655,8 +655,7 @@ class LLMConfigurationResponse(BaseModel):
     class Config:
         """Allow conversion from SQLAlchemy models."""
         from_attributes = True
-        
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "id": 1,
                 "name": "OpenAI GPT-4 Production",
@@ -746,7 +745,7 @@ class LLMProviderInfo(BaseModel):
     documentation_url: Optional[str] = Field(description="Link to provider documentation")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "value": "openai",
                 "name": "OpenAI",

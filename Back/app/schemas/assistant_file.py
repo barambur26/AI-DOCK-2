@@ -32,7 +32,7 @@ class AssistantFileAttach(BaseModel):
         return v
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "file_ids": [123, 124, 125]
             }
@@ -50,7 +50,7 @@ class AssistantFileDetach(BaseModel):
     )
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "file_ids": [123, 124]
             }
@@ -76,7 +76,7 @@ class AssistantFileInfo(BaseModel):
         json_encoders = {
             datetime: lambda v: v.isoformat()
         }
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "id": 1,
                 "file_id": 123,
@@ -103,7 +103,7 @@ class AssistantFilesResponse(BaseModel):
     total_size_human: str = Field(..., description="Human-readable total size")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "assistant_id": 456,
                 "assistant_name": "Data Analyst Pro",
@@ -143,7 +143,7 @@ class AssistantFileOperationResponse(BaseModel):
     )
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "success": True,
                 "message": "Successfully attached 2 files to assistant",
@@ -198,7 +198,7 @@ class AssistantFileError(BaseModel):
     details: Optional[Dict[str, Any]] = Field(None, description="Additional error details")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "error_type": "file_not_found",
                 "message": "One or more files were not found or not owned by user",

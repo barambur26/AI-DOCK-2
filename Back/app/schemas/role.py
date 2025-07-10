@@ -71,7 +71,7 @@ class RoleResponse(BaseModel):
     class Config:
         """Allow the schema to work with SQLAlchemy models."""
         orm_mode = True
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "id": 2,
                 "name": "user",

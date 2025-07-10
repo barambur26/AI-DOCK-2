@@ -153,7 +153,7 @@ class ProcessedFileContent(BaseModel):
         json_encoders = {
             datetime: lambda v: v.isoformat()
         }
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "file_id": 123,
                 "filename": "data.csv",
@@ -316,7 +316,7 @@ class ChatSendRequest(BaseModel):
         return v
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "message": "Please analyze this sales data and identify trends.",
                 "file_ids": [123, 124],
@@ -362,7 +362,7 @@ class ChatSendResponse(BaseModel):
     )
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "success": True,
                 "conversation_id": 456,
@@ -435,7 +435,7 @@ class FileContentPreparation(BaseModel):
     )
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "processed_files": [
                     {
@@ -488,7 +488,7 @@ class ChatConversationSummary(BaseModel):
         json_encoders = {
             datetime: lambda v: v.isoformat()
         }
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "id": 456,
                 "title": "Sales Data Analysis",
@@ -538,7 +538,7 @@ class ChatError(BaseModel):
     )
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "error_type": "file_processing_failed",
                 "message": "One or more files could not be processed for AI consumption",
@@ -583,7 +583,7 @@ class ChatSystemStatus(BaseModel):
     active_conversations: Optional[int] = Field(None, description="Number of active conversations")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "chat_available": True,
                 "file_upload_available": True,
