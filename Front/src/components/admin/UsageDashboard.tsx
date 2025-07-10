@@ -155,10 +155,10 @@ const UsageDashboard: React.FC = () => {
     console.log(`📊 Loading dashboard data for ${days} days${departmentId ? ` (department: ${departmentId})` : ''}${providerIds.length ? ` (providers: ${providerIds.join(', ')})` : ''}${modelIds.length ? ` (models: ${modelIds.join(', ')})` : ''} (refresh: ${isRefresh})`);
     loadingRef.current = true;
 
-    // Update loading state
+    // Update loading state only if not already set by optimistic update
     setDashboardState(prev => ({
       ...prev,
-      isLoading: !isRefresh && !prev.data, // Only show initial loading if no data
+      isLoading: prev.isLoading || (!isRefresh && !prev.data), // Preserve optimistic loading state
       isRefreshing: isRefresh,
       error: null
     }));
@@ -182,7 +182,8 @@ const UsageDashboard: React.FC = () => {
           error: null,
           data: dashboardData,
           lastUpdated: new Date().toISOString(),
-          selectedPeriod: days
+          // Only update selectedPeriod if it hasn't been optimistically updated
+          selectedPeriod: prev.selectedPeriod === days ? prev.selectedPeriod : days
         }));
       }
 
@@ -190,12 +191,20 @@ const UsageDashboard: React.FC = () => {
       console.error('❌ Failed to load dashboard data:', error);
       
       if (mountedRef.current) {
-        setDashboardState(prev => ({
-          ...prev,
-          isLoading: false,
-          isRefreshing: false,
-          error: error instanceof Error ? error.message : 'Failed to load dashboard data'
-        }));
+        setDashboardState(prev => {
+          // If we have existing data and this was a period change that failed,
+          // reset to a period that doesn't cause confusion
+          const shouldResetPeriod = prev.data && prev.selectedPeriod !== days;
+          
+          return {
+            ...prev,
+            isLoading: false,
+            isRefreshing: false,
+            error: error instanceof Error ? error.message : 'Failed to load dashboard data',
+            // Reset selectedPeriod if this was a failed period change to avoid UI confusion
+            selectedPeriod: shouldResetPeriod ? (prev.data ? 30 : days) : days
+          };
+        });
       }
 
     } finally {
@@ -211,6 +220,16 @@ const UsageDashboard: React.FC = () => {
    */
   const handlePeriodChange = useCallback((days: number) => {
     console.log(`📅 Changing period to ${days} days`);
+    
+    // Update period immediately for UI responsiveness (optimistic update)
+    setDashboardState(prev => ({
+      ...prev,
+      selectedPeriod: days,
+      isLoading: true,
+      isRefreshing: false,
+      error: null
+    }));
+    
     loadDashboardData(days, selectedDepartment, selectedProviders, selectedModels, false);
   }, [loadDashboardData, selectedDepartment, selectedProviders, selectedModels]);
 
