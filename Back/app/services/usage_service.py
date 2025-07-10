@@ -736,7 +736,20 @@ class UsageService:
         try:
             self.logger.info(f"🔧 [ISOLATED LOG] Starting isolated usage logging for user {user_id}, request {request_id}")
             
-            # 🔑 KEY FIX: Create completely separate database session
+            # Step 1: Test database connectivity first
+            try:
+                from sqlalchemy import select, func
+                async with AsyncSessionLocal() as test_session:
+                    test_result = await test_session.execute(select(func.count(UsageLog.id)))
+                    total_logs = test_result.scalar()
+                    self.logger.info(f"🔧 [ISOLATED LOG] Database test passed, total logs: {total_logs}")
+            except Exception as db_test_error:
+                self.logger.error(f"❌ [ISOLATED LOG] Database connectivity test failed: {str(db_test_error)}")
+                import traceback
+                self.logger.error(f"❌ [ISOLATED LOG] DB test traceback: {traceback.format_exc()}")
+                raise
+            
+            # Step 2: Create completely separate database session
             async with AsyncSessionLocal() as isolated_session:
                 try:
                     # Load user and related data using the isolated session with eager loading
@@ -872,6 +885,8 @@ class UsageService:
                     # Even if the isolated session fails, rollback and re-raise
                     await isolated_session.rollback()
                     self.logger.error(f"❌ [ISOLATED LOG] Isolated session error for user {user_id}: {str(isolated_error)}")
+                    import traceback
+                    self.logger.error(f"❌ [ISOLATED LOG] Isolated traceback: {traceback.format_exc()}")
                     raise isolated_error
                     
         except Exception as e:

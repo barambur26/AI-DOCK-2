@@ -46,6 +46,10 @@ async def get_my_usage_stats(
         Detailed user usage statistics for the current user
     """
     try:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"🔍 [MY-STATS] Starting usage stats for user {current_user.id}")
+        
         # 🔧 FIX: Eagerly load relationships to prevent SQLAlchemy async errors
         from sqlalchemy import select
         
@@ -61,12 +65,53 @@ async def get_my_usage_stats(
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         
-        # Calculate date range
-        end_date = datetime.utcnow()
+        logger.info(f"🔍 [MY-STATS] User loaded: {user.email}")
+        
+        # Calculate date range with timezone awareness
+        from datetime import timezone
+        end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=days)
         
-        # Get user usage summary
-        user_summary = await usage_service.get_user_usage_summary(current_user.id, start_date, end_date)
+        logger.info(f"🔍 [MY-STATS] Date range: {start_date} to {end_date}")
+        
+        # 🔧 FIX: Add null safety check for usage_service
+        if usage_service is None:
+            logger.error("❌ [MY-STATS] Usage service is None")
+            raise HTTPException(
+                status_code=500,
+                detail="Usage service is not available"
+            )
+        
+        logger.info(f"🔍 [MY-STATS] About to call usage_service.get_user_usage_summary")
+        
+        # Get user usage summary with comprehensive error handling
+        try:
+            user_summary = await usage_service.get_user_usage_summary(current_user.id, start_date, end_date)
+            logger.info(f"✅ [MY-STATS] Usage summary retrieved successfully")
+        except Exception as usage_error:
+            logger.error(f"❌ [MY-STATS] Usage service error: {str(usage_error)}")
+            import traceback
+            logger.error(f"❌ [MY-STATS] Usage service traceback: {traceback.format_exc()}")
+            
+            # Return empty stats instead of failing
+            user_summary = {
+                "user_id": current_user.id,
+                "period": {
+                    "start_date": start_date.isoformat(),
+                    "end_date": end_date.isoformat()
+                },
+                "requests": {"total": 0, "successful": 0, "failed": 0, "success_rate": 0},
+                "tokens": {"total": 0, "input": 0, "output": 0},
+                "cost": {"total_usd": 0, "average_per_request": 0},
+                "performance": {"average_response_time_ms": 0, "max_response_time_ms": 0},
+                "favorite_provider": None,
+                "last_activity": None,
+                "debug_info": {
+                    "usage_service_error": str(usage_error),
+                    "usage_logs_table_accessible": True,
+                    "empty_stats_reason": "Usage service error - check server logs"
+                }
+            }
         
         # 🔧 FIX: Access relationship attributes directly instead of calling methods
         # that could trigger lazy loading outside async context
@@ -81,11 +126,18 @@ async def get_my_usage_stats(
             }
         })
         
+        logger.info(f"✅ [MY-STATS] Returning user summary for user {current_user.id}")
         return user_summary
         
     except HTTPException:
         raise
     except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"❌ [MY-STATS] Unexpected error: {str(e)}")
+        import traceback
+        logger.error(f"❌ [MY-STATS] Traceback: {traceback.format_exc()}")
+        
         raise HTTPException(
             status_code=500,
             detail=f"Failed to get your usage statistics: {str(e)}"
@@ -174,4 +226,140 @@ async def get_my_recent_activity(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to get your recent activity: {str(e)}"
+        )
+
+@router.get("/debug/usage-logging")
+async def debug_usage_logging(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_db)
+) -> Dict[str, Any]:
+    """
+    Debug endpoint to test and verify usage logging functionality.
+    
+    This endpoint helps diagnose why usage_logs table might be empty.
+    """
+    try:
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # Test database connectivity
+        from sqlalchemy import select, func, text
+        from ..models.usage_log import UsageLog
+        
+        debug_info = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "user_id": current_user.id,
+            "tests": {}
+        }
+        
+        # Test 1: Basic database connectivity
+        try:
+            result = await session.execute(text("SELECT 1 as test"))
+            test_value = result.scalar()
+            debug_info["tests"]["database_connectivity"] = {
+                "success": test_value == 1,
+                "result": test_value
+            }
+        except Exception as db_error:
+            debug_info["tests"]["database_connectivity"] = {
+                "success": False,
+                "error": str(db_error)
+            }
+        
+        # Test 2: Usage logs table accessibility
+        try:
+            count_result = await session.execute(select(func.count(UsageLog.id)))
+            total_logs = count_result.scalar()
+            debug_info["tests"]["usage_logs_table"] = {
+                "success": True,
+                "total_records": total_logs,
+                "table_accessible": True
+            }
+        except Exception as table_error:
+            debug_info["tests"]["usage_logs_table"] = {
+                "success": False,
+                "error": str(table_error),
+                "table_accessible": False
+            }
+        
+        # Test 3: Usage service availability
+        try:
+            debug_info["tests"]["usage_service"] = {
+                "imported": usage_service is not None,
+                "class_name": usage_service.__class__.__name__ if usage_service else None,
+                "has_log_method": hasattr(usage_service, 'log_llm_request_isolated') if usage_service else False
+            }
+        except Exception as service_error:
+            debug_info["tests"]["usage_service"] = {
+                "imported": False,
+                "error": str(service_error)
+            }
+        
+        # Test 4: Recent conversation activity (to see if chats are happening)
+        try:
+            from ..models.conversation import Conversation
+            conv_count_result = await session.execute(
+                select(func.count(Conversation.id)).where(Conversation.user_id == current_user.id)
+            )
+            user_conversations = conv_count_result.scalar()
+            debug_info["tests"]["user_activity"] = {
+                "user_conversations": user_conversations,
+                "has_recent_activity": user_conversations > 0
+            }
+        except Exception as activity_error:
+            debug_info["tests"]["user_activity"] = {
+                "error": str(activity_error)
+            }
+        
+        # Test 5: Try a mock usage log to see if it works
+        try:
+            from datetime import timezone
+            import traceback
+            mock_request_data = {
+                "messages_count": 1,
+                "total_chars": 100,
+                "parameters": {"temperature": 0.7}
+            }
+            mock_response_data = {
+                "success": True,
+                "content": "Mock response",
+                "model": "test-model",
+                "provider": "test-provider",
+                "token_usage": {"total_tokens": 50, "input_tokens": 25, "output_tokens": 25},
+                "cost": 0.001
+            }
+            mock_performance_data = {
+                "request_started_at": datetime.now(timezone.utc).isoformat(),
+                "request_completed_at": datetime.now(timezone.utc).isoformat(),
+                "response_time_ms": 1000
+            }
+            
+            # Try to create a test usage log (in a separate transaction)
+            await usage_service.log_llm_request_isolated(
+                user_id=current_user.id,
+                llm_config_id=1,  # Assuming config 1 exists
+                request_data=mock_request_data,
+                response_data=mock_response_data,
+                performance_data=mock_performance_data,
+                request_id=f"debug_test_{datetime.utcnow().timestamp()}"
+            )
+            
+            debug_info["tests"]["mock_usage_log"] = {
+                "success": True,
+                "message": "Mock usage log created successfully"
+            }
+            
+        except Exception as mock_error:
+            debug_info["tests"]["mock_usage_log"] = {
+                "success": False,
+                "error": str(mock_error),
+                "traceback": traceback.format_exc()
+            }
+        
+        return debug_info
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Debug endpoint failed: {str(e)}"
         ) 

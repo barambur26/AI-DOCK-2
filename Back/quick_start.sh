@@ -18,9 +18,9 @@ fi
 source ai_dock_env/bin/activate
 
 echo "🚀 Starting FastAPI server..."
-echo "   URL: http://localhost:8000"
-echo "   Docs: http://localhost:8000/docs"
-echo "   Health: http://localhost:8000/health"
+echo "   URL: https://idyllic-moxie-aedb62.netlify.app/0"
+echo "   Docs: https://idyllic-moxie-aedb62.netlify.app/0/docs"
+echo "   Health: https://idyllic-moxie-aedb62.netlify.app/0/health"
 echo ""
 echo "⚠️  Press Ctrl+C to stop the server"
 echo "=================================="

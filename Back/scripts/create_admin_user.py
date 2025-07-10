@@ -384,7 +384,7 @@ async def main():
         print("-" * 30)
         print("1. Start the backend server:")
         print("   cd Back && uvicorn app.main:app --reload")
-        print("\n2. Test the API at: http://localhost:8000/docs")
+        print("\n2. Test the API at: https://idyllic-moxie-aedb62.netlify.app/0/docs")
         print("\n3. Login using the /auth/login endpoint with the credentials above")
         print("\n4. Access the admin panel to configure users and departments")
         

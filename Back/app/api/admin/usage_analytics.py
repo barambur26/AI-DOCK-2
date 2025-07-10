@@ -6,6 +6,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy import select, func, and_, desc, or_
 
 # Import our dependencies
 from ...core.database import get_async_db, AsyncSessionLocal

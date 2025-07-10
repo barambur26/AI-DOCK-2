@@ -76,10 +76,10 @@ python -m app.main
 
 Open your browser and visit:
 
-- **API Homepage**: http://localhost:8000
-- **Health Check**: http://localhost:8000/health  
-- **API Documentation**: http://localhost:8000/docs 🎉
-- **Alternative Docs**: http://localhost:8000/redoc
+- **API Homepage**: https://idyllic-moxie-aedb62.netlify.app/0
+- **Health Check**: https://idyllic-moxie-aedb62.netlify.app/0/health  
+- **API Documentation**: https://idyllic-moxie-aedb62.netlify.app/0/docs 🎉
+- **Alternative Docs**: https://idyllic-moxie-aedb62.netlify.app/0/redoc
 
 You should see:
 ```json
@@ -113,15 +113,15 @@ Back/
 
 ```bash
 # Health check
-curl http://localhost:8000/health
+curl https://idyllic-moxie-aedb62.netlify.app/0/health
 
 # Root endpoint
-curl http://localhost:8000/
+curl https://idyllic-moxie-aedb62.netlify.app/0/
 ```
 
 ### Using the Interactive Docs
 
-1. Go to http://localhost:8000/docs
+1. Go to https://idyllic-moxie-aedb62.netlify.app/0/docs
 2. Click "Try it out" on any endpoint
 3. Click "Execute" to test
 
@@ -161,7 +161,7 @@ See `.env.example` for all configuration options. Key variables:
 
 ## 📝 API Documentation
 
-Once running, visit http://localhost:8000/docs for complete API documentation with:
+Once running, visit https://idyllic-moxie-aedb62.netlify.app/0/docs for complete API documentation with:
 - Interactive endpoint testing
 - Request/response schemas  
 - Authentication examples

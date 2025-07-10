@@ -97,7 +97,7 @@ After running the setup script, you can login with:
    ```
 
 2. **Test the API**:
-   - Visit: http://localhost:8000/docs
+   - Visit: https://idyllic-moxie-aedb62.netlify.app/0/docs
    - Use the `/auth/login` endpoint with the admin credentials
 
 3. **Access Admin Panel**:
