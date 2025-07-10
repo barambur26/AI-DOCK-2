@@ -268,9 +268,8 @@ async def get_usage_summary(
         Comprehensive usage summary with metrics and breakdowns
     """
     try:
-        # 🔧 FIX: More precise date range calculation with timezone-aware datetimes
-        from datetime import timezone
-        end_date = datetime.now(timezone.utc).replace(microsecond=0)
+        # 🔧 FIX: Use timezone-naive datetimes for PostgreSQL compatibility
+        end_date = datetime.utcnow().replace(microsecond=0)
         start_date = (end_date - timedelta(days=days)).replace(microsecond=0)
         
         import logging
@@ -392,9 +391,8 @@ async def get_user_usage(
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         
-        # Calculate date range with timezone-aware datetimes
-        from datetime import timezone
-        end_date = datetime.now(timezone.utc)
+        # Calculate date range with timezone-naive datetimes for PostgreSQL compatibility
+        end_date = datetime.utcnow()
         start_date = end_date - timedelta(days=days)
         
         # Get user usage summary with null safety check
@@ -459,9 +457,8 @@ async def get_department_usage(
         if not department:
             raise HTTPException(status_code=404, detail="Department not found")
         
-        # Calculate date range with timezone-aware datetimes
-        from datetime import timezone
-        end_date = datetime.now(timezone.utc)
+        # Calculate date range with timezone-naive datetimes for PostgreSQL compatibility
+        end_date = datetime.utcnow()
         start_date = end_date - timedelta(days=days)
         
         # Get department usage summary with null safety check
