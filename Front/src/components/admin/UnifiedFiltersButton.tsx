@@ -106,7 +106,7 @@ const UnifiedFiltersButton: React.FC<UnifiedFiltersButtonProps> = ({
       const remainingProviderModels = newModels.filter(id => providerModelIds.includes(id));
       
       if (remainingProviderModels.length === 0) {
-        // Remove the provider as well
+        // Remove the provider as well (no models left)
         const newProviders = selectedProviders.filter(id => id !== model.provider);
         onProvidersChange(newProviders);
       }
@@ -116,13 +116,8 @@ const UnifiedFiltersButton: React.FC<UnifiedFiltersButtonProps> = ({
       // Selecting model
       const newModels = [...selectedModels, modelId];
       
-      // Check if all models for this provider are now selected
-      const allProviderModelsSelected = providerModelIds.every(id => 
-        newModels.includes(id)
-      );
-      
-      if (allProviderModelsSelected && !selectedProviders.includes(model.provider)) {
-        // Add the provider as well
+      // Always ensure the provider is included when ANY of its models are selected
+      if (!selectedProviders.includes(model.provider)) {
         const newProviders = [...selectedProviders, model.provider];
         onProvidersChange(newProviders);
       }
