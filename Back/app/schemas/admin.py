@@ -126,8 +126,8 @@ class UserCreateRequest(BaseModel):
         
         Learning: Config classes let us customize how Pydantic behaves.
         """
-        # Generate example JSON for API documentation
-        schema_extra = {
+        # FIXED: Updated for Pydantic v2 compatibility
+        json_schema_extra = {
             "example": {
                 "email": "jane.smith@company.com",
                 "username": "jane.smith",
@@ -139,6 +139,60 @@ class UserCreateRequest(BaseModel):
                 "is_active": True,
                 "is_admin": False,
                 "bio": "Data analyst with 5 years experience in business intelligence"
+            }
+        }
+
+
+# =============================================================================
+# COMMON RESPONSE SCHEMAS (MISSING SCHEMAS ADDED)
+# =============================================================================
+
+class SuccessResponse(BaseModel):
+    """
+    Generic success response schema.
+    
+    Learning: Consistent response format makes APIs easier to use.
+    """
+    
+    success: bool = True
+    message: str
+    data: Optional[Dict[str, Any]] = None
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "success": True,
+                "message": "User created successfully",
+                "data": {
+                    "user_id": 123
+                }
+            }
+        }
+
+
+class ErrorResponse(BaseModel):
+    """
+    Generic error response schema.
+    
+    Learning: Consistent error format helps frontend developers
+    handle errors gracefully.
+    """
+    
+    success: bool = False
+    error: str
+    details: Optional[Dict[str, Any]] = None
+    error_code: Optional[str] = None
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "success": False,
+                "error": "User with this email already exists",
+                "details": {
+                    "field": "email",
+                    "provided_value": "john@company.com"
+                },
+                "error_code": "DUPLICATE_EMAIL"
             }
         }
 
@@ -216,7 +270,7 @@ class UserUpdateRequest(BaseModel):
         return v
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "full_name": "Jane Smith-Johnson",
                 "job_title": "Senior Data Analyst",
@@ -306,11 +360,11 @@ class UserResponse(BaseModel):
         """
         Allow the schema to work with SQLAlchemy models.
         
-        Learning: orm_mode=True tells Pydantic to read data from object attributes
+        Learning: from_attributes=True tells Pydantic to read data from object attributes
         instead of just dictionaries. This lets us pass User model objects directly.
         """
-        orm_mode = True
-        schema_extra = {
+        from_attributes = True  # FIXED: Updated from orm_mode for Pydantic v2
+        json_schema_extra = {  # FIXED: Updated from schema_extra for Pydantic v2
             "example": {
                 "id": 1,
                 "email": "jane.smith@company.com",
@@ -351,7 +405,7 @@ class UserListResponse(BaseModel):
     has_previous_page: bool
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "users": [
                     # Would contain UserResponse objects
@@ -469,7 +523,7 @@ class UserSearchFilters(BaseModel):
         return v.lower() if v else v
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "search_query": "john",
                 "role_name": "user",
@@ -577,7 +631,7 @@ class BulkOperationResult(BaseModel):
     )
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "total_requested": 5,
                 "successful_count": 4,
@@ -685,7 +739,7 @@ class UserStatsResponse(BaseModel):
     )
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "total_users": 150,
                 "active_users": 142,
@@ -709,5 +763,116 @@ class UserStatsResponse(BaseModel):
                     "Finance": 10
                 },
                 "recent_logins_count": 95
+            }
+        }
+
+
+# =============================================================================
+# BULK OPERATIONS SCHEMAS (MISSING - CAUSING IMPORT ERRORS)
+# =============================================================================
+
+class BulkUserAction(str, Enum):
+    """
+    Enum for bulk actions that can be performed on multiple users.
+    
+    Learning: Enums prevent typos and make APIs more predictable.
+    """
+    ACTIVATE = "activate"
+    DEACTIVATE = "deactivate"
+    DELETE = "delete"
+    CHANGE_ROLE = "change_role"
+    CHANGE_DEPARTMENT = "change_department"
+
+
+class BulkUserOperation(BaseModel):
+    """
+    Schema for bulk operations on multiple users.
+    
+    Learning: Bulk operations are efficient for mass changes.
+    """
+    
+    user_ids: List[int] = Field(
+        ...,
+        description="List of user IDs to perform action on",
+        example=[1, 2, 3, 4, 5]
+    )
+    
+    action: BulkUserAction = Field(
+        ...,
+        description="Action to perform on the selected users"
+    )
+    
+    # Optional parameters based on action
+    new_role_id: Optional[int] = Field(
+        None,
+        description="New role ID (required for change_role action)"
+    )
+    
+    new_department_id: Optional[int] = Field(
+        None,
+        description="New department ID (required for change_department action)"
+    )
+
+    @validator('new_role_id')
+    def validate_role_for_change_role(cls, v, values):
+        """Ensure role_id is provided for change_role action."""
+        if values.get('action') == BulkUserAction.CHANGE_ROLE and v is None:
+            raise ValueError('new_role_id is required for change_role action')
+        return v
+
+    @validator('new_department_id')
+    def validate_department_for_change_department(cls, v, values):
+        """Ensure department_id is provided for change_department action."""
+        if values.get('action') == BulkUserAction.CHANGE_DEPARTMENT and v is None:
+            raise ValueError('new_department_id is required for change_department action')
+        return v
+
+
+class BulkOperationResult(BaseModel):
+    """
+    Schema for bulk operation results.
+    
+    Learning: Always provide detailed feedback for bulk operations
+    so admins know what succeeded and what failed.
+    """
+    
+    total_requested: int = Field(
+        description="Total number of users in the operation"
+    )
+    
+    successful_count: int = Field(
+        description="Number of users successfully processed"
+    )
+    
+    failed_count: int = Field(
+        description="Number of users that failed to process"
+    )
+    
+    successful_user_ids: List[int] = Field(
+        description="IDs of users that were successfully processed"
+    )
+    
+    failed_operations: List[Dict[str, Any]] = Field(
+        description="Details of failed operations"
+    )
+    
+    summary_message: str = Field(
+        description="Human-readable summary of the operation"
+    )
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "total_requested": 5,
+                "successful_count": 4,
+                "failed_count": 1,
+                "successful_user_ids": [1, 2, 3, 4],
+                "failed_operations": [
+                    {
+                        "user_id": 5,
+                        "error": "User not found"
+                    }
+                ],
+                "summary_message": "Successfully activated 4 out of 5 users. 1 user failed: User not found."
             }
         }
