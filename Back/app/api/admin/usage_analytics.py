@@ -80,30 +80,84 @@ async def get_provider_usage_stats_fixed(
                 )
             ).group_by(UsageLog.provider).params(cache_buster=cache_buster)
             
+            # 🔧 FIX: Add null safety checks for query execution
+            if provider_stats_query is None:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error("Provider stats query is None")
+                return []
+            
             result = await session.execute(provider_stats_query)
+            if result is None:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error("Query result is None")
+                return []
+                
             providers = result.fetchall()
+            if providers is None:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning("Query fetchall() returned None - using empty list")
+                providers = []
             
             provider_stats = []
             
             # Get pricing service for cost validation/updates
-            pricing_service = get_pricing_service()
+            # 🔧 FIX: Add null safety check for pricing service
+            try:
+                pricing_service = get_pricing_service()
+                if pricing_service is None:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning("Pricing service is None - continuing without pricing validation")
+            except Exception as pricing_error:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Failed to get pricing service: {str(pricing_error)}")
+                pricing_service = None
+            
+            # 🔧 FIX: Ensure providers is iterable and handle None values
+            if not providers:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info("No providers found in query results")
+                return []
             
             for provider in providers:
-                total_requests = provider.total_requests or 0
-                successful_requests = provider.successful_requests or 0
-                total_cost = float(provider.total_cost or 0)
+                # 🔧 FIX: Skip None providers
+                if provider is None:
+                    continue
+                # 🔧 FIX: Add defensive attribute access with None safety
+                try:
+                    total_requests = getattr(provider, 'total_requests', 0) or 0
+                    successful_requests = getattr(provider, 'successful_requests', 0) or 0
+                    total_cost = float(getattr(provider, 'total_cost', 0) or 0)
+                except Exception as attr_error:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Error accessing provider attributes: {str(attr_error)}")
+                    continue
+                
+                # 🔧 FIX: Get all provider attributes safely
+                provider_name = getattr(provider, 'provider', None) or "unknown"
+                avg_response_time = getattr(provider, 'avg_response_time', 0) or 0
+                max_response_time = getattr(provider, 'max_response_time', 0) or 0
+                total_tokens = getattr(provider, 'total_tokens', 0) or 0
+                input_tokens = getattr(provider, 'input_tokens', 0) or 0
+                output_tokens = getattr(provider, 'output_tokens', 0) or 0
                 
                 # 🔧 FIX: If cost is 0 but we have successful requests, update pricing
                 if total_cost == 0 and successful_requests > 0:
                     import logging
                     logger = logging.getLogger(__name__)
                     logger.warning(
-                        f"Provider {provider.provider} has {successful_requests} successful requests "
+                        f"Provider {provider_name} has {successful_requests} successful requests "
                         f"but $0.00 total cost - pricing data may be outdated"
                     )
                 
                 provider_stat = {
-                    "provider": provider.provider or "unknown",
+                    "provider": provider_name,
                     "requests": {
                         "total": total_requests,
                         "successful": successful_requests,
@@ -111,18 +165,18 @@ async def get_provider_usage_stats_fixed(
                         "success_rate": (successful_requests / total_requests * 100) if total_requests > 0 else 0
                     },
                     "tokens": {
-                        "total": int(provider.total_tokens or 0),
-                        "input": int(provider.input_tokens or 0),
-                        "output": int(provider.output_tokens or 0)
+                        "total": int(total_tokens),
+                        "input": int(input_tokens),
+                        "output": int(output_tokens)
                     },
                     "cost": {
                         "total_usd": total_cost,
                         "average_per_request": total_cost / successful_requests if successful_requests > 0 else 0,
-                        "cost_per_1k_tokens": (total_cost / (provider.total_tokens / 1000)) if provider.total_tokens and provider.total_tokens > 0 else 0
+                        "cost_per_1k_tokens": (total_cost / (total_tokens / 1000)) if total_tokens and total_tokens > 0 else 0
                     },
                     "performance": {
-                        "average_response_time_ms": int(provider.avg_response_time or 0),
-                        "max_response_time_ms": int(provider.max_response_time or 0)
+                        "average_response_time_ms": int(avg_response_time),
+                        "max_response_time_ms": int(max_response_time)
                     }
                 }
                 
@@ -137,7 +191,10 @@ async def get_provider_usage_stats_fixed(
             import logging
             logger = logging.getLogger(__name__)
             logger.error(f"Failed to get provider usage stats: {str(e)}")
-            raise
+            import traceback
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            # 🔧 FIX: Return empty list instead of raising, to prevent cascading failures
+            return []
 
 # =============================================================================
 # USAGE SUMMARY ENDPOINTS
@@ -182,27 +239,46 @@ async def get_usage_summary(
         logger.info(f"🔍 Getting usage summary for {days} days: {start_date} to {end_date}")
         
         # 🔧 FIX: Use improved provider statistics with NULL cost handling  
-        provider_stats = await get_provider_usage_stats_fixed(start_date, end_date, department_id, provider_names, model_names)
-        
-        # 🔧 FIX: Ensure provider_stats is not None
-        if provider_stats is None:
+        try:
+            provider_stats = await get_provider_usage_stats_fixed(start_date, end_date, department_id, provider_names, model_names)
+            logger.info(f"✅ Successfully retrieved {len(provider_stats) if provider_stats else 0} provider statistics")
+        except Exception as provider_error:
+            logger.error(f"❌ Provider stats failed: {str(provider_error)}")
+            import traceback
+            logger.error(f"Provider stats traceback: {traceback.format_exc()}")
             provider_stats = []
         
-        # Calculate overall totals from provider stats
-        total_requests = sum(p["requests"]["total"] for p in provider_stats)
-        total_successful = sum(p["requests"]["successful"] for p in provider_stats)
-        total_tokens = sum(p["tokens"]["total"] for p in provider_stats)
-        total_cost = sum(p["cost"]["total_usd"] for p in provider_stats)
+        # 🔧 FIX: Ensure provider_stats is not None and is a list
+        if provider_stats is None or not isinstance(provider_stats, list):
+            logger.warning(f"Provider stats is not a valid list: {type(provider_stats)}, using empty list")
+            provider_stats = []
         
-        # Calculate average response time (weighted by request count)
-        total_response_time_weighted = sum(
-            p["performance"]["average_response_time_ms"] * p["requests"]["successful"] 
-            for p in provider_stats if p["requests"]["successful"] > 0
-        )
-        avg_response_time = (
-            total_response_time_weighted / total_successful 
-            if total_successful > 0 else 0
-        )
+        # 🔧 FIX: Calculate overall totals from provider stats with null safety
+        try:
+            total_requests = sum(p.get("requests", {}).get("total", 0) for p in provider_stats if p and isinstance(p, dict))
+            total_successful = sum(p.get("requests", {}).get("successful", 0) for p in provider_stats if p and isinstance(p, dict))
+            total_tokens = sum(p.get("tokens", {}).get("total", 0) for p in provider_stats if p and isinstance(p, dict))
+            total_cost = sum(p.get("cost", {}).get("total_usd", 0) for p in provider_stats if p and isinstance(p, dict))
+            logger.info(f"✅ Calculated totals: requests={total_requests}, successful={total_successful}, tokens={total_tokens}, cost={total_cost}")
+        except Exception as calc_error:
+            logger.error(f"❌ Error calculating totals: {str(calc_error)}")
+            total_requests = total_successful = total_tokens = total_cost = 0
+        
+        # 🔧 FIX: Calculate average response time (weighted by request count) with null safety
+        try:
+            total_response_time_weighted = sum(
+                p.get("performance", {}).get("average_response_time_ms", 0) * p.get("requests", {}).get("successful", 0)
+                for p in provider_stats 
+                if p and isinstance(p, dict) and p.get("requests", {}).get("successful", 0) > 0
+            )
+            avg_response_time = (
+                total_response_time_weighted / total_successful 
+                if total_successful > 0 else 0
+            )
+            logger.info(f"✅ Calculated avg response time: {avg_response_time}ms")
+        except Exception as avg_error:
+            logger.error(f"❌ Error calculating average response time: {str(avg_error)}")
+            avg_response_time = 0
         
         return {
             "period": {
@@ -226,6 +302,11 @@ async def get_usage_summary(
         }
         
     except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"❌ USAGE SUMMARY ERROR: {str(e)}")
+        import traceback
+        logger.error(f"❌ USAGE SUMMARY TRACEBACK: {traceback.format_exc()}")
         raise HTTPException(
             status_code=500,
             detail=f"Failed to generate usage summary: {str(e)}"
