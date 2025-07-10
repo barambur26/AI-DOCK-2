@@ -11,6 +11,9 @@ interface DiagnosticResult {
   details?: string;
 }
 
+// Configuration - where our backend lives
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://ai-dock-2-production.up.railway.app';
+
 export const AssistantDiagnostic: React.FC = () => {
   const [results, setResults] = useState<DiagnosticResult[]>([]);
   const [isRunning, setIsRunning] = useState(false);
@@ -26,7 +29,7 @@ export const AssistantDiagnostic: React.FC = () => {
     setResults([...tests]);
 
     try {
-      const response = await fetch('https://idyllic-moxie-aedb62.netlify.app/0/health');
+      const response = await fetch(`${API_BASE_URL}/health`);
       if (response.ok) {
         const data = await response.json();
         tests[tests.length - 1] = {
@@ -59,7 +62,7 @@ export const AssistantDiagnostic: React.FC = () => {
     setResults([...tests]);
 
     try {
-      const response = await fetch('https://idyllic-moxie-aedb62.netlify.app/0/assistants/health');
+      const response = await fetch(`${API_BASE_URL}/assistants/health`);
       if (response.ok) {
         tests[tests.length - 1] = {
           test: 'Assistant API',
@@ -94,7 +97,7 @@ export const AssistantDiagnostic: React.FC = () => {
       const token = localStorage.getItem('auth_token');
       if (token) {
         // Try to get current user
-        const response = await fetch('https://idyllic-moxie-aedb62.netlify.app/0/auth/me', {
+        const response = await fetch(`${API_BASE_URL}/auth/me`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -151,7 +154,7 @@ export const AssistantDiagnostic: React.FC = () => {
       const token = localStorage.getItem('auth_token');
       if (token) {
         // Try to get user's assistants first
-        const listResponse = await fetch('https://idyllic-moxie-aedb62.netlify.app/0/assistants/', {
+        const listResponse = await fetch(`${API_BASE_URL}/assistants/`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
