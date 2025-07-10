@@ -255,12 +255,22 @@ class AdminService:
         if filters.is_verified is not None:
             query = query.filter(User.is_verified == filters.is_verified)
         
-        # Apply date range filters
+        # Apply date range filters with timezone handling
         if filters.created_after:
-            query = query.filter(User.created_at >= filters.created_after)
+            # 🔧 FIX: Ensure datetime is timezone-aware to prevent comparison errors
+            created_after = filters.created_after
+            if created_after.tzinfo is None:
+                from datetime import timezone
+                created_after = created_after.replace(tzinfo=timezone.utc)
+            query = query.filter(User.created_at >= created_after)
         
         if filters.created_before:
-            query = query.filter(User.created_at <= filters.created_before)
+            # 🔧 FIX: Ensure datetime is timezone-aware to prevent comparison errors  
+            created_before = filters.created_before
+            if created_before.tzinfo is None:
+                from datetime import timezone
+                created_before = created_before.replace(tzinfo=timezone.utc)
+            query = query.filter(User.created_at <= created_before)
         
         # Get total count before applying pagination
         total_count = query.count()
@@ -359,8 +369,9 @@ class AdminService:
             for field, value in update_fields.items():
                 setattr(user, field, value)
             
-            # Update the timestamp
-            user.updated_at = datetime.utcnow()
+            # Update the timestamp with timezone-aware datetime
+            from datetime import timezone
+            user.updated_at = datetime.now(timezone.utc)
             
             # Commit changes
             self.db.commit()
@@ -407,7 +418,8 @@ class AdminService:
             
             # Update password
             user.password_hash = new_password_hash
-            user.updated_at = datetime.utcnow()
+            from datetime import timezone
+            user.updated_at = datetime.now(timezone.utc)
             
             self.db.commit()
             
@@ -441,7 +453,8 @@ class AdminService:
             raise ValueError(f"User with ID {user_id} not found")
         
         user.is_active = True
-        user.updated_at = datetime.utcnow()
+        from datetime import timezone
+        user.updated_at = datetime.now(timezone.utc)
         
         self.db.commit()
         self.db.refresh(user)
@@ -466,7 +479,8 @@ class AdminService:
             raise ValueError(f"User with ID {user_id} not found")
         
         user.is_active = False
-        user.updated_at = datetime.utcnow()
+        from datetime import timezone
+        user.updated_at = datetime.now(timezone.utc)
         
         self.db.commit()
         self.db.refresh(user)
@@ -624,9 +638,11 @@ class AdminService:
             verified_users = self.db.query(User).filter(User.is_verified == True).count()
             unverified_users = total_users - verified_users
             
-            # Time-based counts
-            one_week_ago = datetime.utcnow() - timedelta(days=7)
-            one_month_ago = datetime.utcnow() - timedelta(days=30)
+            # Time-based counts with timezone-aware datetimes
+            from datetime import timezone
+            now_utc = datetime.now(timezone.utc)
+            one_week_ago = now_utc - timedelta(days=7)
+            one_month_ago = now_utc - timedelta(days=30)
             
             new_users_this_week = self.db.query(User).filter(
                 User.created_at >= one_week_ago

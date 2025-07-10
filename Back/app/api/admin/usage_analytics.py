@@ -11,7 +11,14 @@ from sqlalchemy.orm import selectinload
 from ...core.database import get_async_db, AsyncSessionLocal
 from ...core.security import get_current_admin_user
 from ...models.user import User
-from ...services.usage_service import usage_service
+# Import usage service with error handling to prevent None service
+try:
+    from ...services.usage_service import usage_service
+except ImportError as e:
+    import logging
+    logging.getLogger(__name__).error(f"Failed to import usage_service: {e}")
+    usage_service = None
+
 from ...services.litellm_pricing_service import get_pricing_service
 # Note: UserResponse import removed - it wasn't defined in auth schemas and wasn't used in this file
 
@@ -170,16 +177,21 @@ async def get_usage_summary(
         Comprehensive usage summary with metrics and breakdowns
     """
     try:
-        # 🔧 FIX: More precise date range calculation to ensure consistency
-        end_date = datetime.utcnow().replace(microsecond=0)
+        # 🔧 FIX: More precise date range calculation with timezone-aware datetimes
+        from datetime import timezone
+        end_date = datetime.now(timezone.utc).replace(microsecond=0)
         start_date = (end_date - timedelta(days=days)).replace(microsecond=0)
         
         import logging
         logger = logging.getLogger(__name__)
         logger.info(f"🔍 Getting usage summary for {days} days: {start_date} to {end_date}")
         
-        # 🔧 FIX: Use improved provider statistics with NULL cost handling
+        # 🔧 FIX: Use improved provider statistics with NULL cost handling  
         provider_stats = await get_provider_usage_stats_fixed(start_date, end_date, department_id, provider_names, model_names)
+        
+        # 🔧 FIX: Ensure provider_stats is not None
+        if provider_stats is None:
+            provider_stats = []
         
         # Calculate overall totals from provider stats
         total_requests = sum(p["requests"]["total"] for p in provider_stats)
@@ -265,11 +277,18 @@ async def get_user_usage(
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         
-        # Calculate date range
-        end_date = datetime.utcnow()
+        # Calculate date range with timezone-aware datetimes
+        from datetime import timezone
+        end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=days)
         
-        # Get user usage summary
+        # Get user usage summary with null safety check
+        # 🔧 FIX: Add null safety check to prevent 'NoneType' object is not callable
+        if usage_service is None:
+            raise HTTPException(
+                status_code=500,
+                detail="Usage service is not available"
+            )
         user_summary = await usage_service.get_user_usage_summary(user_id, start_date, end_date)
         
         # 🔧 FIX: Access relationship attributes directly instead of calling methods
@@ -325,11 +344,18 @@ async def get_department_usage(
         if not department:
             raise HTTPException(status_code=404, detail="Department not found")
         
-        # Calculate date range
-        end_date = datetime.utcnow()
+        # Calculate date range with timezone-aware datetimes
+        from datetime import timezone
+        end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=days)
         
-        # Get department usage summary
+        # Get department usage summary with null safety check
+        # 🔧 FIX: Add null safety check to prevent 'NoneType' object is not callable
+        if usage_service is None:
+            raise HTTPException(
+                status_code=500,
+                detail="Usage service is not available"
+            )
         dept_summary = await usage_service.get_department_usage_summary(department_id, start_date, end_date)
         
         # Add department information and budget context

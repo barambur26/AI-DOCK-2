@@ -328,10 +328,18 @@ class UsageService:
         Returns:
             Dictionary with usage statistics
         """
+        # 🔧 FIX: Ensure all datetime objects are timezone-aware
+        from datetime import timezone
         if not start_date:
-            start_date = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            start_date = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         if not end_date:
-            end_date = datetime.utcnow()
+            end_date = datetime.now(timezone.utc)
+            
+        # Ensure provided dates are timezone-aware
+        if start_date.tzinfo is None:
+            start_date = start_date.replace(tzinfo=timezone.utc)
+        if end_date.tzinfo is None:
+            end_date = end_date.replace(tzinfo=timezone.utc)
         
         async with AsyncSessionLocal() as session:
             # 🔧 FIX: Add cache-busting parameter to prevent query caching
@@ -496,10 +504,18 @@ class UsageService:
         
         This is crucial for quota management and departmental billing.
         """
+        # 🔧 FIX: Ensure all datetime objects are timezone-aware
+        from datetime import timezone
         if not start_date:
-            start_date = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            start_date = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         if not end_date:
-            end_date = datetime.utcnow()
+            end_date = datetime.now(timezone.utc)
+            
+        # Ensure provided dates are timezone-aware
+        if start_date.tzinfo is None:
+            start_date = start_date.replace(tzinfo=timezone.utc)
+        if end_date.tzinfo is None:
+            end_date = end_date.replace(tzinfo=timezone.utc)
         
         async with AsyncSessionLocal() as session:
             # 🔧 FIX: Add cache-busting parameter to prevent query caching
@@ -564,10 +580,18 @@ class UsageService:
         Useful for understanding which providers are most popular
         and comparing their performance and costs.
         """
+        # 🔧 FIX: Ensure all datetime objects are timezone-aware
+        from datetime import timezone
         if not start_date:
-            start_date = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            start_date = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         if not end_date:
-            end_date = datetime.utcnow()
+            end_date = datetime.now(timezone.utc)
+            
+        # Ensure provided dates are timezone-aware
+        if start_date.tzinfo is None:
+            start_date = start_date.replace(tzinfo=timezone.utc)
+        if end_date.tzinfo is None:
+            end_date = end_date.replace(tzinfo=timezone.utc)
         
         async with AsyncSessionLocal() as session:
             # 🔧 FIX: Add cache-busting parameter to prevent query caching
@@ -636,8 +660,11 @@ class UsageService:
         
         This will be expanded in AID-005-B for quota enforcement.
         """
-        start_date = datetime.utcnow() - timedelta(days=period_days)
-        end_date = datetime.utcnow()
+        # 🔧 FIX: Use timezone-aware datetime objects
+        from datetime import timezone
+        now_utc = datetime.now(timezone.utc)
+        start_date = now_utc - timedelta(days=period_days)
+        end_date = now_utc
         
         summary = await self.get_user_usage_summary(user_id, start_date, end_date)
         
@@ -660,8 +687,11 @@ class UsageService:
         
         This will be expanded in AID-005-B for quota enforcement.
         """
-        start_date = datetime.utcnow() - timedelta(days=period_days)
-        end_date = datetime.utcnow()
+        # 🔧 FIX: Use timezone-aware datetime objects
+        from datetime import timezone
+        now_utc = datetime.now(timezone.utc)
+        start_date = now_utc - timedelta(days=period_days)
+        end_date = now_utc
         
         summary = await self.get_department_usage_summary(department_id, start_date, end_date)
         
