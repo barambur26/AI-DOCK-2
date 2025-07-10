@@ -33,6 +33,12 @@ from .assistant_service import assistant_service
 # Import conversation service
 from .conversation_service import conversation_service
 
+# Import usage service
+try:
+    from .usage_service import usage_service
+except ImportError:
+    usage_service = None
+
 __all__ = [
     # Auth functions
     "authenticate_user",
@@ -48,5 +54,7 @@ __all__ = [
     # Assistant service
     "assistant_service",
     # Conversation service
-    "conversation_service"
+    "conversation_service",
+    # Usage service
+    "usage_service"
 ]

@@ -267,8 +267,8 @@ class User(Base):
         if not self.created_at:
             return False
         
-        from datetime import timedelta
-        week_ago = datetime.utcnow() - timedelta(days=7)
+        from datetime import timedelta, timezone
+        week_ago = datetime.now(timezone.utc) - timedelta(days=7)
         return self.created_at > week_ago
     
     @property
@@ -277,7 +277,14 @@ class User(Base):
         if not self.created_at:
             return 0
         
-        return (datetime.utcnow() - self.created_at).days
+        from datetime import timezone
+        now_utc = datetime.now(timezone.utc)
+        # Handle both timezone-aware and naive created_at values
+        if self.created_at.tzinfo is None:
+            created_at_utc = self.created_at.replace(tzinfo=timezone.utc)
+        else:
+            created_at_utc = self.created_at
+        return (now_utc - created_at_utc).days
     
     # =============================================================================
     # BUSINESS LOGIC METHODS
@@ -394,7 +401,8 @@ class User(Base):
     
     def update_last_login(self) -> None:
         """Update the last_login_at timestamp to now."""
-        self.last_login_at = datetime.utcnow()
+        from datetime import timezone
+        self.last_login_at = datetime.now(timezone.utc)
     
     def deactivate(self) -> None:
         """

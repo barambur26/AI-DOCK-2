@@ -11,13 +11,8 @@ from sqlalchemy.orm import selectinload
 from ...core.database import get_async_db, AsyncSessionLocal
 from ...core.security import get_current_admin_user
 from ...models.user import User
-# Import usage service with error handling to prevent None service
-try:
-    from ...services.usage_service import usage_service
-except ImportError as e:
-    import logging
-    logging.getLogger(__name__).error(f"Failed to import usage_service: {e}")
-    usage_service = None
+# Import usage service from services package
+from ...services import usage_service
 
 from ...services.litellm_pricing_service import get_pricing_service
 # Note: UserResponse import removed - it wasn't defined in auth schemas and wasn't used in this file
