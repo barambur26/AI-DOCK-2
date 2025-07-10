@@ -186,7 +186,7 @@ export const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
         
         {/* Streaming indicator with glassmorphism */}
         {isStreaming && (
-          <div className="mx-4 mb-4 p-3 bg-blue-500/20 backdrop-blur-sm border border-blue-400/30 rounded-xl flex-shrink-0 shadow-lg">
+          <div className="mx-4 mt-6 mb-4 p-3 bg-blue-500/20 backdrop-blur-sm border border-blue-400/30 rounded-xl flex-shrink-0 shadow-lg">
             <div className="flex items-center space-x-2">
               <div className="w-2 h-2 bg-blue-300 rounded-full animate-pulse shadow-lg"></div>
               <p className="text-sm text-blue-100 font-medium">AI is responding...</p>
