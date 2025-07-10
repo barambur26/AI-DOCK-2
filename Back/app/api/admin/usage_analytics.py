@@ -62,31 +62,31 @@ async def get_provider_usage_stats_fixed(
             test_result = await test_session.execute(select(func.count(UsageLog.id)))
             total_logs = test_result.scalar()
             logger.info(f"🔍 [PROVIDER STATS] Database test successful - found {total_logs} total usage logs")
-                
-                # Test for logs in the date range
-                date_range_result = await test_session.execute(
-                    select(func.count(UsageLog.id)).where(
-                        and_(
-                            UsageLog.created_at >= start_date,
-                            UsageLog.created_at <= end_date
-                        )
+            
+            # Test for logs in the date range
+            date_range_result = await test_session.execute(
+                select(func.count(UsageLog.id)).where(
+                    and_(
+                        UsageLog.created_at >= start_date,
+                        UsageLog.created_at <= end_date
                     )
                 )
-                logs_in_range = date_range_result.scalar()
-                logger.info(f"🔍 [PROVIDER STATS] Found {logs_in_range} usage logs in date range {start_date} to {end_date}")
+            )
+            logs_in_range = date_range_result.scalar()
+            logger.info(f"🔍 [PROVIDER STATS] Found {logs_in_range} usage logs in date range {start_date} to {end_date}")
+            
+            if logs_in_range == 0:
+                logger.warning(f"⚠️ [PROVIDER STATS] No usage logs found in the specified date range - returning empty stats")
+                return []
                 
-                if logs_in_range == 0:
-                    logger.warning(f"⚠️ [PROVIDER STATS] No usage logs found in the specified date range - returning empty stats")
-                    return []
-                
-        except Exception as db_error:
-            logger.error(f"❌ [PROVIDER STATS] Database connectivity test failed: {str(db_error)}")
-            import traceback
-            logger.error(f"❌ [PROVIDER STATS] Database test traceback: {traceback.format_exc()}")
-            return []
-        
+    except Exception as db_error:
+        logger.error(f"❌ [PROVIDER STATS] Database connectivity test failed: {str(db_error)}")
+        import traceback
+        logger.error(f"❌ [PROVIDER STATS] Database test traceback: {traceback.format_exc()}")
+        return []
+    
+    try:
         async with get_async_session_factory()() as session:
-        try:
             import logging
             logger = logging.getLogger(__name__)
             logger.info(f"🔍 [PROVIDER STATS] Starting with session: {session}")
