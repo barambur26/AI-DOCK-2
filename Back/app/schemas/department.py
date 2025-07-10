@@ -1,7 +1,7 @@
 # 🏢 Department Schemas
 # Pydantic schemas for department management API
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from decimal import Decimal
@@ -76,7 +76,8 @@ class DepartmentCreate(BaseModel):
         example=None
     )
 
-    @validator('code')
+    @field_validator('code')
+    @classmethod
     def validate_code(cls, v):
         """
         Validate department code format.
@@ -93,7 +94,8 @@ class DepartmentCreate(BaseModel):
                 
         return v
 
-    @validator('name')
+    @field_validator('name')
+    @classmethod
     def validate_name(cls, v):
         """Validate department name."""
         if v:
@@ -103,7 +105,7 @@ class DepartmentCreate(BaseModel):
         return v
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "name": "Engineering",
                 "code": "ENG",
@@ -174,7 +176,8 @@ class DepartmentUpdate(BaseModel):
         description="New parent department ID"
     )
 
-    @validator('code')
+    @field_validator('code')
+    @classmethod
     def validate_code(cls, v):
         """Same code validation as create."""
         if v is not None:
@@ -183,7 +186,8 @@ class DepartmentUpdate(BaseModel):
                 raise ValueError('Department code can only contain letters and numbers')
         return v
 
-    @validator('name')
+    @field_validator('name')
+    @classmethod
     def validate_name(cls, v):
         """Same name validation as create."""
         if v is not None:
@@ -191,7 +195,7 @@ class DepartmentUpdate(BaseModel):
         return v
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "name": "Engineering & Technology",
                 "monthly_budget": 6000.00,
@@ -234,8 +238,8 @@ class DepartmentResponse(BaseModel):
     budget_utilization: Optional[float] = None
 
     class Config:
-        orm_mode = True
-        schema_extra = {
+        from_attributes = True
+        json_schema_extra = {
             "example": {
                 "id": 1,
                 "name": "Engineering",
@@ -300,8 +304,8 @@ class DepartmentWithStats(BaseModel):
     active_users_today: int = 0
 
     class Config:
-        orm_mode = True
-        schema_extra = {
+        from_attributes = True
+        json_schema_extra = {
             "example": {
                 "id": 1,
                 "name": "Engineering",
@@ -447,7 +451,8 @@ class DepartmentSearchFilters(BaseModel):
         example="asc"
     )
 
-    @validator('sort_order')
+    @field_validator('sort_order')
+    @classmethod
     def validate_sort_order(cls, v):
         """Ensure sort order is valid."""
         if v is not None and v.lower() not in ['asc', 'desc']:
@@ -518,7 +523,8 @@ class DepartmentBulkAction(BaseModel):
         example="activate"
     )
 
-    @validator('action')
+    @field_validator('action')
+    @classmethod
     def validate_action(cls, v):
         """Validate action is allowed."""
         allowed_actions = ['activate', 'deactivate', 'delete']
@@ -575,7 +581,7 @@ class DepartmentHierarchy(BaseModel):
     total_budget: Decimal = Decimal('0.00')
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # Enable forward references for recursive models

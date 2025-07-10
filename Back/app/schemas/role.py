@@ -36,8 +36,8 @@ class RoleDropdownOption(BaseModel):
 
     class Config:
         """Pydantic configuration for this schema."""
-        orm_mode = True
-        schema_extra = {
+        from_attributes = True
+        json_schema_extra = {
             "example": {
                 "value": 2,
                 "label": "Standard User", 
@@ -139,7 +139,7 @@ class RoleCreateRequest(BaseModel):
     )
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "name": "analyst",
                 "display_name": "Data Analyst",
@@ -219,7 +219,7 @@ class RoleListResponse(BaseModel):
     has_previous_page: bool
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "roles": [],  # Would contain RoleResponse objects
                 "total_count": 5,
