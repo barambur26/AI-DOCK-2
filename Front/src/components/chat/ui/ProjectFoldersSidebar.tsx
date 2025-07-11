@@ -78,10 +78,18 @@ export const ProjectFoldersSidebar: React.FC<ProjectFoldersSidebarProps> = ({
     }
   };
 
-  // Load folders on mount
+  // Load folders on mount and when refresh trigger changes
   useEffect(() => {
     loadFolders();
   }, []);
+
+  // 🔄 Reload folders when refresh trigger changes (conversation updates)
+  useEffect(() => {
+    if (refreshTrigger !== undefined && refreshTrigger > 0) {
+      console.log('🔄 Refreshing folders due to conversation changes:', refreshTrigger);
+      loadFolders();
+    }
+  }, [refreshTrigger]);
 
   // 🔧 FIXED: Pure folder navigation - no impact on active chat
   const handleFolderSelect = (folderId: number | null) => {

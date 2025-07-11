@@ -139,25 +139,25 @@ export const ProjectConversationList: React.FC<ProjectConversationListProps> = (
 
   return (
     <div 
-      className={`bg-white/95 backdrop-blur-sm border border-white/20 rounded-2xl shadow-2xl ${className}`}
+      className={`bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl shadow-2xl ${className}`}
     >
       <div className="relative">
         {/* Header */}
-        <div className="p-4 border-b border-white/20">
+        <div className="p-4 border-b border-white/10">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-600 rounded-lg">
+              <div className="w-8 h-8 flex items-center justify-center bg-blue-500/20 backdrop-blur-sm border border-blue-400/30 text-blue-200 rounded-lg">
                 <FolderOpen className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="font-semibold text-gray-800 truncate">{projectName}</h3>
-                <p className="text-xs text-gray-500">{filteredConversations.length} conversations</p>
+                <h3 className="font-semibold text-white truncate">{projectName}</h3>
+                <p className="text-xs text-blue-300">{filteredConversations.length} conversations</p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => handleSortChange(sortBy)}
-                className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-all duration-200"
+                className="p-2 text-blue-200 hover:text-white hover:bg-white/10 backdrop-blur-sm border border-white/10 rounded-lg transition-all duration-200 hover:scale-105 transform"
                 title={`Sort by ${sortBy} (${sortDirection})`}
               >
                 {sortDirection === 'asc' ? (
@@ -169,7 +169,7 @@ export const ProjectConversationList: React.FC<ProjectConversationListProps> = (
               {!isStreaming && onNewConversation && (
                 <button
                   onClick={onNewConversation}
-                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                  className="p-2 text-blue-200 hover:text-white hover:bg-white/10 backdrop-blur-sm border border-white/10 rounded-lg transition-all duration-200 hover:scale-105 transform"
                   title="New conversation in this project"
                 >
                   <Plus className="w-4 h-4" />
@@ -180,18 +180,18 @@ export const ProjectConversationList: React.FC<ProjectConversationListProps> = (
 
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-blue-300" />
             <input
               type="text"
               placeholder="Search conversations..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-10 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              className="w-full pl-10 pr-10 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 text-sm text-white placeholder-blue-300 transition-all duration-200"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-300 hover:text-white"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -204,18 +204,18 @@ export const ProjectConversationList: React.FC<ProjectConversationListProps> = (
           {loading && (
             <div className="flex items-center justify-center py-8">
               <div className="flex items-center space-x-2">
-                <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                <span className="text-sm text-gray-600">Loading conversations...</span>
+                <Loader2 className="w-4 h-4 animate-spin text-blue-300" />
+                <span className="text-sm text-blue-200">Loading conversations...</span>
               </div>
             </div>
           )}
 
           {error && (
             <div className="p-4 text-center">
-              <p className="text-sm text-red-600 mb-2">{error}</p>
+              <p className="text-sm text-red-300 mb-2">{error}</p>
               <button
                 onClick={loadConversations}
-                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
+                className="px-3 py-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white rounded-lg text-sm transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
               >
                 Try Again
               </button>
@@ -226,19 +226,19 @@ export const ProjectConversationList: React.FC<ProjectConversationListProps> = (
             <div className="p-8 text-center">
               {searchQuery ? (
                 <div>
-                  <Search className="w-8 h-8 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500 text-sm">No conversations found</p>
-                  <p className="text-gray-400 text-xs mt-1">Try a different search term</p>
+                  <Search className="w-8 h-8 text-blue-300 mx-auto mb-3" />
+                  <p className="text-blue-200 text-sm">No conversations found</p>
+                  <p className="text-blue-300 text-xs mt-1">Try a different search term</p>
                 </div>
               ) : (
                 <div>
-                  <MessageSquare className="w-8 h-8 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500 text-sm">No conversations yet</p>
-                  <p className="text-gray-400 text-xs mt-1">Start chatting to create conversations</p>
+                  <MessageSquare className="w-8 h-8 text-blue-300 mx-auto mb-3" />
+                  <p className="text-blue-200 text-sm">No conversations yet</p>
+                  <p className="text-blue-300 text-xs mt-1">Start chatting to create conversations</p>
                   {onNewConversation && (
                     <button
                       onClick={onNewConversation}
-                      className="mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                      className="mt-3 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white rounded-lg text-sm font-medium transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
                     >
                       Start New Chat
                     </button>
@@ -257,24 +257,24 @@ export const ProjectConversationList: React.FC<ProjectConversationListProps> = (
                   disabled={isStreaming}
                   className={`w-full p-3 rounded-lg text-left transition-all duration-200 ${
                     currentConversationId === conversation.id
-                      ? 'bg-blue-50 border border-blue-200'
-                      : 'hover:bg-gray-50 border border-transparent'
-                  } ${isStreaming ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                      ? 'bg-blue-500/20 backdrop-blur-sm border border-blue-400/30'
+                      : 'hover:bg-white/10 backdrop-blur-sm border border-transparent hover:border-white/20'
+                  } ${isStreaming ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-[1.02] transform'}`}
                 >
                   <div className="flex items-start space-x-3">
-                    <div className="w-6 h-6 flex items-center justify-center bg-gray-100 text-gray-600 rounded-lg mt-1">
+                    <div className="w-6 h-6 flex items-center justify-center bg-blue-500/20 backdrop-blur-sm border border-blue-400/30 text-blue-200 rounded-lg mt-1">
                       <MessageSquare className="w-3 h-3" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-gray-800 truncate text-sm">
+                      <h4 className="font-medium text-white truncate text-sm">
                         {conversation.title}
                       </h4>
                                              {(conversation as any).preview && (
-                         <p className="text-xs text-gray-500 truncate mt-1">
+                         <p className="text-xs text-blue-300 truncate mt-1">
                            {(conversation as any).preview}
                          </p>
                        )}
-                      <div className="flex items-center space-x-3 mt-2 text-xs text-gray-400">
+                      <div className="flex items-center space-x-3 mt-2 text-xs text-blue-400">
                         <div className="flex items-center space-x-1">
                           <Hash className="w-3 h-3" />
                           <span>{conversation.message_count} msgs</span>
@@ -293,17 +293,17 @@ export const ProjectConversationList: React.FC<ProjectConversationListProps> = (
         </div>
 
         {/* Footer with sort options */}
-        <div className="p-3 border-t border-white/20 bg-gray-50/50">
-          <div className="flex items-center space-x-2 text-xs text-gray-500">
+        <div className="p-3 border-t border-white/10 bg-white/5 backdrop-blur-sm">
+          <div className="flex items-center space-x-2 text-xs text-blue-300">
             <span>Sort by:</span>
             {(['updated_at', 'created_at', 'title', 'message_count'] as SortOption[]).map((option) => (
               <button
                 key={option}
                 onClick={() => handleSortChange(option)}
-                className={`px-2 py-1 rounded transition-colors ${
+                className={`px-2 py-1 rounded transition-all duration-200 ${
                   sortBy === option 
-                    ? 'bg-blue-100 text-blue-700 border border-blue-200' 
-                    : 'hover:bg-gray-100 text-gray-600'
+                    ? 'bg-blue-500/20 backdrop-blur-sm text-blue-100 border border-blue-400/30' 
+                    : 'hover:bg-white/10 text-blue-200 hover:text-white'
                 }`}
               >
                 {option.replace('_', ' ')}
