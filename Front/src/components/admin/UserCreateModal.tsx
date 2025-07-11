@@ -716,7 +716,7 @@ export const UserCreateModal: React.FC<UserCreateModalProps> = ({
               />
             </div>
 
-            {/* UX Note: New users are active by default. Admin privileges are determined by role selection. 
+            {/* UX Note: New users are active by default. Admin privileges are determined by Admin role selection only. 
                 Account status can be managed later via the user dashboard. */}
 
             {/* Form-level error */}

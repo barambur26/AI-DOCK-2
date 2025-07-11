@@ -689,13 +689,6 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
                 <span className="ml-2 text-sm text-gray-700">Active Account</span>
               </label>
             </div>
-            
-            {/* Note: Admin privileges are automatically determined by the user's role */}
-            <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-              <p className="text-sm text-blue-800">
-                💡 Admin privileges are automatically assigned based on the selected role (Admin/Manager roles get admin access).
-              </p>
-            </div>
 
             {/* Changes indicator */}
             {hasChanges() && (
