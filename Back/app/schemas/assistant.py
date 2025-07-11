@@ -681,11 +681,33 @@ def create_assistant_response_from_model(
     if assistant_model.model_preferences and isinstance(assistant_model.model_preferences, dict):
         defaults.update(assistant_model.model_preferences)
     
+    # Get color safely (avoid relationship access)
+    color = assistant_model.color
+    if not color:
+        # Generate color based on assistant name/id for consistency  
+        from ..models.assistant import generate_assistant_color
+        color = generate_assistant_color(assistant_model.name or str(assistant_model.id))
+    
+    # For newly created assistants, avoid accessing assistant_files relationship
+    # which can cause async/sync issues. New assistants have no files.
+    file_count = 0
+    has_files = False
+    
+    # If assistant has been loaded with relationships, we can safely access them
+    if hasattr(assistant_model, 'assistant_files') and assistant_model.assistant_files is not None:
+        try:
+            file_count = len(assistant_model.assistant_files)
+            has_files = file_count > 0
+        except Exception:
+            # If there's any issue accessing the relationship, use defaults
+            file_count = 0
+            has_files = False
+    
     return AssistantResponse(
         id=assistant_model.id,
         name=assistant_model.name,
         description=assistant_model.description,
-        color=assistant_model.display_color,  # Use display_color property that handles fallbacks
+        color=color,
         system_prompt=assistant_model.system_prompt,
         system_prompt_preview=system_prompt_preview,
         model_preferences=defaults,
@@ -697,6 +719,6 @@ def create_assistant_response_from_model(
         is_new=is_new,
         status_label="Active" if assistant_model.is_active else "Inactive",
         has_custom_preferences=bool(assistant_model.model_preferences),
-        file_count=assistant_model.file_count,
-        has_files=assistant_model.has_files
+        file_count=file_count,
+        has_files=has_files
     )
