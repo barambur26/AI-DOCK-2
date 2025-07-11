@@ -657,9 +657,13 @@ def create_assistant_response_from_model(
     # Compute is_new without accessing potentially lazy-loaded properties
     is_new = False
     if assistant_model.created_at:
-        from datetime import datetime, timedelta
-        day_ago = datetime.utcnow() - timedelta(hours=24)
-        is_new = assistant_model.created_at > day_ago
+        from datetime import datetime, timedelta, timezone
+        day_ago = datetime.now(timezone.utc) - timedelta(hours=24)
+        # Ensure both datetimes are timezone-aware for comparison
+        created_at = assistant_model.created_at
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        is_new = created_at > day_ago
     
     # Get system prompt preview safely
     system_prompt_preview = assistant_model.system_prompt[:147] + "..." if len(assistant_model.system_prompt) > 150 else assistant_model.system_prompt

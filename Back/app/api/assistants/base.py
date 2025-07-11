@@ -170,7 +170,11 @@ def compute_assistant_summary(assistant: Assistant) -> AssistantSummary:
     if assistant.created_at:
         from datetime import datetime, timedelta, timezone
         day_ago = datetime.now(timezone.utc) - timedelta(hours=24)
-        is_new = assistant.created_at > day_ago
+        # Ensure both datetimes are timezone-aware for comparison
+        created_at = assistant.created_at
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        is_new = created_at > day_ago
     
     return AssistantSummary(
         id=assistant.id,

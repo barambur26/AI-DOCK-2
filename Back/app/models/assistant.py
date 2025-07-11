@@ -222,9 +222,13 @@ class Assistant(Base):
         if not self.created_at:
             return False
         
-        from datetime import timedelta
-        day_ago = datetime.utcnow() - timedelta(hours=24)
-        return self.created_at > day_ago
+        from datetime import timedelta, timezone
+        day_ago = datetime.now(timezone.utc) - timedelta(hours=24)
+        # Ensure both datetimes are timezone-aware for comparison
+        created_at = self.created_at
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        return created_at > day_ago
     
     @property
     def display_color(self) -> str:
