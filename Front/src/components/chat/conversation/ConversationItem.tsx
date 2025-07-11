@@ -9,7 +9,8 @@ import {
   Trash2, 
   Check, 
   X,
-  ChevronRight 
+  ChevronRight,
+  Folder
 } from 'lucide-react';
 import { ConversationSummary } from '../../../types/conversation';
 import { formatConversationTimestamp } from '../../../utils/chatHelpers';
@@ -213,6 +214,16 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
                 {formatConversationTimestamp(conversation.last_message_at || conversation.updated_at)}
               </span>
             </div>
+            
+            {/* Show folder/project information if available */}
+            {(conversation as any).project_name && (
+              <div className="flex items-center">
+                <Folder className="w-3 h-3 mr-1 flex-shrink-0" />
+                <span className="text-blue-600 font-medium">
+                  {(conversation as any).project_name}
+                </span>
+              </div>
+            )}
             
             {conversation.model_used && (
               <div className="px-1.5 py-0.5 bg-gray-100 rounded text-xs font-medium">

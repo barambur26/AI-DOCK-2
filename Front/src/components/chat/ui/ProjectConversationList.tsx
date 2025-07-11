@@ -11,7 +11,6 @@ import {
   SortAsc, 
   SortDesc,
   // Calendar,
-  Hash,
   X,
   Loader2
 } from 'lucide-react';
@@ -276,8 +275,8 @@ export const ProjectConversationList: React.FC<ProjectConversationListProps> = (
                        )}
                       <div className="flex items-center space-x-3 mt-2 text-xs text-blue-400">
                         <div className="flex items-center space-x-1">
-                          <Hash className="w-3 h-3" />
-                          <span>{conversation.message_count} msgs</span>
+                          <MessageSquare className="w-3 h-3" />
+                          <span>{conversation.message_count} message{conversation.message_count !== 1 ? 's' : ''}</span>
                         </div>
                         <div className="flex items-center space-x-1">
                           <Clock className="w-3 h-3" />
