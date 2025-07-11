@@ -628,7 +628,7 @@ def create_claude_config(
         provider=LLMProvider.ANTHROPIC,
         api_endpoint="https://api.anthropic.com",
         api_version="2023-06-01",
-        default_model="claude-opus-4-0",
+        default_model="claude-3-5-haiku-latest",
         available_models=[
             "claude-opus-4-0",
             "claude-sonnet-4-0",
