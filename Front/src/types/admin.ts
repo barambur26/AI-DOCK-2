@@ -46,6 +46,7 @@ export interface User {
 
 /**
  * Data needed to create a new user
+ * Note: Admin privileges are automatically determined by role, not manually set
  */
 export interface CreateUserRequest {
   username: string;
@@ -55,7 +56,6 @@ export interface CreateUserRequest {
   role_id: number;
   department_id?: number;
   job_title?: string;
-  is_admin: boolean;
   is_active?: boolean; // Optional, defaults to true
   bio?: string;
   profile_data?: {
@@ -68,6 +68,7 @@ export interface CreateUserRequest {
 /**
  * Data that can be updated for an existing user
  * All fields are optional for partial updates
+ * Note: Admin privileges are automatically determined by role, not manually set
  */
 export interface UpdateUserRequest {
   username?: string;
@@ -76,7 +77,6 @@ export interface UpdateUserRequest {
   role_id?: number;
   department_id?: number;
   job_title?: string;
-  is_admin?: boolean;
   is_active?: boolean;
   bio?: string;
   profile_data?: {

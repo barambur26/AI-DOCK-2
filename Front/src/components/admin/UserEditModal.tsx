@@ -83,7 +83,6 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
         department_id: user.department_id || undefined,
         job_title: user.job_title || undefined,
         is_active: user.is_active,
-        is_admin: user.is_admin,
         bio: user.bio || undefined
       };
       
@@ -622,8 +621,8 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
   // =============================================================================
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm overflow-y-auto h-full w-full z-50">
+      <div className="relative top-20 mx-auto p-5 border border-white/20 w-full max-w-2xl shadow-2xl rounded-2xl bg-white/95 backdrop-blur-sm">
         
         {/* Modal Header */}
         <div className="flex items-center justify-between mb-6">
@@ -679,7 +678,7 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
             </div>
 
             {/* User Settings */}
-            <div className="flex items-center space-x-6">
+            <div className="flex items-center">
               <label className="flex items-center">
                 <input
                   type="checkbox"
@@ -689,16 +688,13 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
                 />
                 <span className="ml-2 text-sm text-gray-700">Active Account</span>
               </label>
-              
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={formData.is_admin ?? false}
-                  onChange={(e) => handleInputChange('is_admin', e.target.checked)}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <span className="ml-2 text-sm text-gray-700">Admin Privileges</span>
-              </label>
+            </div>
+            
+            {/* Note: Admin privileges are automatically determined by the user's role */}
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+              <p className="text-sm text-blue-800">
+                💡 Admin privileges are automatically assigned based on the selected role (Admin/Manager roles get admin access).
+              </p>
             </div>
 
             {/* Changes indicator */}

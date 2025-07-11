@@ -47,7 +47,6 @@ export const UserCreateModal: React.FC<UserCreateModalProps> = ({
     department_id: undefined,
     job_title: '',
     is_active: true,
-    is_admin: false,
     bio: ''
   });
 
@@ -322,7 +321,6 @@ export const UserCreateModal: React.FC<UserCreateModalProps> = ({
       department_id: undefined,
       job_title: '',
       is_active: true,
-      is_admin: false,
       bio: ''
     });
     
@@ -407,6 +405,9 @@ export const UserCreateModal: React.FC<UserCreateModalProps> = ({
   ) => {
     const hasError = !!formState.errors[name];
     const value = formData[name] as string;
+    
+    // Dynamic type for password field based on visibility state
+    const inputType = name === 'password' ? (showPassword ? 'text' : 'password') : type;
 
     return (
       <div>
@@ -416,7 +417,7 @@ export const UserCreateModal: React.FC<UserCreateModalProps> = ({
         </label>
         <div className="relative">
           <input
-            type={type}
+            type={inputType}
             value={value || ''}
             onChange={(e) => handleInputChange(name, e.target.value)}
             onBlur={() => handleFieldBlur(name)}
@@ -431,7 +432,7 @@ export const UserCreateModal: React.FC<UserCreateModalProps> = ({
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
@@ -691,7 +692,7 @@ export const UserCreateModal: React.FC<UserCreateModalProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {renderInputField('email', 'Email Address', 'email', 'john@company.com', true)}
-              {renderInputField('password', showPassword ? 'text' : 'password', 'password', 'Enter secure password', true)}
+              {renderInputField('password', 'Password', 'password', 'Enter secure password', true)}
             </div>
 
             {/* Role and Department */}
@@ -715,20 +716,7 @@ export const UserCreateModal: React.FC<UserCreateModalProps> = ({
               />
             </div>
 
-            {/* Admin Settings */}
-            <div className="flex items-center space-x-6">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={formData.is_admin}
-                  onChange={(e) => handleInputChange('is_admin', e.target.checked)}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <span className="ml-2 text-sm text-gray-700">Admin Privileges</span>
-              </label>
-            </div>
-
-            {/* UX Note: New users are active by default. 
+            {/* UX Note: New users are active by default. Admin privileges are determined by role selection. 
                 Account status can be managed later via the user dashboard. */}
 
             {/* Form-level error */}
