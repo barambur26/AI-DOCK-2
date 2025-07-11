@@ -275,12 +275,100 @@ class AssistantUpdate(BaseModel):
         description="Whether to activate/deactivate the assistant"
     )
     
-    # Apply same validators as base schema
-    _validate_name = field_validator('name')(AssistantBase.validate_name)
-    _validate_description = field_validator('description')(AssistantBase.validate_description)
-    _validate_color = field_validator('color')(AssistantBase.validate_color)
-    _validate_system_prompt = field_validator('system_prompt')(AssistantBase.validate_system_prompt)
-    _validate_model_preferences = field_validator('model_preferences')(AssistantBase.validate_model_preferences)
+    # Define validators directly to avoid Pydantic v2 conflicts
+    @field_validator('name')
+    def validate_name(cls, v):
+        """Validate assistant name format and content."""
+        if v is not None:
+            if not v or not v.strip():
+                raise ValueError('Assistant name cannot be empty or just whitespace')
+            
+            # Remove extra whitespace
+            v = v.strip()
+            
+            # Check for reasonable characters
+            if not all(c.isalnum() or c.isspace() or c in '-_()[]{}!?.' for c in v):
+                raise ValueError('Assistant name contains invalid characters')
+        
+        return v
+    
+    @field_validator('description')
+    def validate_description(cls, v):
+        """Validate description content if provided."""
+        if v is not None:
+            v = v.strip()
+            if len(v) == 0:
+                return None  # Convert empty string to None
+        return v
+    
+    @field_validator('color')
+    def validate_color(cls, v):
+        """Validate color format if provided."""
+        if v is not None:
+            import re
+            if not re.match(r'^#[0-9A-Fa-f]{6}$', v):
+                raise ValueError('Color must be a valid hex code (e.g., #3B82F6)')
+        return v
+    
+    @field_validator('system_prompt')
+    def validate_system_prompt(cls, v):
+        """Validate system prompt content and security."""
+        if v is not None:
+            if not v or not v.strip():
+                raise ValueError('System prompt cannot be empty or just whitespace')
+            
+            v = v.strip()
+            
+            # Basic prompt injection checks
+            dangerous_patterns = [
+                'ignore previous instructions',
+                'ignore the above',
+                'disregard the above',
+                'forget everything',
+                'new instructions:',
+            ]
+            
+            v_lower = v.lower()
+            for pattern in dangerous_patterns:
+                if pattern in v_lower:
+                    raise ValueError(f'System prompt contains potentially unsafe content: "{pattern}"')
+        
+        return v
+    
+    @field_validator('model_preferences')
+    def validate_model_preferences(cls, v):
+        """Validate model preferences structure and values."""
+        if v is None:
+            return v
+        
+        if not isinstance(v, dict):
+            raise ValueError('Model preferences must be a dictionary')
+        
+        # Validate temperature
+        if 'temperature' in v:
+            temp = v['temperature']
+            if not isinstance(temp, (int, float)):
+                raise ValueError('Temperature must be a number')
+            if not 0 <= temp <= 2:
+                raise ValueError('Temperature must be between 0 and 2')
+        
+        # Validate max_tokens
+        if 'max_tokens' in v:
+            tokens = v['max_tokens']
+            if not isinstance(tokens, int):
+                raise ValueError('Max tokens must be an integer')
+            if tokens <= 0:
+                raise ValueError('Max tokens must be positive')
+            if tokens > 32000:
+                raise ValueError('Max tokens cannot exceed 32,000')
+        
+        # Validate model name if provided
+        if 'model' in v:
+            model = v['model']
+            if not isinstance(model, str) or not model.strip():
+                raise ValueError('Model must be a non-empty string')
+        
+        return v
     
     class Config:
         json_schema_extra = {
