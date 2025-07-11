@@ -267,7 +267,7 @@ const AdminSettings: React.FC = () => {
             )}
           </div>
 
-          {/* Right side - navigation buttons and logout */}
+          {/* Right side - navigation buttons */}
           <div className="flex items-center space-x-4">
             {/* Integrated Navigation Buttons */}
             <div className="ml-2 md:ml-4">
@@ -276,13 +276,6 @@ const AdminSettings: React.FC = () => {
                 size="md"
               />
             </div>
-            
-            <button
-              onClick={handleLogout}
-              className="text-blue-200 hover:text-white font-medium transition-colors ml-4 border-l border-white/20 pl-4"
-            >
-              Logout
-            </button>
           </div>
         </div>
       </div>

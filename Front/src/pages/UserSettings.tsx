@@ -190,12 +190,22 @@ export const UserSettings: React.FC = () => {
               <h1 className="text-2xl font-bold bg-gradient-to-r from-white via-blue-100 to-blue-200 bg-clip-text text-transparent">My Settings</h1>
             </div>
             
-            {/* Integrated Navigation Buttons */}
-            <div className="ml-2 md:ml-4">
-              <UnifiedTraversalButtons 
-                variant="inline" 
-                size="md"
-              />
+            {/* Right side - navigation buttons and logout */}
+            <div className="flex items-center space-x-4">
+              {/* Integrated Navigation Buttons */}
+              <div className="ml-2 md:ml-4">
+                <UnifiedTraversalButtons 
+                  variant="inline" 
+                  size="md"
+                />
+              </div>
+              
+              <button
+                onClick={logout}
+                className="text-blue-200 hover:text-white font-medium transition-colors ml-4 border-l border-white/20 pl-4"
+              >
+                Logout
+              </button>
             </div>
           </div>
         </div>
