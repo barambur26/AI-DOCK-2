@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, User, MessageSquare, BarChart3 } from 'lucide-react';
+import { Home, User, MessageSquare, BarChart3, Plus } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface UnifiedTraversalButtonsProps {
@@ -97,7 +97,11 @@ export const UnifiedTraversalButtons: React.FC<UnifiedTraversalButtonsProps> = (
         title={isInChatInterface ? "New Chat" : "Go to Chat"}
         aria-label={isInChatInterface ? "Create New Chat" : "Go to Chat Interface"}
       >
-        <MessageSquare className={`${config.icon} group-hover:text-green-100 transition-colors`} />
+        {isInChatInterface ? (
+          <Plus className={`${config.icon} group-hover:text-green-100 transition-colors`} />
+        ) : (
+          <MessageSquare className={`${config.icon} group-hover:text-green-100 transition-colors`} />
+        )}
       </button>
 
       {/* Admin Dashboard Button - Only visible to admins */}
