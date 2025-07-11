@@ -251,12 +251,12 @@ export const useModelSelection = (): ModelSelectionReturn => {
     
     // Priority order for default model selection
     const priorityModels = [
+      'claude-3-5-haiku-latest',    // Fast Claude model (auto-updates)
       'claude-opus-4-0',           // Latest Claude Opus 4 (auto-updates)
       'claude-sonnet-4-0',         // Latest Claude Sonnet 4 (auto-updates)
       'claude-3-7-sonnet-latest',  // Extended thinking (auto-updates)
       'gpt-4o',                    // OpenAI flagship
-      'gpt-4-turbo',              // OpenAI turbo
-      'claude-3-5-haiku-latest'    // Fast Claude model (auto-updates)
+      'gpt-4-turbo'               // OpenAI turbo
     ];
     
     // Find first available priority model
