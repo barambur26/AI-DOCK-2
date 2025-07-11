@@ -20,9 +20,59 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://ai-dock-2-producti
 
 export class AssistantApiClient {
   private readonly baseUrl: string;
+  private readonly timeout: number = 30000; // 30 seconds timeout
 
   constructor(baseUrl: string = API_BASE_URL) {
     this.baseUrl = baseUrl;
+  }
+
+  /**
+   * Create fetch request with timeout handling
+   */
+  private async fetchWithTimeout(url: string, options: RequestInit): Promise<Response> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Request timeout - the server took too long to respond');
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Handle response and errors consistently
+   */
+  private async handleResponse<T>(response: Response): Promise<T> {
+    if (!response.ok) {
+      try {
+        const errorData = await response.json();
+        throw { status: response.status, data: errorData };
+      } catch (parseError) {
+        // If we can't parse the error response, throw a generic error
+        throw { 
+          status: response.status, 
+          data: { 
+            message: `HTTP ${response.status}: ${response.statusText}` 
+          } 
+        };
+      }
+    }
+
+    try {
+      return await response.json();
+    } catch (parseError) {
+      throw new Error('Invalid response format from server');
+    }
   }
 
   /**
@@ -52,70 +102,50 @@ export class AssistantApiClient {
       });
     }
 
-    const response = await fetch(url.toString(), {
+    const response = await this.fetchWithTimeout(url.toString(), {
       method: 'GET',
       headers: this.getHeaders()
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw { status: response.status, data: errorData };
-    }
-
-    return response.json();
+    return this.handleResponse<T>(response);
   }
 
   /**
    * Generic POST request method
    */
   async post<T>(endpoint: string, data?: any): Promise<T> {
-    const response = await fetch(this.buildUrl(endpoint), {
+    const response = await this.fetchWithTimeout(this.buildUrl(endpoint), {
       method: 'POST',
       headers: this.getHeaders(),
       body: data ? JSON.stringify(data) : undefined
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw { status: response.status, data: errorData };
-    }
-
-    return response.json();
+    return this.handleResponse<T>(response);
   }
 
   /**
    * Generic PUT request method
    */
   async put<T>(endpoint: string, data?: any): Promise<T> {
-    const response = await fetch(this.buildUrl(endpoint), {
+    const response = await this.fetchWithTimeout(this.buildUrl(endpoint), {
       method: 'PUT',
       headers: this.getHeaders(),
       body: data ? JSON.stringify(data) : undefined
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw { status: response.status, data: errorData };
-    }
-
-    return response.json();
+    return this.handleResponse<T>(response);
   }
 
   /**
    * Generic DELETE request method
    */
   async delete<T>(endpoint: string): Promise<T> {
-    const response = await fetch(this.buildUrl(endpoint), {
+    const response = await this.fetchWithTimeout(this.buildUrl(endpoint), {
       method: 'DELETE',
       headers: this.getHeaders()
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw { status: response.status, data: errorData };
-    }
-
-    return response.json();
+    return this.handleResponse<T>(response);
   }
 }
 
