@@ -95,7 +95,7 @@ class FileService {
         fileId: fileUpload.id,
         fileName: fileUpload.file.name,
         fileSize: formatFileSize(fileUpload.file.size),
-        endpoint: `${API_BASE_URL}/files/upload`
+        endpoint: `${API_BASE_URL}/api/files/upload`
       });
 
       // Validate file before upload
@@ -271,7 +271,7 @@ class FileService {
 
       // Configure and send request
       xhr.timeout = UPLOAD_TIMEOUT;
-      xhr.open('POST', `${API_BASE_URL}/files/upload`);
+      xhr.open('POST', `${API_BASE_URL}/api/files/upload`);
       
       // 🎓 LEARNING: Add authentication headers
       // XMLHttpRequest requires setting headers individually
@@ -293,7 +293,7 @@ class FileService {
     try {
       console.log('🔍 Fetching file metadata:', fileId);
 
-      const response = await fetch(`${API_BASE_URL}/files/${fileId}/metadata`, {
+      const response = await fetch(`${API_BASE_URL}/api/files/${fileId}/metadata`, {
         method: 'GET',
         headers: authService.getAuthHeaders(),
       });
@@ -342,7 +342,7 @@ class FileService {
     try {
       console.log('🗑️ Deleting file:', fileId);
 
-      const response = await fetch(`${API_BASE_URL}/files/${fileId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/files/${fileId}`, {
         method: 'DELETE',
         headers: authService.getAuthHeaders(),
       });
@@ -382,7 +382,7 @@ class FileService {
     try {
       console.log('📥 Downloading file:', fileId);
 
-      const response = await fetch(`${API_BASE_URL}/files/${fileId}/download`, {
+      const response = await fetch(`${API_BASE_URL}/api/files/${fileId}/download`, {
         method: 'GET',
         headers: authService.getAuthHeaders(),
       });
@@ -463,7 +463,7 @@ class FileService {
       console.log('📋 Fetching user files:', { limit, offset });
 
       const response = await fetch(
-        `${API_BASE_URL}/files/list?limit=${limit}&offset=${offset}`,
+        `${API_BASE_URL}/api/files/list?limit=${limit}&offset=${offset}`,
         {
           method: 'GET',
           headers: authService.getAuthHeaders(),
@@ -508,7 +508,7 @@ class FileService {
    */
   async healthCheck(): Promise<{ status: string; message: string }> {
     try {
-      const response = await fetch(`${API_BASE_URL}/files/health`, {
+      const response = await fetch(`${API_BASE_URL}/api/files/health`, {
         method: 'GET',
         headers: authService.getAuthHeaders(),
       });
