@@ -68,6 +68,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   const [loadingFolders, setLoadingFolders] = useState(false);
   const [showFolderDropdown, setShowFolderDropdown] = useState<number | null>(null);
   const [assigningToFolder, setAssigningToFolder] = useState<number | null>(null);
+  const [dropdownJustOpened, setDropdownJustOpened] = useState(false);
   
   useEffect(() => {
     if (isOpen) {
@@ -91,6 +92,13 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       setSearchResults([]);
     }
   }, [searchQuery]);
+  
+  // NEW: Reset dropdown flag when dropdown closes
+  useEffect(() => {
+    if (!showFolderDropdown) {
+      setDropdownJustOpened(false);
+    }
+  }, [showFolderDropdown]);
   
   // NEW: Load available folders
   const loadFolders = useCallback(async () => {
@@ -484,7 +492,14 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                setShowFolderDropdown(showFolderDropdown === conversation.id ? null : conversation.id);
+                if (showFolderDropdown === conversation.id) {
+                  setShowFolderDropdown(null);
+                } else {
+                  setShowFolderDropdown(conversation.id);
+                  setDropdownJustOpened(true);
+                  // Clear the flag after a brief delay
+                  setTimeout(() => setDropdownJustOpened(false), 100);
+                }
               }}
               className="p-1 text-blue-300 hover:text-white hover:bg-white/10 rounded transition-colors"
               title="Move to folder"
@@ -728,7 +743,11 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       {showFolderDropdown && (
         <div
           className="fixed inset-0 z-10"
-          onClick={() => setShowFolderDropdown(null)}
+          onClick={() => {
+            if (!dropdownJustOpened) {
+              setShowFolderDropdown(null);
+            }
+          }}
         />
       )}
     </>
