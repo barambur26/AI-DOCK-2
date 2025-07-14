@@ -332,8 +332,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     }
   };
   
-
-  
   // Handle scroll for infinite loading
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
@@ -396,106 +394,137 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   const renderConversationItem = (conversation: ConversationSummary) => (
     <div
       key={conversation.id}
-      className={`group relative mx-2 mb-2 rounded-xl transition-all duration-200 ${
+      className={`group relative mx-2 mb-1 p-3 rounded-lg cursor-pointer transition-all duration-200 ${
         currentConversationId === conversation.id
           ? 'bg-blue-500/20 backdrop-blur-sm border border-blue-400/30 shadow-lg'
           : isStreaming
-          ? 'bg-white/5 backdrop-blur-sm border border-white/10 opacity-60'
-          : 'hover:bg-white/10 backdrop-blur-sm border border-white/10 hover:border-white/20 hover:shadow-lg hover:scale-[1.02] transform'
+          ? 'bg-white/5 backdrop-blur-sm border border-white/10 opacity-60 cursor-not-allowed'
+          : 'hover:bg-white/10 backdrop-blur-sm border border-white/10 hover:border-white/20 hover:shadow-lg'
       }`}
+      onClick={() => {
+        if (!isStreaming) {
+          onSelectConversation(conversation.id);
+        }
+      }}
+      title={isStreaming ? 'Cannot switch conversations while AI is responding' : undefined}
     >
-      {/* Conversation item */}
-      <div
-        onClick={() => handleSelectConversation(conversation.id)}
-        className={`flex items-start p-3 transition-colors ${
-          isStreaming 
-            ? 'cursor-not-allowed' 
-            : 'cursor-pointer'
-        }`}
-        title={isStreaming ? 'Cannot switch conversations while AI is responding' : ''}
-      >
-        <div className="flex-1 min-w-0">
-          {/* Title */}
-          {editingTitle === conversation.id ? (
-            <input
-              type="text"
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              onBlur={() => handleEditTitle(conversation.id)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  handleEditTitle(conversation.id);
-                } else if (e.key === 'Escape') {
-                  setEditingTitle(null);
-                  setNewTitle('');
-                }
-              }}
-              className="w-full px-3 py-2 text-sm font-medium bg-white/10 backdrop-blur-sm border border-blue-400/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400/50 text-white placeholder-blue-300"
-              autoFocus
-              onClick={(e) => e.stopPropagation()}
-            />
-          ) : (
-            <h3 className="text-sm font-medium text-white truncate">
-              {conversation.title}
-            </h3>
-          )}
-          
-          {/* Metadata */}
-          <div className="flex items-center space-x-3 mt-2 text-[11px] text-blue-300">
-            <div className="flex items-center">
-              <MessageSquare className="w-3 h-3 mr-1" />
-              {conversation.message_count} messages
-            </div>
-            
-            <div className="flex items-center">
-              <Clock className="w-3 h-3 mr-1" />
-              {formatConversationTimestamp(conversation.last_message_at || conversation.updated_at || conversation.created_at)}
-            </div>
-          </div>
+      {/* Title */}
+      {editingTitle === conversation.id ? (
+        <div className="flex items-center space-x-2 mb-1" onClick={(e) => e.stopPropagation()}>
+          <input
+            type="text"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleEditTitle(conversation.id);
+              } else if (e.key === 'Escape') {
+                setEditingTitle(null);
+                setNewTitle('');
+              }
+            }}
+            className="flex-1 px-2 py-1 text-sm font-medium border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white text-gray-900"
+            placeholder="Conversation title"
+            autoFocus
+          />
+          <button
+            onClick={() => handleEditTitle(conversation.id)}
+            className="p-1 text-green-600 hover:bg-green-50 rounded"
+            title="Save"
+          >
+            <Check className="w-3 h-3" />
+          </button>
+          <button
+            onClick={() => {
+              setEditingTitle(null);
+              setNewTitle('');
+            }}
+            className="p-1 text-gray-500 hover:bg-gray-50 rounded"
+            title="Cancel"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      ) : (
+        <h3 className="text-sm font-medium text-white truncate mb-1">
+          {conversation.title}
+        </h3>
+      )}
+
+      {/* Metadata Section */}
+      <div className="flex items-center space-x-3 text-xs text-blue-300">
+        <div className="flex items-center">
+          <MessageSquare className="w-3 h-3 mr-1" />
+          <span>{conversation.message_count} message{conversation.message_count !== 1 ? 's' : ''}</span>
         </div>
         
-        {/* Action buttons */}
-        <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-all duration-200">
+        <div className="flex items-center">
+          <Clock className="w-3 h-3 mr-1" />
+          <span>{formatConversationTimestamp(conversation.last_message_at || conversation.updated_at)}</span>
+        </div>
+        
+        {/* 📁 Show folder name if conversation is in a folder */}
+        {conversation.project?.name && (
+          <div className="flex items-center text-blue-400 font-medium">
+            <span className="text-blue-500 mr-1">📁</span>
+            <span>{conversation.project.name}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Action buttons */}
+      {!isStreaming && editingTitle !== conversation.id && (
+        <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity absolute top-3 right-3">
           <button
             onClick={(e) => {
               e.stopPropagation();
               setEditingTitle(conversation.id);
               setNewTitle(conversation.title);
             }}
-            className="p-1.5 text-blue-300 hover:text-white hover:bg-white/10 backdrop-blur-sm border border-white/10 rounded-lg transition-all duration-200 hover:scale-110 transform"
+            className="p-1 text-blue-300 hover:text-white hover:bg-white/10 rounded transition-colors"
             title="Rename conversation"
           >
             <Edit3 className="w-3 h-3" />
           </button>
-          
           <button
             onClick={(e) => {
               e.stopPropagation();
               setSelectedForDelete(conversation.id);
             }}
-            className="p-1.5 text-blue-300 hover:text-red-200 hover:bg-red-500/20 backdrop-blur-sm border border-white/10 hover:border-red-400/30 rounded-lg transition-all duration-200 hover:scale-110 transform"
+            className="p-1 text-blue-300 hover:text-red-400 hover:bg-red-500/20 rounded transition-colors"
             title="Delete conversation"
           >
             <Trash2 className="w-3 h-3" />
           </button>
         </div>
-      </div>
-      
-      {/* Delete confirmation */}
+      )}
+
+      {/* Delete confirmation overlay */}
       {selectedForDelete === conversation.id && (
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-lg rounded-xl border border-red-400/30 flex items-center justify-center shadow-2xl">
-          <div className="text-center p-4">
-            <p className="text-sm text-white font-medium mb-4">Delete this conversation?</p>
-            <div className="flex space-x-3">
+        <div className="absolute inset-0 bg-black/90 backdrop-blur-sm rounded-lg border border-red-400/30 flex items-center justify-center z-10">
+          <div className="text-center p-3">
+            <p className="text-white text-sm mb-2 font-medium">
+              Delete "{conversation.title}"?
+            </p>
+            <p className="text-blue-300 text-xs mb-3">
+              This action cannot be undone.
+            </p>
+            <div className="flex space-x-2 justify-center">
               <button
-                onClick={() => handleDeleteConversation(conversation.id)}
-                className="px-4 py-2 bg-red-500/80 backdrop-blur-sm border border-red-400/50 text-white text-xs rounded-lg hover:bg-red-400/80 transition-all duration-200 font-medium shadow-lg"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteConversation(conversation.id);
+                }}
+                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded-md transition-colors"
               >
                 Delete
               </button>
               <button
-                onClick={() => setSelectedForDelete(null)}
-                className="px-4 py-2 bg-white/10 backdrop-blur-sm border border-white/20 text-blue-200 text-xs rounded-lg hover:bg-white/20 transition-all duration-200 font-medium"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedForDelete(null);
+                }}
+                className="px-3 py-1.5 bg-gray-600 hover:bg-gray-700 text-white text-xs rounded-md transition-colors"
               >
                 Cancel
               </button>
@@ -506,193 +535,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     </div>
   );
 
-  // Helper function to handle title editing
-  const handleSaveTitle = async (conversationId: number) => {
-    if (!newTitle.trim() || newTitle.trim() === conversations.find(c => c.id === conversationId)?.title) {
-      setEditingTitle(null);
-      setNewTitle('');
-      return;
-    }
-    
-    try {
-      await conversationService.updateConversation(conversationId, { title: newTitle.trim() });
-      // Update local state
-      setConversations(prev => prev.map(conv => 
-        conv.id === conversationId ? { ...conv, title: newTitle.trim() } : conv
-      ));
-      setSearchResults(prev => prev.map(conv => 
-        conv.id === conversationId ? { ...conv, title: newTitle.trim() } : conv
-      ));
-      setEditingTitle(null);
-      setNewTitle('');
-    } catch (error) {
-      console.error('Failed to update conversation title:', error);
-    }
-  };
-  
-  // Helper function to handle conversation deletion
-  const handleDeleteConversation = async (conversationId: number) => {
-    try {
-      await conversationService.deleteConversation(conversationId);
-      // Remove from local state
-      setConversations(prev => prev.filter(c => c.id !== conversationId));
-      setSearchResults(prev => prev.filter(c => c.id !== conversationId));
-      setSelectedForDelete(null);
-    } catch (error) {
-      console.error('Failed to delete conversation:', error);
-    }
-  };
-
-  // Render individual conversation item with folder support - COMPACT SIDEBAR VERSION
-  const renderConversationItem = (conversation: ConversationSummary) => {
-    const isSelected = currentConversationId === conversation.id;
-    const isEditing = editingTitle === conversation.id;
-
-    return (
-      <div
-        key={conversation.id}
-        className={`group relative mx-2 mb-1 p-3 rounded-lg cursor-pointer transition-all duration-200 ${
-          isSelected
-            ? 'bg-blue-500/20 backdrop-blur-sm border border-blue-400/30 shadow-lg'
-            : isStreaming
-            ? 'bg-white/5 backdrop-blur-sm border border-white/10 opacity-60 cursor-not-allowed'
-            : 'hover:bg-white/10 backdrop-blur-sm border border-white/10 hover:border-white/20 hover:shadow-lg'
-        }`}
-        onClick={() => {
-          if (!isStreaming && !isEditing) {
-            onSelectConversation(conversation.id);
-          }
-        }}
-        title={isStreaming ? 'Cannot switch conversations while AI is responding' : undefined}
-      >
-        {/* Title Section */}
-        <div className="flex items-center justify-between mb-1">
-          {isEditing ? (
-            <div className="flex items-center space-x-2 flex-1" onClick={(e) => e.stopPropagation()}>
-              <input
-                type="text"
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleSaveTitle(conversation.id);
-                  } else if (e.key === 'Escape') {
-                    setEditingTitle(null);
-                    setNewTitle('');
-                  }
-                }}
-                className="flex-1 px-2 py-1 text-sm font-medium border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white text-gray-900"
-                placeholder="Conversation title"
-                autoFocus
-              />
-              <button
-                onClick={() => handleSaveTitle(conversation.id)}
-                className="p-1 text-green-600 hover:bg-green-50 rounded"
-                title="Save"
-              >
-                <Check className="w-3 h-3" />
-              </button>
-              <button
-                onClick={() => {
-                  setEditingTitle(null);
-                  setNewTitle('');
-                }}
-                className="p-1 text-gray-500 hover:bg-gray-50 rounded"
-                title="Cancel"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </div>
-          ) : (
-            <h3 className="text-sm font-medium text-white truncate flex-1 pr-2">
-              {conversation.title}
-            </h3>
-          )}
-          
-          {!isEditing && !isStreaming && (
-            <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setEditingTitle(conversation.id);
-                  setNewTitle(conversation.title);
-                }}
-                className="p-1 text-blue-300 hover:text-white hover:bg-white/10 rounded transition-colors"
-                title="Rename conversation"
-              >
-                <Edit3 className="w-3 h-3" />
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedForDelete(conversation.id);
-                }}
-                className="p-1 text-blue-300 hover:text-red-400 hover:bg-red-500/20 rounded transition-colors"
-                title="Delete conversation"
-              >
-                <Trash2 className="w-3 h-3" />
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Metadata Section */}
-        <div className="flex items-center space-x-3 text-xs text-blue-300">
-          <div className="flex items-center">
-            <MessageSquare className="w-3 h-3 mr-1" />
-            <span>{conversation.message_count} message{conversation.message_count !== 1 ? 's' : ''}</span>
-          </div>
-          
-          <div className="flex items-center">
-            <Clock className="w-3 h-3 mr-1" />
-            <span>{formatConversationTimestamp(conversation.last_message_at || conversation.updated_at)}</span>
-          </div>
-          
-          {/* 📁 NEW: Show folder name if conversation is in a folder */}
-          {conversation.project?.name && (
-            <div className="flex items-center text-blue-400 font-medium">
-              <span className="text-blue-500 mr-1">📁</span>
-              <span>{conversation.project.name}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Delete confirmation overlay */}
-        {selectedForDelete === conversation.id && (
-          <div className="absolute inset-0 bg-black/90 backdrop-blur-sm rounded-lg border border-red-400/30 flex items-center justify-center z-10">
-            <div className="text-center p-3">
-              <p className="text-white text-sm mb-2 font-medium">
-                Delete "{conversation.title}"?
-              </p>
-              <p className="text-blue-300 text-xs mb-3">
-                This action cannot be undone.
-              </p>
-              <div className="flex space-x-2 justify-center">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteConversation(conversation.id);
-                  }}
-                  className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded-md transition-colors"
-                >
-                  Delete
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedForDelete(null);
-                  }}
-                  className="px-3 py-1.5 bg-gray-600 hover:bg-gray-700 text-white text-xs rounded-md transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
   const renderTimeGroup = (title: string, conversations: ConversationSummary[]) => {
     if (conversations.length === 0) return null;
     
@@ -704,7 +546,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
         <div className="py-1">
           {conversations.map(renderConversationItem)}
         </div>
-        
       </div>
     );
   };
@@ -782,8 +623,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
           </button>
         </div>
       )}
-      
-
       
       {/* Conversation list */}
       <div 
