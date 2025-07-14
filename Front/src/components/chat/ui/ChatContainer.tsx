@@ -497,7 +497,7 @@ export const ChatContainer: React.FC = () => {
         }}
         disabled={isStreaming}
         className={`fixed top-4 z-[9999] transition-all duration-300 ${
-          showUnifiedSidebar ? 'left-[328px]' : 'left-4'
+        showUnifiedSidebar ? 'left-[328px]' : 'left-32'
         } bg-blue-500 hover:bg-blue-600 backdrop-blur-lg border-2 border-blue-400 rounded-full p-3 shadow-2xl hover:shadow-3xl group hover:scale-105 transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100`}
         title={`${showUnifiedSidebar ? 'Hide' : 'Show'} sidebar`}
         aria-label={`${showUnifiedSidebar ? 'Hide' : 'Show'} sidebar`}
