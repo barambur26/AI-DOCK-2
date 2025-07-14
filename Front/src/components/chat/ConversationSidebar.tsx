@@ -22,6 +22,7 @@ import {
   ConversationServiceError 
 } from '../../types/conversation';
 import { formatConversationTimestamp } from '../../utils/chatHelpers';
+import { ConversationItem } from './conversation/ConversationItem'; // 🔧 NEW: Import the fixed ConversationItem component
 
 interface ConversationSidebarProps {
   isOpen: boolean;
@@ -521,7 +522,39 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
           </div>
         </div>
         <div className="py-1">
-          {conversations.map(renderConversationItem)}
+          {conversations.map(conversation => (
+            <ConversationItem
+              key={conversation.id}
+              conversation={conversation}
+              isCurrentConversation={currentConversationId === conversation.id}
+              onSelect={(id) => {
+                if (!isStreaming) {
+                  onSelectConversation(id);
+                }
+              }}
+              onEdit={async (id, newTitle) => {
+                try {
+                  await conversationService.updateConversation(id, { title: newTitle });
+                  // Refresh conversations to show updated title
+                  await loadConversations();
+                } catch (error) {
+                  console.error('Failed to update conversation title:', error);
+                  throw error;
+                }
+              }}
+              onDelete={async (id) => {
+                try {
+                  await conversationService.deleteConversation(id);
+                  // Remove from local state
+                  setConversations(prev => prev.filter(c => c.id !== id));
+                  setSearchResults(prev => prev.filter(c => c.id !== id));
+                } catch (error) {
+                  console.error('Failed to delete conversation:', error);
+                  throw error;
+                }
+              }}
+            />
+          ))}
         </div>
         
       </div>
@@ -660,7 +693,39 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
         ) : (
           <div className="py-2">
             {/* Fallback: render search results without grouping */}
-            {displayConversations.map(renderConversationItem)}
+            {displayConversations.map(conversation => (
+              <ConversationItem
+                key={conversation.id}
+                conversation={conversation}
+                isCurrentConversation={currentConversationId === conversation.id}
+                onSelect={(id) => {
+                  if (!isStreaming) {
+                    onSelectConversation(id);
+                  }
+                }}
+                onEdit={async (id, newTitle) => {
+                  try {
+                    await conversationService.updateConversation(id, { title: newTitle });
+                    // Refresh conversations to show updated title
+                    await loadConversations();
+                  } catch (error) {
+                    console.error('Failed to update conversation title:', error);
+                    throw error;
+                  }
+                }}
+                onDelete={async (id) => {
+                  try {
+                    await conversationService.deleteConversation(id);
+                    // Remove from local state
+                    setConversations(prev => prev.filter(c => c.id !== id));
+                    setSearchResults(prev => prev.filter(c => c.id !== id));
+                  } catch (error) {
+                    console.error('Failed to delete conversation:', error);
+                    throw error;
+                  }
+                }}
+              />
+            ))}
           </div>
         )}
       </div>

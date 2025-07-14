@@ -4,6 +4,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
+import logging
+
+# Setup logging
+logger = logging.getLogger(__name__)
 
 from ..core.database import get_async_db
 from ..core.security import get_current_user
@@ -110,8 +114,26 @@ async def list_conversations(
             user_id=current_user.id
         )
         
-        # Convert conversations to dictionaries for Pydantic validation
-        conversation_dicts = [conv.to_dict() for conv in conversations]
+        # 🔧 ENHANCED: Convert conversations to dictionaries with better error handling
+        conversation_dicts = []
+        for conv in conversations:
+            try:
+                conv_dict = conv.to_dict()
+                # 🔧 DEBUG: Log project info to verify it's being included
+                if conv_dict.get('project'):
+                    logger.debug(f"Conversation {conv.id} serialized with project: {conv_dict['project']['name']}")
+                conversation_dicts.append(conv_dict)
+            except Exception as conv_error:
+                logger.error(f"Failed to serialize conversation {conv.id}: {conv_error}")
+                # Create a minimal dict to avoid breaking the entire response
+                conversation_dicts.append({
+                    "id": conv.id,
+                    "title": conv.title,
+                    "created_at": conv.created_at.isoformat(),
+                    "updated_at": conv.updated_at.isoformat(),
+                    "message_count": conv.message_count,
+                    "project": None  # Set to None if serialization fails
+                })
         
         return ConversationListResponse(
             conversations=conversation_dicts,
@@ -122,6 +144,7 @@ async def list_conversations(
         )
         
     except Exception as e:
+        logger.error(f"Failed to fetch conversations: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch conversations: {str(e)}"

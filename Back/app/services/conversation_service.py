@@ -117,21 +117,46 @@ class ConversationService:
         project_id: Optional[int] = None
     ) -> List[Conversation]:
         """Get user's conversations with pagination and project information"""
-        base_query = select(Conversation).options(
-            selectinload(Conversation.projects),  # Load project relationships for folder functionality
-            selectinload(Conversation.assistant)   # Load assistant relationship for API responses
-        ).where(Conversation.user_id == user_id)
-        
-        if project_id:
-            # Filter by project if specified
-            project = await self.get_project(db, project_id, user_id)
-            if project:
-                base_query = base_query.join(Conversation.projects).where(Project.id == project_id)
-        
-        stmt = base_query.order_by(desc(Conversation.updated_at)).offset(offset).limit(limit)
-        
-        result = await db.execute(stmt)
-        return result.scalars().all()
+        try:
+            base_query = select(Conversation).options(
+                selectinload(Conversation.projects),  # Load project relationships for folder functionality
+                selectinload(Conversation.assistant)   # Load assistant relationship for API responses
+            ).where(Conversation.user_id == user_id)
+            
+            if project_id:
+                # Filter by project if specified
+                project = await self.get_project(db, project_id, user_id)
+                if project:
+                    base_query = base_query.join(Conversation.projects).where(Project.id == project_id)
+            
+            stmt = base_query.order_by(desc(Conversation.updated_at)).offset(offset).limit(limit)
+            
+            result = await db.execute(stmt)
+            conversations = result.scalars().all()
+            
+            # 🔧 ENHANCED: Ensure all project relationships are properly loaded
+            for conversation in conversations:
+                try:
+                    # Force refresh project and assistant relationships
+                    await db.refresh(conversation, attribute_names=['projects', 'assistant'])
+                    
+                    # Log project info for debugging
+                    if hasattr(conversation, 'projects') and conversation.projects:
+                        project_names = [p.name for p in conversation.projects]
+                        logger.debug(f"Conversation {conversation.id} has projects: {project_names}")
+                    else:
+                        logger.debug(f"Conversation {conversation.id} has no projects")
+                        
+                except Exception as refresh_error:
+                    logger.warning(f"Failed to refresh relationships for conversation {conversation.id}: {refresh_error}")
+                    continue
+            
+            logger.info(f"Loaded {len(conversations)} conversations for user {user_id}")
+            return list(conversations)
+            
+        except Exception as e:
+            logger.error(f"Error getting user conversations: {str(e)}")
+            return []
     
     async def save_message_to_conversation(
         self,
