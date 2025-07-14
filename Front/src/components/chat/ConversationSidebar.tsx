@@ -697,16 +697,9 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     if (conversations.length === 0) return null;
     
     return (
-      <div key={title} className="mb-6">
-        <div className="sticky top-0 z-10 px-4 py-3 bg-black/60 backdrop-blur-md border-b border-white/10 shadow-sm">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-semibold text-blue-200 uppercase tracking-wide">
-                {title}
-              </h3>
-              <span className="text-xs text-blue-300 bg-white/10 backdrop-blur-sm border border-white/20 px-2 py-1 rounded-full">
-                {conversations.length}
-              </span>
-          </div>
+      <div key={title} className="mb-4">
+        <div className="px-4 py-2 text-xs font-semibold text-blue-300 uppercase tracking-wide">
+          {title}
         </div>
         <div className="py-1">
           {conversations.map(renderConversationItem)}
