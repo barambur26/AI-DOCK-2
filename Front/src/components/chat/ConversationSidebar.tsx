@@ -13,7 +13,8 @@ import {
   X,
   ChevronRight,
   Loader2,
-  Archive
+  Archive,
+  Check // Add Check icon for save button
 } from 'lucide-react';
 import { conversationService } from '../../services/conversationService';
 import { 
@@ -22,7 +23,7 @@ import {
   ConversationServiceError 
 } from '../../types/conversation';
 import { formatConversationTimestamp } from '../../utils/chatHelpers';
-import { ConversationItem } from './conversation/ConversationItem'; // 🔧 NEW: Import the fixed ConversationItem component
+// Removed ConversationItem import - using custom compact rendering
 
 interface ConversationSidebarProps {
   isOpen: boolean;
@@ -505,7 +506,193 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     </div>
   );
 
-  // Render a time group section
+  // Helper function to handle title editing
+  const handleSaveTitle = async (conversationId: number) => {
+    if (!newTitle.trim() || newTitle.trim() === conversations.find(c => c.id === conversationId)?.title) {
+      setEditingTitle(null);
+      setNewTitle('');
+      return;
+    }
+    
+    try {
+      await conversationService.updateConversation(conversationId, { title: newTitle.trim() });
+      // Update local state
+      setConversations(prev => prev.map(conv => 
+        conv.id === conversationId ? { ...conv, title: newTitle.trim() } : conv
+      ));
+      setSearchResults(prev => prev.map(conv => 
+        conv.id === conversationId ? { ...conv, title: newTitle.trim() } : conv
+      ));
+      setEditingTitle(null);
+      setNewTitle('');
+    } catch (error) {
+      console.error('Failed to update conversation title:', error);
+    }
+  };
+  
+  // Helper function to handle conversation deletion
+  const handleDeleteConversation = async (conversationId: number) => {
+    try {
+      await conversationService.deleteConversation(conversationId);
+      // Remove from local state
+      setConversations(prev => prev.filter(c => c.id !== conversationId));
+      setSearchResults(prev => prev.filter(c => c.id !== conversationId));
+      setSelectedForDelete(null);
+    } catch (error) {
+      console.error('Failed to delete conversation:', error);
+    }
+  };
+
+  // Render individual conversation item with folder support - COMPACT SIDEBAR VERSION
+  const renderConversationItem = (conversation: ConversationSummary) => {
+    const isSelected = currentConversationId === conversation.id;
+    const isEditing = editingTitle === conversation.id;
+
+    return (
+      <div
+        key={conversation.id}
+        className={`group relative mx-2 mb-1 p-3 rounded-lg cursor-pointer transition-all duration-200 ${
+          isSelected
+            ? 'bg-blue-500/20 backdrop-blur-sm border border-blue-400/30 shadow-lg'
+            : isStreaming
+            ? 'bg-white/5 backdrop-blur-sm border border-white/10 opacity-60 cursor-not-allowed'
+            : 'hover:bg-white/10 backdrop-blur-sm border border-white/10 hover:border-white/20 hover:shadow-lg'
+        }`}
+        onClick={() => {
+          if (!isStreaming && !isEditing) {
+            onSelectConversation(conversation.id);
+          }
+        }}
+        title={isStreaming ? 'Cannot switch conversations while AI is responding' : undefined}
+      >
+        {/* Title Section */}
+        <div className="flex items-center justify-between mb-1">
+          {isEditing ? (
+            <div className="flex items-center space-x-2 flex-1" onClick={(e) => e.stopPropagation()}>
+              <input
+                type="text"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSaveTitle(conversation.id);
+                  } else if (e.key === 'Escape') {
+                    setEditingTitle(null);
+                    setNewTitle('');
+                  }
+                }}
+                className="flex-1 px-2 py-1 text-sm font-medium border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white text-gray-900"
+                placeholder="Conversation title"
+                autoFocus
+              />
+              <button
+                onClick={() => handleSaveTitle(conversation.id)}
+                className="p-1 text-green-600 hover:bg-green-50 rounded"
+                title="Save"
+              >
+                <Check className="w-3 h-3" />
+              </button>
+              <button
+                onClick={() => {
+                  setEditingTitle(null);
+                  setNewTitle('');
+                }}
+                className="p-1 text-gray-500 hover:bg-gray-50 rounded"
+                title="Cancel"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ) : (
+            <h3 className="text-sm font-medium text-white truncate flex-1 pr-2">
+              {conversation.title}
+            </h3>
+          )}
+          
+          {!isEditing && !isStreaming && (
+            <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditingTitle(conversation.id);
+                  setNewTitle(conversation.title);
+                }}
+                className="p-1 text-blue-300 hover:text-white hover:bg-white/10 rounded transition-colors"
+                title="Rename conversation"
+              >
+                <Edit3 className="w-3 h-3" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedForDelete(conversation.id);
+                }}
+                className="p-1 text-blue-300 hover:text-red-400 hover:bg-red-500/20 rounded transition-colors"
+                title="Delete conversation"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Metadata Section */}
+        <div className="flex items-center space-x-3 text-xs text-blue-300">
+          <div className="flex items-center">
+            <MessageSquare className="w-3 h-3 mr-1" />
+            <span>{conversation.message_count} message{conversation.message_count !== 1 ? 's' : ''}</span>
+          </div>
+          
+          <div className="flex items-center">
+            <Clock className="w-3 h-3 mr-1" />
+            <span>{formatConversationTimestamp(conversation.last_message_at || conversation.updated_at)}</span>
+          </div>
+          
+          {/* 📁 NEW: Show folder name if conversation is in a folder */}
+          {conversation.project?.name && (
+            <div className="flex items-center text-blue-400 font-medium">
+              <span className="text-blue-500 mr-1">📁</span>
+              <span>{conversation.project.name}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Delete confirmation overlay */}
+        {selectedForDelete === conversation.id && (
+          <div className="absolute inset-0 bg-black/90 backdrop-blur-sm rounded-lg border border-red-400/30 flex items-center justify-center z-10">
+            <div className="text-center p-3">
+              <p className="text-white text-sm mb-2 font-medium">
+                Delete "{conversation.title}"?
+              </p>
+              <p className="text-blue-300 text-xs mb-3">
+                This action cannot be undone.
+              </p>
+              <div className="flex space-x-2 justify-center">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteConversation(conversation.id);
+                  }}
+                  className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded-md transition-colors"
+                >
+                  Delete
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedForDelete(null);
+                  }}
+                  className="px-3 py-1.5 bg-gray-600 hover:bg-gray-700 text-white text-xs rounded-md transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
   const renderTimeGroup = (title: string, conversations: ConversationSummary[]) => {
     if (conversations.length === 0) return null;
     
@@ -522,39 +709,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
           </div>
         </div>
         <div className="py-1">
-          {conversations.map(conversation => (
-            <ConversationItem
-              key={conversation.id}
-              conversation={conversation}
-              isCurrentConversation={currentConversationId === conversation.id}
-              onSelect={(id) => {
-                if (!isStreaming) {
-                  onSelectConversation(id);
-                }
-              }}
-              onEdit={async (id, newTitle) => {
-                try {
-                  await conversationService.updateConversation(id, { title: newTitle });
-                  // Refresh conversations to show updated title
-                  await loadConversations();
-                } catch (error) {
-                  console.error('Failed to update conversation title:', error);
-                  throw error;
-                }
-              }}
-              onDelete={async (id) => {
-                try {
-                  await conversationService.deleteConversation(id);
-                  // Remove from local state
-                  setConversations(prev => prev.filter(c => c.id !== id));
-                  setSearchResults(prev => prev.filter(c => c.id !== id));
-                } catch (error) {
-                  console.error('Failed to delete conversation:', error);
-                  throw error;
-                }
-              }}
-            />
-          ))}
+          {conversations.map(renderConversationItem)}
         </div>
         
       </div>
@@ -693,39 +848,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
         ) : (
           <div className="py-2">
             {/* Fallback: render search results without grouping */}
-            {displayConversations.map(conversation => (
-              <ConversationItem
-                key={conversation.id}
-                conversation={conversation}
-                isCurrentConversation={currentConversationId === conversation.id}
-                onSelect={(id) => {
-                  if (!isStreaming) {
-                    onSelectConversation(id);
-                  }
-                }}
-                onEdit={async (id, newTitle) => {
-                  try {
-                    await conversationService.updateConversation(id, { title: newTitle });
-                    // Refresh conversations to show updated title
-                    await loadConversations();
-                  } catch (error) {
-                    console.error('Failed to update conversation title:', error);
-                    throw error;
-                  }
-                }}
-                onDelete={async (id) => {
-                  try {
-                    await conversationService.deleteConversation(id);
-                    // Remove from local state
-                    setConversations(prev => prev.filter(c => c.id !== id));
-                    setSearchResults(prev => prev.filter(c => c.id !== id));
-                  } catch (error) {
-                    console.error('Failed to delete conversation:', error);
-                    throw error;
-                  }
-                }}
-              />
-            ))}
+            {displayConversations.map(renderConversationItem)}
           </div>
         )}
       </div>
