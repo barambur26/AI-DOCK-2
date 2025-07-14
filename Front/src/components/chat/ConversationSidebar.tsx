@@ -1,5 +1,5 @@
-// AI Dock Conversation Sidebar
-// UI component for managing saved conversations
+// AI Dock Conversation Sidebar - ENHANCED with Folder Management
+// UI component for managing saved conversations and organizing them into folders
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
@@ -11,14 +11,19 @@ import {
   Clock,
   X,
   Loader2,
-  Check
+  Check,
+  Folder,
+  FolderPlus,
+  MoreVertical
 } from 'lucide-react';
 import { conversationService } from '../../services/conversationService';
+import { projectService } from '../../services/projectService';
 import { 
   ConversationSummary, 
   ConversationListResponse,
   ConversationServiceError 
 } from '../../types/conversation';
+import { ProjectSummary } from '../../types/project';
 import { formatConversationTimestamp } from '../../utils/chatHelpers';
 
 interface ConversationSidebarProps {
@@ -58,9 +63,16 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   const [totalCount, setTotalCount] = useState(0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   
+  // NEW: Folder management state
+  const [folders, setFolders] = useState<ProjectSummary[]>([]);
+  const [loadingFolders, setLoadingFolders] = useState(false);
+  const [showFolderDropdown, setShowFolderDropdown] = useState<number | null>(null);
+  const [assigningToFolder, setAssigningToFolder] = useState<number | null>(null);
+  
   useEffect(() => {
     if (isOpen) {
       loadConversations();
+      loadFolders();
     }
   }, [isOpen]);
   
@@ -68,6 +80,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     if (refreshTrigger && refreshTrigger > 0 && isOpen) {
       console.log('🔄 Refreshing conversations due to trigger:', refreshTrigger);
       loadConversations();
+      loadFolders(); // Also reload folders to get updated conversation counts
     }
   }, [refreshTrigger, isOpen]);
   
@@ -78,6 +91,53 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       setSearchResults([]);
     }
   }, [searchQuery]);
+  
+  // NEW: Load available folders
+  const loadFolders = useCallback(async () => {
+    try {
+      setLoadingFolders(true);
+      const data = await projectService.getProjects();
+      setFolders(data);
+    } catch (error) {
+      console.error('❌ Failed to load folders:', error);
+    } finally {
+      setLoadingFolders(false);
+    }
+  }, []);
+  
+  // NEW: Handle folder assignment
+  const handleAssignToFolder = useCallback(async (conversationId: number, folderId: number | null) => {
+    try {
+      setAssigningToFolder(conversationId);
+      
+      // Find current conversation
+      const conversation = conversations.find(c => c.id === conversationId);
+      if (!conversation) return;
+      
+      // If conversation is currently in a folder, remove it first
+      if (conversation.project?.id) {
+        await projectService.removeConversationFromProject(conversation.project.id, conversationId);
+      }
+      
+      // If assigning to a new folder (not removing), add it
+      if (folderId) {
+        await projectService.addConversationToProject(folderId, conversationId);
+      }
+      
+      // Refresh conversations to get updated data
+      await loadConversations();
+      await loadFolders();
+      
+      console.log('✅ Successfully updated conversation folder assignment');
+      
+    } catch (error) {
+      console.error('❌ Failed to assign conversation to folder:', error);
+      setError('Failed to update folder assignment');
+    } finally {
+      setAssigningToFolder(null);
+      setShowFolderDropdown(null);
+    }
+  }, [conversations, loadConversations, loadFolders]);
   
   const updateConversationMessageCount = useCallback((conversationId: number, newMessageCount: number) => {
     const updateConversation = (conv: ConversationSummary) => 
@@ -281,6 +341,64 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   const displayConversations = searchQuery.trim() ? searchResults : conversations;
   const groupedConversations = !searchQuery.trim() ? groupConversationsByTime(displayConversations) : null;
 
+  // NEW: Render folder dropdown menu
+  const renderFolderDropdown = (conversation: ConversationSummary) => {
+    if (showFolderDropdown !== conversation.id) return null;
+
+    return (
+      <div className="absolute right-0 top-full mt-1 w-56 bg-white/10 backdrop-blur-lg rounded-xl shadow-2xl border border-white/20 z-20">
+        <div className="py-2">
+          <div className="px-3 py-2 text-xs font-semibold text-blue-300 uppercase tracking-wide border-b border-white/10">
+            Move to Folder
+          </div>
+          
+          {/* No folder option */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleAssignToFolder(conversation.id, null);
+            }}
+            className={`flex items-center w-full px-3 py-2 text-sm hover:bg-white/10 transition-colors ${
+              !conversation.project ? 'text-blue-200 font-medium' : 'text-blue-100'
+            }`}
+            disabled={assigningToFolder === conversation.id}
+          >
+            <X className="w-4 h-4 mr-2" />
+            No Folder
+            {!conversation.project && <span className="ml-auto text-xs">✓</span>}
+          </button>
+          
+          <div className="border-t border-white/10 my-1"></div>
+          
+          {/* Folder options */}
+          {folders.map((folder) => (
+            <button
+              key={folder.id}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAssignToFolder(conversation.id, folder.id);
+              }}
+              className={`flex items-center w-full px-3 py-2 text-sm hover:bg-white/10 transition-colors ${
+                conversation.project?.id === folder.id ? 'text-blue-200 font-medium' : 'text-blue-100'
+              }`}
+              disabled={assigningToFolder === conversation.id}
+            >
+              <span className="w-4 h-4 mr-2 text-center">{folder.icon || '📁'}</span>
+              <span className="truncate">{folder.name}</span>
+              {conversation.project?.id === folder.id && <span className="ml-auto text-xs">✓</span>}
+            </button>
+          ))}
+          
+          {folders.length === 0 && (
+            <div className="px-3 py-4 text-center text-xs text-blue-300">
+              No folders available
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const renderConversationItem = (conversation: ConversationSummary) => (
     <div
       key={conversation.id}
@@ -361,6 +479,29 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
 
       {!isStreaming && editingTitle !== conversation.id && (
         <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity absolute top-3 right-3">
+          {/* NEW: Folder assignment button */}
+          <div className="relative">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowFolderDropdown(showFolderDropdown === conversation.id ? null : conversation.id);
+              }}
+              className="p-1 text-blue-300 hover:text-white hover:bg-white/10 rounded transition-colors"
+              title="Move to folder"
+              disabled={assigningToFolder === conversation.id}
+            >
+              {assigningToFolder === conversation.id ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : conversation.project ? (
+                <Folder className="w-3 h-3" />
+              ) : (
+                <FolderPlus className="w-3 h-3" />
+              )}
+            </button>
+            
+            {renderFolderDropdown(conversation)}
+          </div>
+          
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -420,7 +561,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     </div>
   );
 
-  // 🔧 FIXED: Updated renderTimeGroup to match folders view styling
   const renderTimeGroup = (title: string, conversations: ConversationSummary[]) => {
     if (conversations.length === 0) return null;
     
@@ -582,6 +722,14 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
             </button>
           )}
         </div>
+      )}
+      
+      {/* Click outside to close dropdown */}
+      {showFolderDropdown && (
+        <div
+          className="fixed inset-0 z-10"
+          onClick={() => setShowFolderDropdown(null)}
+        />
       )}
     </>
   );
