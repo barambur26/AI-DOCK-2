@@ -490,15 +490,15 @@ export const ChatContainer: React.FC = () => {
     <div className="flex h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-blue-950 overflow-hidden">
 
       
-      {/* 📁 Unified Sidebar Toggle */}
+      {/* 📁 Unified Sidebar Toggle - Modern Top-Left Position */}
       <button
         onClick={() => {
           setShowUnifiedSidebar(!showUnifiedSidebar);
         }}
         disabled={isStreaming}
-        className={`fixed top-1/2 translate-y-12 z-50 transition-all duration-300 ${
-          showUnifiedSidebar ? 'left-[328px]' : 'left-2'
-        } bg-white/5 hover:bg-white/10 backdrop-blur-lg border border-white/10 rounded-full p-3 shadow-2xl hover:shadow-3xl group hover:scale-105 transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100`}
+        className={`fixed top-4 left-4 z-50 transition-all duration-300 ${
+          showUnifiedSidebar ? 'translate-x-80' : 'translate-x-0'
+        } bg-white/5 hover:bg-white/10 backdrop-blur-lg border border-white/10 rounded-full p-2.5 shadow-2xl hover:shadow-3xl group hover:scale-105 transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100`}
         title={`${showUnifiedSidebar ? 'Hide' : 'Show'} sidebar`}
         aria-label={`${showUnifiedSidebar ? 'Hide' : 'Show'} sidebar`}
       >
