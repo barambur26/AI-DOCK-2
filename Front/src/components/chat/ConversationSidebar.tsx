@@ -125,8 +125,8 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       }
       
       // Refresh conversations to get updated data
-      await loadConversations();
-      await loadFolders();
+      loadConversations();
+      loadFolders();
       
       console.log('✅ Successfully updated conversation folder assignment');
       
@@ -137,7 +137,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       setAssigningToFolder(null);
       setShowFolderDropdown(null);
     }
-  }, [conversations, loadConversations, loadFolders]);
+  }, [conversations]);
   
   const updateConversationMessageCount = useCallback((conversationId: number, newMessageCount: number) => {
     const updateConversation = (conv: ConversationSummary) => 
