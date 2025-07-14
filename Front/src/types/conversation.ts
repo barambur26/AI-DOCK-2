@@ -46,6 +46,12 @@ export interface ConversationSummary {
   last_message_at?: string;
   model_used?: string;
   project_id?: number; // Add project/folder assignment support
+  project?: {
+    id: number;
+    name: string;
+    color?: string;
+    icon?: string;
+  }; // Full project information from backend
 }
 
 export interface ConversationDetail extends ConversationSummary {
@@ -58,12 +64,7 @@ export interface ConversationDetail extends ConversationSummary {
     description?: string;
     is_active: boolean;
   }; // Full assistant information from backend
-  project?: {
-    id: number;
-    name: string;
-    color?: string;
-    icon?: string;
-  }; // Full project information from backend
+  // project field inherited from ConversationSummary
 }
 
 // =============================================================================

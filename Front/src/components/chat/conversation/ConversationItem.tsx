@@ -216,11 +216,11 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
             </div>
             
             {/* Show folder/project information if available */}
-            {(conversation as any).project_name && (
+            {conversation.project?.name && (
               <div className="flex items-center">
                 <Folder className="w-3 h-3 mr-1 flex-shrink-0" />
                 <span className="text-blue-600 font-medium">
-                  {(conversation as any).project_name}
+                  {conversation.project.name}
                 </span>
               </div>
             )}
