@@ -99,7 +99,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   } : null;
   
   return (
-    <div className="bg-white/5 backdrop-blur-lg border-b border-white/10 px-4 md:px-6 py-4 sticky top-0 z-50">
+    <div className="bg-white/5 backdrop-blur-lg border-b border-white/10 pl-12 md:pl-16 pr-4 md:pr-6 py-4 sticky top-0 z-50">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
         <div className="flex items-center space-x-2 md:space-x-4">
           <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
