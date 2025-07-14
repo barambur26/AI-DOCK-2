@@ -8,13 +8,10 @@ import {
   Plus, 
   Trash2, 
   Edit3, 
-  Calendar,
   Clock,
   X,
-  ChevronRight,
   Loader2,
-  Archive,
-  Check // Add Check icon for save button
+  Check
 } from 'lucide-react';
 import { conversationService } from '../../services/conversationService';
 import { 
@@ -23,7 +20,6 @@ import {
   ConversationServiceError 
 } from '../../types/conversation';
 import { formatConversationTimestamp } from '../../utils/chatHelpers';
-// Removed ConversationItem import - using custom compact rendering
 
 interface ConversationSidebarProps {
   isOpen: boolean;
@@ -31,14 +27,10 @@ interface ConversationSidebarProps {
   onSelectConversation: (conversationId: number) => void;
   onCreateNew: () => void;
   currentConversationId?: number;
-  // 🔄 NEW: Reactive update support
   onConversationUpdate?: (conversationId: number, messageCount: number) => void;
-  refreshTrigger?: number; // Increment this to trigger refresh
-  // 🔄 NEW: Expose sidebar functions to parent for reactive updates
+  refreshTrigger?: number;
   onSidebarReady?: (updateFn: (id: number, count: number, backendData?: Partial<ConversationSummary>) => void, addFn: (conv: any) => void) => void;
-  // 🌊 NEW: Streaming state to prevent conversation switching during streaming
   isStreaming?: boolean;
-  // 🆕 NEW: Embedded mode for use within UnifiedSidebar
   embedded?: boolean;
 }
 
@@ -53,7 +45,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   isStreaming = false,
   embedded = false
 }) => {
-  // State management
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,20 +54,16 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   const [selectedForDelete, setSelectedForDelete] = useState<number | null>(null);
   const [editingTitle, setEditingTitle] = useState<number | null>(null);
   const [newTitle, setNewTitle] = useState('');
-  
-  // Pagination state
   const [hasMore, setHasMore] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   
-  // Load conversations on mount and when sidebar opens
   useEffect(() => {
     if (isOpen) {
       loadConversations();
     }
   }, [isOpen]);
   
-  // 🔄 NEW: Reactive refresh when refreshTrigger changes
   useEffect(() => {
     if (refreshTrigger && refreshTrigger > 0 && isOpen) {
       console.log('🔄 Refreshing conversations due to trigger:', refreshTrigger);
@@ -84,7 +71,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     }
   }, [refreshTrigger, isOpen]);
   
-  // Search conversations when query changes
   useEffect(() => {
     if (searchQuery.trim()) {
       searchConversations();
@@ -93,71 +79,30 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     }
   }, [searchQuery]);
   
-  // 🔄 Update conversation message count only (without changing position)
   const updateConversationMessageCount = useCallback((conversationId: number, newMessageCount: number) => {
-    console.log('🔄 Updating message count for conversation', conversationId, 'to', newMessageCount);
-    
     const updateConversation = (conv: ConversationSummary) => 
-      conv.id === conversationId 
-        ? { 
-            ...conv, 
-            message_count: newMessageCount
-            // Don't update updated_at here - only when messages are actually sent
-          }
-        : conv;
+      conv.id === conversationId ? { ...conv, message_count: newMessageCount } : conv;
     
-    // Update main conversations list without resorting
     setConversations(prev => prev.map(updateConversation));
-    
-    // Update search results if they exist
     setSearchResults(prev => prev.map(updateConversation));
   }, []);
 
-  // 🔄 Move conversation to top when a new message is sent
-  // Updated to work with backend-provided timestamps instead of local management
   const moveConversationToTop = useCallback((conversationId: number, newMessageCount: number, backendData?: Partial<ConversationSummary>) => {
-    console.log('🔄 Moving conversation to top due to new message:', conversationId, { 
-      newMessageCount, 
-      backendData,
-      hasBackendTimestamps: !!(backendData?.last_message_at || backendData?.updated_at)
-    });
-    
     const updateConversation = (conv: ConversationSummary) => {
       if (conv.id !== conversationId) return conv;
       
-      // 🔧 CRITICAL FIX: Only update timestamps if we have fresh backend data
-      // NEVER set current timestamps unless we have explicit backend data
       const updatedConv = { 
         ...conv, 
         message_count: newMessageCount,
-        // 🚨 IMPORTANT: Only update timestamps if we have fresh backend data
-        // This prevents "Just now" timestamps when we don't have actual backend updates
-        ...(backendData?.last_message_at && {
-          last_message_at: backendData.last_message_at
-        }),
-        ...(backendData?.updated_at && {
-          updated_at: backendData.updated_at
-        })
+        ...(backendData?.last_message_at && { last_message_at: backendData.last_message_at }),
+        ...(backendData?.updated_at && { updated_at: backendData.updated_at })
       };
-      
-      console.log('🔄 Updated conversation data:', {
-        id: conversationId,
-        oldLastMessage: conv.last_message_at,
-        newLastMessage: updatedConv.last_message_at,
-        oldUpdated: conv.updated_at,
-        newUpdated: updatedConv.updated_at,
-        messageCount: newMessageCount,
-        timestampsChanged: conv.last_message_at !== updatedConv.last_message_at || conv.updated_at !== updatedConv.updated_at,
-        backendDataReceived: !!backendData
-      });
       
       return updatedConv;
     };
     
-    // Update main conversations list and resort by recency
     setConversations(prev => {
       const updated = prev.map(updateConversation);
-      // Sort by last_message_at first, then updated_at, then created_at to maintain recency order
       return updated.sort((a, b) => {
         const dateA = new Date(a.last_message_at || a.updated_at || a.created_at);
         const dateB = new Date(b.last_message_at || b.updated_at || b.created_at);
@@ -165,43 +110,27 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       });
     });
     
-    // Update search results if they exist
     setSearchResults(prev => prev.map(updateConversation));
   }, []);
   
-  // 🔄 NEW: Function to add new conversation to the list (when auto-saved)
   const addNewConversation = useCallback((newConversation: ConversationSummary) => {
-    console.log('🔄 Adding new conversation to sidebar:', newConversation.id, newConversation.title);
-    
-    // Add to the beginning of the list (most recent first)
     setConversations(prev => {
-      // Check if it already exists to avoid duplicates
       const exists = prev.some(conv => conv.id === newConversation.id);
       if (exists) {
-        console.log('🔄 Conversation already exists, updating instead');
-        return prev.map(conv => 
-          conv.id === newConversation.id ? newConversation : conv
-        );
+        return prev.map(conv => conv.id === newConversation.id ? newConversation : conv);
       } else {
         return [newConversation, ...prev];
       }
     });
-    
-    // Also update total count
     setTotalCount(prev => prev + 1);
   }, []);
   
-  // 🔄 NEW: Expose update and add functions to parent
   useEffect(() => {
     if (onSidebarReady) {
-      // Pass our internal functions to the parent for reactive updates
-      // Use moveConversationToTop for actual message updates (which should move to top)
       onSidebarReady(moveConversationToTop, addNewConversation);
-      console.log('🔄 Sidebar functions exposed to parent for reactive updates');
     }
   }, [onSidebarReady, moveConversationToTop, addNewConversation]);
   
-  // Load user's conversations
   const loadConversations = useCallback(async (append = false) => {
     try {
       if (append) {
@@ -212,7 +141,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       setError(null);
       
       const offset = append ? conversations.length : 0;
-      
       const response: ConversationListResponse = await conversationService.getConversations({
         limit: 50,
         offset
@@ -229,11 +157,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       
     } catch (error) {
       console.error('❌ Failed to load conversations:', error);
-      setError(
-        error instanceof ConversationServiceError 
-          ? error.message 
-          : 'Failed to load conversations'
-      );
+      setError(error instanceof ConversationServiceError ? error.message : 'Failed to load conversations');
     } finally {
       if (append) {
         setIsLoadingMore(false);
@@ -243,20 +167,16 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     }
   }, [conversations.length]);
   
-  // Search conversations
   const searchConversations = useCallback(async () => {
     if (!searchQuery.trim()) return;
     
     try {
       setIsSearching(true);
-      
       const results = await conversationService.searchConversations({
         query: searchQuery.trim(),
         limit: 20
       });
-      
       setSearchResults(results);
-      
     } catch (error) {
       console.error('❌ Search failed:', error);
       setSearchResults([]);
@@ -265,42 +185,26 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     }
   }, [searchQuery]);
   
-  // Handle conversation selection
   const handleSelectConversation = (conversationId: number) => {
-    // 🚫 Prevent conversation switching while streaming
     if (isStreaming) {
       console.log('🚫 Cannot switch conversations while AI is streaming a response');
-      // Could optionally show a toast notification here
       return;
     }
-    
     onSelectConversation(conversationId);
-    // Don't close sidebar on mobile - let parent decide
   };
   
-  // Handle conversation deletion
   const handleDeleteConversation = async (conversationId: number) => {
     try {
       await conversationService.deleteConversation(conversationId);
-      
-      // Remove from state
       setConversations(prev => prev.filter(c => c.id !== conversationId));
       setSearchResults(prev => prev.filter(c => c.id !== conversationId));
       setSelectedForDelete(null);
-      
-      console.log('✅ Conversation deleted successfully');
-      
     } catch (error) {
       console.error('❌ Failed to delete conversation:', error);
-      setError(
-        error instanceof ConversationServiceError 
-          ? error.message 
-          : 'Failed to delete conversation'
-      );
+      setError(error instanceof ConversationServiceError ? error.message : 'Failed to delete conversation');
     }
   };
   
-  // Handle title editing
   const handleEditTitle = async (conversationId: number) => {
     if (!newTitle.trim()) {
       setEditingTitle(null);
@@ -312,38 +216,28 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
         title: newTitle.trim()
       });
       
-      // Update in state
       const updateConversation = (conv: ConversationSummary) => 
         conv.id === conversationId ? { ...conv, title: updated.title } : conv;
       
       setConversations(prev => prev.map(updateConversation));
       setSearchResults(prev => prev.map(updateConversation));
-      
       setEditingTitle(null);
       setNewTitle('');
-      
     } catch (error) {
       console.error('❌ Failed to update title:', error);
-      setError(
-        error instanceof ConversationServiceError 
-          ? error.message 
-          : 'Failed to update conversation title'
-      );
+      setError(error instanceof ConversationServiceError ? error.message : 'Failed to update conversation title');
     }
   };
   
-  // Handle scroll for infinite loading
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    const isNearBottom = scrollTop + clientHeight >= scrollHeight - 100; // Load when 100px from bottom
+    const isNearBottom = scrollTop + clientHeight >= scrollHeight - 100;
     
     if (isNearBottom && hasMore && !isLoadingMore && !isLoading && !searchQuery.trim()) {
-      console.log('🔄 Loading more conversations due to scroll');
       loadConversations(true);
     }
   }, [hasMore, isLoadingMore, isLoading, searchQuery, loadConversations]);
 
-  // Group conversations by time periods for better organization
   const groupConversationsByTime = useCallback((conversations: ConversationSummary[]) => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -359,7 +253,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       older: [] as ConversationSummary[]
     };
 
-    // 🔧 FIX: Sort conversations by last_message_at (most recent first) for accurate timestamp ordering
     const sortedConversations = [...conversations].sort((a, b) => {
       const dateA = new Date(a.last_message_at || a.updated_at || a.created_at);
       const dateB = new Date(b.last_message_at || b.updated_at || b.created_at);
@@ -367,7 +260,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     });
 
     sortedConversations.forEach(conversation => {
-      // 🔧 FIX: Use last_message_at for grouping to show conversations in the right time buckets
       const conversationDate = new Date(conversation.last_message_at || conversation.updated_at || conversation.created_at);
       
       if (conversationDate >= today) {
@@ -386,11 +278,9 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     return groups;
   }, []);
 
-  // Get conversations to display (search results or all)
   const displayConversations = searchQuery.trim() ? searchResults : conversations;
   const groupedConversations = !searchQuery.trim() ? groupConversationsByTime(displayConversations) : null;
 
-  // Render a conversation item
   const renderConversationItem = (conversation: ConversationSummary) => (
     <div
       key={conversation.id}
@@ -408,7 +298,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       }}
       title={isStreaming ? 'Cannot switch conversations while AI is responding' : undefined}
     >
-      {/* Title */}
       {editingTitle === conversation.id ? (
         <div className="flex items-center space-x-2 mb-1" onClick={(e) => e.stopPropagation()}>
           <input
@@ -451,7 +340,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
         </h3>
       )}
 
-      {/* Metadata Section */}
       <div className="flex items-center space-x-3 text-xs text-blue-300">
         <div className="flex items-center">
           <MessageSquare className="w-3 h-3 mr-1" />
@@ -463,7 +351,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
           <span>{formatConversationTimestamp(conversation.last_message_at || conversation.updated_at)}</span>
         </div>
         
-        {/* 📁 Show folder name if conversation is in a folder */}
         {conversation.project?.name && (
           <div className="flex items-center text-blue-400 font-medium">
             <span className="text-blue-500 mr-1">📁</span>
@@ -472,7 +359,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
         )}
       </div>
 
-      {/* Action buttons */}
       {!isStreaming && editingTitle !== conversation.id && (
         <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity absolute top-3 right-3">
           <button
@@ -499,7 +385,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
         </div>
       )}
 
-      {/* Delete confirmation overlay */}
       {selectedForDelete === conversation.id && (
         <div className="absolute inset-0 bg-black/90 backdrop-blur-sm rounded-lg border border-red-400/30 flex items-center justify-center z-10">
           <div className="text-center p-3">
@@ -535,6 +420,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     </div>
   );
 
+  // 🔧 FIXED: Updated renderTimeGroup to match folders view styling
   const renderTimeGroup = (title: string, conversations: ConversationSummary[]) => {
     if (conversations.length === 0) return null;
     
@@ -552,10 +438,8 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   
   if (!isOpen) return null;
 
-  // Content shared between embedded and standalone modes
   const content = (
     <>
-      {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-white/10 flex-shrink-0">
         <div className="flex items-center space-x-3">
           <div className="flex items-center justify-center w-8 h-8 bg-blue-500/20 backdrop-blur-sm border border-blue-400/30 rounded-lg shadow-md">
@@ -593,7 +477,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
         </div>
       </div>
       
-      {/* Search box */}
       <div className="p-4 border-b border-white/10 flex-shrink-0">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-blue-300" />
@@ -611,7 +494,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
         </div>
       </div>
       
-      {/* Error message */}
       {error && (
         <div className="p-4 bg-red-500/20 backdrop-blur-sm border border-red-400/30 mx-4 mt-4 rounded-xl flex-shrink-0">
           <p className="text-red-200 text-sm">{error}</p>
@@ -624,7 +506,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
         </div>
       )}
       
-      {/* Conversation list */}
       <div 
         className="flex-1 overflow-y-auto min-h-0 scroll-smooth conversation-scrollbar"
         onScroll={handleScroll}
@@ -662,14 +543,12 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
           </div>
         ) : groupedConversations ? (
           <div className="py-2">
-            {/* Render time-grouped conversations */}
             {renderTimeGroup('Today', groupedConversations.today)}
             {renderTimeGroup('Yesterday', groupedConversations.yesterday)}
             {renderTimeGroup('This Week', groupedConversations.thisWeek)}
             {renderTimeGroup('This Month', groupedConversations.thisMonth)}
             {renderTimeGroup('Older', groupedConversations.older)}
             
-            {/* Infinite scroll loading indicator */}
             {isLoadingMore && (
               <div className="flex items-center justify-center py-4">
                 <Loader2 className="w-4 h-4 animate-spin text-blue-300" />
@@ -679,13 +558,11 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
           </div>
         ) : (
           <div className="py-2">
-            {/* Fallback: render search results without grouping */}
             {displayConversations.map(renderConversationItem)}
           </div>
         )}
       </div>
       
-      {/* Footer */}
       {!isLoading && conversations.length > 0 && (
         <div className="p-4 border-t border-white/10 bg-white/5 backdrop-blur-lg flex-shrink-0">
           <p className="text-xs text-blue-300 text-center">
@@ -709,12 +586,10 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     </>
   );
 
-  // Embedded mode - render content without fixed positioning
   if (embedded) {
     return <div className="h-full w-full flex flex-col">{content}</div>;
   }
 
-  // Standalone mode - render with fixed positioning and background
   return (
     <div className="fixed inset-y-0 left-0 z-50 w-80">
       <div className="h-full w-full bg-white/5 backdrop-blur-lg border-r border-white/10 shadow-2xl flex flex-col">
