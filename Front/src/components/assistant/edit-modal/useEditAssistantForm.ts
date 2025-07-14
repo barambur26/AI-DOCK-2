@@ -39,17 +39,14 @@ interface UseEditAssistantFormReturn {
   systemPromptLength: number;
   
   // UI state
-  showAdvancedSettings: boolean;
   showFileManagement: boolean;
   setShowFileManagement: (show: boolean) => void;
   
   // Actions
   handleInputChange: (field: keyof AssistantFormData, value: any) => void;
-  handleModelPreferenceChange: (key: string, value: any) => void;
   handleSubmit: (e: React.FormEvent) => Promise<void>;
   resetForm: () => void;
   validateField: (fieldName: keyof AssistantFormData) => void;
-  toggleAdvancedSettings: () => void;
   toggleFileManagement: () => void;
   
   // Utilities
@@ -103,7 +100,6 @@ export const useEditAssistantForm = ({
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   // UI state
-  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [showFileManagement, setShowFileManagement] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -125,6 +121,7 @@ export const useEditAssistantForm = ({
       description: assistantData.description || '',
       system_prompt: assistantData.system_prompt || '',
       color: assistantData.color || '#3B82F6',
+      // Preserve model_preferences from original data but don't expose in UI
       model_preferences: assistantData.model_preferences ? { ...assistantData.model_preferences } : {}
     };
 
@@ -145,10 +142,6 @@ export const useEditAssistantForm = ({
     setNameLength(formData.name.length);
     setDescriptionLength(formData.description.length);
     setSystemPromptLength(formData.system_prompt.length);
-
-    // Show advanced settings if model preferences exist
-    const hasModelPrefs = Object.keys(formData.model_preferences).length > 0;
-    setShowAdvancedSettings(hasModelPrefs);
   };
 
   /**
@@ -186,16 +179,7 @@ export const useEditAssistantForm = ({
     // Color comparison
     const colorChanged = (formData.color || '') !== (originalData.color || '');
     
-    // Object comparison for model preferences
-    const formPrefs = formData.model_preferences || {};
-    const originalPrefs = originalData.model_preferences || {};
-    
-    // Sort keys to ensure consistent comparison
-    const formPrefsStr = JSON.stringify(formPrefs, Object.keys(formPrefs).sort());
-    const originalPrefsStr = JSON.stringify(originalPrefs, Object.keys(originalPrefs).sort());
-    const modelPreferencesChanged = formPrefsStr !== originalPrefsStr;
-
-    return nameChanged || descriptionChanged || systemPromptChanged || colorChanged || modelPreferencesChanged;
+    return nameChanged || descriptionChanged || systemPromptChanged || colorChanged;
   };
 
   /**
@@ -224,14 +208,9 @@ export const useEditAssistantForm = ({
       updates.color = formData.color;
     }
 
-    const formPrefs = formData.model_preferences || {};
-    const originalPrefs = originalData.model_preferences || {};
-    const formPrefsStr = JSON.stringify(formPrefs, Object.keys(formPrefs).sort());
-    const originalPrefsStr = JSON.stringify(originalPrefs, Object.keys(originalPrefs).sort());
-    
-    if (formPrefsStr !== originalPrefsStr) {
-      updates.model_preferences = formData.model_preferences;
-    }
+    // Always preserve original model_preferences unchanged
+    // This ensures we don't lose existing advanced settings even though UI is hidden
+    updates.model_preferences = originalData.model_preferences;
 
     return updates;
   };
@@ -281,25 +260,6 @@ export const useEditAssistantForm = ({
     if (field === 'system_prompt') setSystemPromptLength(value.length);
 
     // Run full validation
-    const errors = validateAssistantFormData(newFormData);
-    setValidationErrors(errors);
-  };
-
-  /**
-   * Handle model preference changes
-   */
-  const handleModelPreferenceChange = (key: string, value: any) => {
-    const newFormData = {
-      ...formData,
-      model_preferences: {
-        ...formData.model_preferences,
-        [key]: value
-      }
-    };
-    
-    setFormData(newFormData);
-    
-    // Validate when model preferences change
     const errors = validateAssistantFormData(newFormData);
     setValidationErrors(errors);
   };
@@ -360,13 +320,6 @@ export const useEditAssistantForm = ({
   };
 
   /**
-   * Toggle advanced settings section
-   */
-  const toggleAdvancedSettings = () => {
-    setShowAdvancedSettings(!showAdvancedSettings);
-  };
-
-  /**
    * Toggle file management section
    */
   const toggleFileManagement = () => {
@@ -404,7 +357,6 @@ export const useEditAssistantForm = ({
       setIsSubmitting(false);
       setSubmitSuccess(false);
       setSubmitError(null);
-      setShowAdvancedSettings(false);
       setShowFileManagement(false);
       setIsLoading(false);
       setNameLength(0);
@@ -437,17 +389,14 @@ export const useEditAssistantForm = ({
     systemPromptLength,
     
     // UI state
-    showAdvancedSettings,
     showFileManagement,
     setShowFileManagement,
     
     // Actions
     handleInputChange,
-    handleModelPreferenceChange,
     handleSubmit,
     resetForm,
     validateField,
-    toggleAdvancedSettings,
     toggleFileManagement,
     
     // Utilities

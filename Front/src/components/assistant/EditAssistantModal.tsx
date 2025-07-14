@@ -11,7 +11,6 @@ import {
   SuccessState,
   BasicInformationSection,
   SystemPromptSection,
-  AdvancedSettingsSection,
   FormActions,
   useEditAssistantForm
 } from './edit-modal';
@@ -67,17 +66,14 @@ export const EditAssistantModal: React.FC<EditAssistantModalProps> = ({
     systemPromptLength,
     
     // UI state
-    showAdvancedSettings,
     showFileManagement,
     setShowFileManagement,
     
     // Actions
     handleInputChange,
-    handleModelPreferenceChange,
     handleSubmit,
     resetForm,
     validateField,
-    toggleAdvancedSettings,
     toggleFileManagement,
     
     // Utilities
@@ -166,16 +162,7 @@ export const EditAssistantModal: React.FC<EditAssistantModalProps> = ({
               onFieldBlur={validateField}
             />
 
-            {/* Advanced Settings Section - Extracted Component */}
-            <AdvancedSettingsSection
-              formData={formData}
-              originalData={originalData}
-              showAdvancedSettings={showAdvancedSettings}
-              onToggleAdvancedSettings={toggleAdvancedSettings}
-              onModelPreferenceChange={handleModelPreferenceChange}
-            />
-
-            {/* File Management Section - New Component */}
+            {/* File Management Section */}
             <FileManagementSection
               assistantId={assistant.id}
               assistantName={assistant.name}

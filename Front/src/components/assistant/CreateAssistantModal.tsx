@@ -3,7 +3,7 @@
 // This showcases advanced form patterns and modal UX design for the Custom Assistants feature
 
 import React, { useState, useEffect } from 'react';
-import { X, Bot, Eye, EyeOff, AlertCircle, CheckCircle, Settings, Wand2 } from 'lucide-react';
+import { X, Bot, AlertCircle, CheckCircle, Settings, Wand2 } from 'lucide-react';
 
 import { assistantService } from '../../services/assistantService';
 import { assistantFileService } from '../../services/assistantFileService';
@@ -13,7 +13,6 @@ import {
   validateAssistantFormData,
   hasValidationErrors,
   createDefaultAssistantFormData,
-  DEFAULT_ASSISTANT_CONFIG,
   ASSISTANT_VALIDATION,
   ASSISTANT_COLOR_PALETTE,
   getRandomAssistantColor,
@@ -40,14 +39,12 @@ interface CreateAssistantModalProps {
  * - Accessibility considerations (ESC key, focus management)
  * - Form reset and cleanup on close/success
  * - Loading states and error handling
- * - Model preferences configuration
  */
 export const CreateAssistantModal: React.FC<CreateAssistantModalProps> = ({
   isOpen,
   onClose,
   onAssistantCreated
 }) => {
-
 
   // =============================================================================
   // STATE MANAGEMENT
@@ -64,7 +61,6 @@ export const CreateAssistantModal: React.FC<CreateAssistantModalProps> = ({
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   // UI state
-  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [showFileManagement, setShowFileManagement] = useState(false);
   
   // File management state
@@ -135,24 +131,6 @@ export const CreateAssistantModal: React.FC<CreateAssistantModalProps> = ({
   };
 
   /**
-   * Handle model preference changes
-   * 
-   * 🎓 LEARNING: Nested Object Updates
-   * ==================================
-   * When updating nested objects in React state, we need to
-   * spread both the parent object and the nested object.
-   */
-  const handleModelPreferenceChange = (key: string, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      model_preferences: {
-        ...prev.model_preferences,
-        [key]: value
-      }
-    }));
-  };
-
-  /**
    * Handle form submission
    * 
    * 🎓 LEARNING: Async Form Submission
@@ -184,7 +162,8 @@ export const CreateAssistantModal: React.FC<CreateAssistantModalProps> = ({
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
         system_prompt: formData.system_prompt.trim(),
-        model_preferences: formData.model_preferences,
+        // Use default model_preferences (empty object) since advanced settings are removed
+        model_preferences: {},
         color: formData.color // Include color in create request
       };
 
@@ -244,7 +223,6 @@ export const CreateAssistantModal: React.FC<CreateAssistantModalProps> = ({
     setFormData(createDefaultAssistantFormData());
     setValidationErrors({});
     setHasAttemptedSubmit(false);
-    setShowAdvancedSettings(false);
     setShowFileManagement(false);
     setSelectedFileIds([]);
     setSubmitError(null);
@@ -283,8 +261,6 @@ export const CreateAssistantModal: React.FC<CreateAssistantModalProps> = ({
       document.body.style.overflow = 'unset';
     };
   }, [isOpen]);
-
-
 
   // =============================================================================
   // RENDER HELPERS
@@ -461,42 +437,6 @@ export const CreateAssistantModal: React.FC<CreateAssistantModalProps> = ({
   };
 
   /**
-   * Render model preference field
-   */
-  const renderModelPreferenceField = (
-    key: string,
-    label: string,
-    type: 'text' | 'number' = 'text',
-    min?: number,
-    max?: number,
-    step?: string,
-    placeholder?: string
-  ) => {
-    const value = formData.model_preferences[key];
-
-    return (
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          {label}
-        </label>
-        <input
-          type={type}
-          value={value || ''}
-          onChange={(e) => {
-            const newValue = type === 'number' ? parseFloat(e.target.value) || undefined : e.target.value;
-            handleModelPreferenceChange(key, newValue);
-          }}
-          min={min}
-          max={max}
-          step={step}
-          placeholder={placeholder}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        />
-      </div>
-    );
-  };
-
-  /**
    * Render success state
    */
   const renderSuccessState = () => (
@@ -631,84 +571,6 @@ export const CreateAssistantModal: React.FC<CreateAssistantModalProps> = ({
               onToggle={() => setShowFileManagement(!showFileManagement)}
             />
 
-            {/* Advanced Settings */}
-            <div>
-              <button
-                type="button"
-                onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
-                className="flex items-center text-blue-600 hover:text-blue-800 font-medium mb-4"
-              >
-                <svg 
-                  className={`w-4 h-4 mr-2 transform transition-transform ${showAdvancedSettings ? 'rotate-90' : ''}`}
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-                Advanced Model Settings
-                <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
-                  Optional
-                </span>
-              </button>
-
-              {showAdvancedSettings && (
-                <div className="space-y-4 bg-gray-50 p-4 rounded-lg border">
-                  <p className="text-sm text-gray-600 mb-4">
-                    Configure model-specific parameters. Leave empty to use defaults.
-                  </p>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {renderModelPreferenceField(
-                      'model', 
-                      'Preferred Model', 
-                      'text',
-                      undefined,
-                      undefined,
-                      undefined,
-                      'e.g., gpt-4, claude-3-sonnet'
-                    )}
-                    
-                    {renderModelPreferenceField(
-                      'temperature', 
-                      'Temperature', 
-                      'number',
-                      0,
-                      2,
-                      '0.1',
-                      '0.7 (default)'
-                    )}
-                    
-                    {renderModelPreferenceField(
-                      'max_tokens', 
-                      'Max Tokens', 
-                      'number',
-                      1,
-                      32000,
-                      '1',
-                      '2048 (default)'
-                    )}
-                    
-                    {renderModelPreferenceField(
-                      'top_p', 
-                      'Top P', 
-                      'number',
-                      0,
-                      1,
-                      '0.1',
-                      '1.0 (default)'
-                    )}
-                  </div>
-                  
-                  <div className="text-xs text-gray-500 space-y-1">
-                    <p><strong>Temperature:</strong> Controls randomness (0.0 = focused, 2.0 = creative)</p>
-                    <p><strong>Max Tokens:</strong> Maximum response length</p>
-                    <p><strong>Top P:</strong> Controls diversity via nucleus sampling</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
             {/* Form-level error */}
             {submitError && (
               <div className="bg-red-50 border border-red-200 rounded-md p-4">
@@ -755,20 +617,20 @@ export const CreateAssistantModal: React.FC<CreateAssistantModalProps> = ({
  * 
  * **Key Concepts Demonstrated:**
  * 
- * 1. **Complex Form Management**
+ * 1. **Simplified Form Management**
  *    - TypeScript interfaces for form data
  *    - Real-time validation with immediate feedback
- *    - Nested object updates (model preferences)
  *    - Character counters for better UX
+ *    - Removed complex model preferences to simplify UX
  * 
- * 2. **Advanced UI Patterns**
- *    - Collapsible sections (advanced settings)
- *    - Progressive disclosure (system prompt preview)
+ * 2. **Clean UI Patterns**
+ *    - Streamlined sections without advanced settings
+ *    - Progressive disclosure for file management
  *    - Loading states and success feedback
  *    - Error handling with specific messages
  * 
  * 3. **API Integration**
- *    - Service layer integration
+ *    - Service layer integration with simplified data
  *    - Error handling for different failure modes
  *    - Loading states during async operations
  *    - Success callbacks to parent components
