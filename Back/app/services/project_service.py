@@ -38,6 +38,169 @@ class ProjectService:
         self.db = db
     
     # =============================================================================
+    # PROJECT-CONVERSATION MANAGEMENT
+    # =============================================================================
+    
+    async def get_project_conversations(
+        self, 
+        project_id: int, 
+        user_id: int, 
+        limit: int = 50
+    ) -> List[Conversation]:
+        """
+        Get conversations associated with a project.
+        
+        Args:
+            project_id: ID of the project
+            user_id: ID of the user requesting conversations
+            limit: Maximum number of conversations to return
+            
+        Returns:
+            List of conversations with project relationships loaded
+        """
+        try:
+            # First verify the project exists and user has access
+            project = await self.get_project_by_id(project_id, user_id)
+            if not project:
+                return []
+            
+            # Query conversations that belong to this project
+            # Load both project and assistant relationships for complete conversation data
+            query = select(Conversation).options(
+                selectinload(Conversation.projects),  # Load project relationships
+                selectinload(Conversation.assistant)   # Load assistant relationship
+            ).join(
+                Conversation.projects
+            ).where(
+                and_(
+                    Project.id == project_id,
+                    Project.user_id == user_id,
+                    Conversation.user_id == user_id,
+                    Project.is_active == True
+                )
+            ).order_by(
+                desc(Conversation.updated_at)
+            ).limit(limit)
+            
+            result = await self.db.execute(query)
+            conversations = result.scalars().all()
+            
+            # Ensure project relationships are properly loaded
+            for conversation in conversations:
+                await self.db.refresh(conversation, attribute_names=['projects', 'assistant'])
+            
+            logger.info(f"Retrieved {len(conversations)} conversations for project {project_id}")
+            return list(conversations)
+            
+        except Exception as e:
+            logger.error(f"Error getting project conversations: {str(e)}")
+            return []
+    
+    async def add_conversation_to_project(
+        self, 
+        project_id: int, 
+        conversation_id: int, 
+        user_id: int
+    ) -> bool:
+        """
+        Add a conversation to a project.
+        
+        Args:
+            project_id: ID of the project
+            conversation_id: ID of the conversation
+            user_id: ID of the user
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            # Get project and conversation, ensuring user ownership
+            project = await self.get_project_by_id(project_id, user_id)
+            if not project:
+                logger.warning(f"Project {project_id} not found for user {user_id}")
+                return False
+            
+            # Get conversation with relationships loaded
+            conv_query = select(Conversation).options(
+                selectinload(Conversation.projects)
+            ).where(
+                and_(
+                    Conversation.id == conversation_id,
+                    Conversation.user_id == user_id
+                )
+            )
+            
+            conv_result = await self.db.execute(conv_query)
+            conversation = conv_result.scalar_one_or_none()
+            
+            if not conversation:
+                logger.warning(f"Conversation {conversation_id} not found for user {user_id}")
+                return False
+            
+            # Add conversation to project
+            project.add_conversation(conversation)
+            await self.db.commit()
+            
+            logger.info(f"Added conversation {conversation_id} to project {project_id}")
+            return True
+            
+        except Exception as e:
+            await self.db.rollback()
+            logger.error(f"Error adding conversation to project: {str(e)}")
+            return False
+    
+    async def remove_conversation_from_project(
+        self, 
+        project_id: int, 
+        conversation_id: int, 
+        user_id: int
+    ) -> bool:
+        """
+        Remove a conversation from a project.
+        
+        Args:
+            project_id: ID of the project
+            conversation_id: ID of the conversation
+            user_id: ID of the user
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            # Get project and conversation, ensuring user ownership
+            project = await self.get_project_by_id(project_id, user_id)
+            if not project:
+                return False
+            
+            # Get conversation
+            conv_query = select(Conversation).options(
+                selectinload(Conversation.projects)
+            ).where(
+                and_(
+                    Conversation.id == conversation_id,
+                    Conversation.user_id == user_id
+                )
+            )
+            
+            conv_result = await self.db.execute(conv_query)
+            conversation = conv_result.scalar_one_or_none()
+            
+            if not conversation:
+                return False
+            
+            # Remove conversation from project
+            project.remove_conversation(conversation)
+            await self.db.commit()
+            
+            logger.info(f"Removed conversation {conversation_id} from project {project_id}")
+            return True
+            
+        except Exception as e:
+            await self.db.rollback()
+            logger.error(f"Error removing conversation from project: {str(e)}")
+            return False
+
+    # =============================================================================
     # PROJECT CRUD OPERATIONS
     # =============================================================================
     
