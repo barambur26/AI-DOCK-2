@@ -496,16 +496,16 @@ export const ChatContainer: React.FC = () => {
           setShowUnifiedSidebar(!showUnifiedSidebar);
         }}
         disabled={isStreaming}
-        className={`fixed top-4 z-50 transition-all duration-300 ${
+        className={`fixed top-4 z-[9999] transition-all duration-300 ${
           showUnifiedSidebar ? 'left-[328px]' : 'left-4'
-        } bg-white/20 hover:bg-white/30 backdrop-blur-lg border border-white/30 rounded-full p-2.5 shadow-2xl hover:shadow-3xl group hover:scale-105 transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100`}
+        } bg-blue-500 hover:bg-blue-600 backdrop-blur-lg border-2 border-blue-400 rounded-full p-3 shadow-2xl hover:shadow-3xl group hover:scale-105 transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100`}
         title={`${showUnifiedSidebar ? 'Hide' : 'Show'} sidebar`}
         aria-label={`${showUnifiedSidebar ? 'Hide' : 'Show'} sidebar`}
       >
         {showUnifiedSidebar ? (
-          <ChevronLeft className="w-4 h-4 text-white group-hover:text-blue-100 transition-colors" />
+          <ChevronLeft className="w-5 h-5 text-white group-hover:text-blue-100 transition-colors" />
         ) : (
-          <ChevronRight className="w-4 h-4 text-white group-hover:text-blue-100 transition-colors" />
+          <ChevronRight className="w-5 h-5 text-white group-hover:text-blue-100 transition-colors" />
         )}
       </button>
       
