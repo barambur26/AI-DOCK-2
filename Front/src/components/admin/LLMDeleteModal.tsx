@@ -166,7 +166,7 @@ const LLMDeleteModal: React.FC<LLMDeleteModalProps> = ({
       onKeyDown={handleKeyDown}
       tabIndex={-1}
     >
-      <div className="bg-white rounded-lg max-w-md w-full">
+      <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] flex flex-col">
         {/* Modal Header */}
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center">
@@ -197,7 +197,7 @@ const LLMDeleteModal: React.FC<LLMDeleteModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto flex-1">
           {/* Warning Messages */}
           {renderWarnings()}
 
@@ -230,7 +230,7 @@ const LLMDeleteModal: React.FC<LLMDeleteModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3 rounded-b-lg">
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3 rounded-b-lg flex-shrink-0">
           <button
             type="button"
             onClick={onClose}

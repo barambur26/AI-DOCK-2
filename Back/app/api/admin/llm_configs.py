@@ -460,7 +460,7 @@ async def delete_llm_configuration(
         
         # CRITICAL SAFETY CHECK: Prevent deletion if usage logs exist
         # This preserves audit trail for billing/compliance
-        from ..models.usage_log import UsageLog
+        from ...models.usage_log import UsageLog
         usage_count = db.query(UsageLog).filter(
             UsageLog.llm_config_id == config_id
         ).count()
