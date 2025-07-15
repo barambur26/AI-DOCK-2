@@ -192,8 +192,8 @@ const TopUsersTable: React.FC<TopUsersTableProps> = ({
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl flex items-center justify-center">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+            <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
             </svg>
           </div>
           <div>
@@ -228,8 +228,9 @@ const TopUsersTable: React.FC<TopUsersTableProps> = ({
         {isLoading ? (
           renderLoading()
         ) : (
-          <div className="space-y-3">
-            {currentData.top_users.map((userStats, index) => (
+          <div>
+            <div className="max-h-96 overflow-y-auto space-y-3 scrollbar-thin scrollbar-thumb-amber-500/20 scrollbar-track-transparent">
+              {currentData.top_users.slice(0, 5).map((userStats, index) => (
               <div key={`user-${userStats.user.id}-${index}`} className="p-4 bg-white/5 backdrop-blur-lg rounded-xl hover:bg-white/10 transition-all duration-300 border border-white/10">
                 
                 {/* Main row */}
@@ -359,12 +360,13 @@ const TopUsersTable: React.FC<TopUsersTableProps> = ({
 
               </div>
             ))}
+            </div>
             
             {/* Footer Info */}
             {currentData.top_users.length > 0 && (
               <div className="mt-6 pt-4 border-t border-white/10 text-center">
                 <p className="text-sm text-blue-200">
-                  Showing top {currentData.top_users.length} users for {currentData.period.days} day period • 
+                  Showing top 5 users{currentData.top_users.length > 5 && ` of ${currentData.top_users.length}`} for {currentData.period.days} day period • 
                   Updated: {new Date(currentData.generated_at).toLocaleString()}
                 </p>
               </div>

@@ -232,14 +232,16 @@ const MostUsedModels: React.FC<MostUsedModelsProps> = ({
         ) : !mostUsedModels || mostUsedModels.models.length === 0 ? (
           renderEmpty()
         ) : (
-          <div className="space-y-3">
-            {mostUsedModels.models.map((model, index) => renderModelItem(model, index))}
+          <div>
+            <div className="max-h-96 overflow-y-auto space-y-3 scrollbar-thin scrollbar-thumb-blue-500/20 scrollbar-track-transparent">
+              {mostUsedModels.models.slice(0, 5).map((model, index) => renderModelItem(model, index))}
+            </div>
             
             {/* Footer Info */}
             {mostUsedModels.models.length > 0 && (
               <div className="mt-6 pt-4 border-t border-white/10 text-center">
                 <p className="text-sm text-blue-200">
-                  Showing top {mostUsedModels.models.length} models • 
+                  Showing top 5 models{mostUsedModels.models.length > 5 && ` of ${mostUsedModels.models.length}`} • 
                   Period: {new Date(mostUsedModels.period.start_date).toLocaleDateString()} - {new Date(mostUsedModels.period.end_date).toLocaleDateString()}
                   {mostUsedModels.filters_applied.department_id && <span> • Department filtered</span>}
                   {mostUsedModels.filters_applied.provider_name && <span> • Provider: {mostUsedModels.filters_applied.provider_name}</span>}
