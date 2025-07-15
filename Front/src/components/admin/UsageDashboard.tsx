@@ -623,6 +623,7 @@ const UsageDashboard: React.FC = () => {
           {/* Charts Section */}
           <UsageCharts
             summary={dashboardState.data?.summary || null}
+            mostUsedModels={dashboardState.data?.mostUsedModels || null}
             isLoading={dashboardState.isRefreshing}
             error={dashboardState.error}
           />

@@ -1,135 +1,326 @@
 INRE-DOCK-2/
 ├── Back/                                    # FastAPI backend
+│   ├── ai_dock_env/                         # Python virtual environment/config files
+│   ├── alembic/                             # DB migrations (Alembic)
+│   │   ├── env.py                           # Alembic migration environment
+│   │   ├── README                           # Alembic usage notes
+│   │   ├── script.py.mako                   # Alembic migration script template
+│   │   └── versions/                        # Individual migration scripts
+│   │       ├── 001_add_projects_table.py    # Migration: add projects table
+│   │       └── 002_add_assistant_colors.py  # Migration: add assistant colors
+│   ├── alembic.ini                          # Alembic config file
 │   ├── app/
-│   │   ├── main.py                         # FastAPI app entry point
-│   │   ├── api/                            # HTTP endpoints
-│   │   │   ├── auth.py                     # Login/logout/tokens
-│   │   │   ├── chat.py                     # Chat completion
-│   │   │   ├── chat_streaming.py           # Streaming responses
-│   │   │   ├── conversations.py            # Chat history
-│   │   │   ├── admin/                      # Admin endpoints
-│   │   │   │   ├── users.py               # User CRUD
-│   │   │   │   ├── departments.py         # Department management
-│   │   │   │   ├── quotas.py              # Usage limits
-│   │   │   │   ├── llm_configs.py         # LLM settings
-│   │   │   │   └── usage_analytics.py     # Analytics
-│   │   │   ├── assistants/                 # Assistant endpoints
-│   │   │   │   ├── base.py                # CRUD operations
-│   │   │   │   ├── conversations.py       # Assistant conversations
-│   │   │   │   └── bulk_operations.py     # Bulk actions
-│   │   │   ├── files/                      # File endpoints
-│   │   │   │   ├── upload.py              # File upload
-│   │   │   │   ├── retrieval.py           # Download/metadata
-│   │   │   │   ├── listing.py             # List/search files
-│   │   │   │   └── deletion.py            # Delete operations
-│   │   │   └── manager/                    # Manager dashboard
-│   │   │       ├── users.py               # User management
-│   │   │       └── quotas.py              # Quota oversight
-│   │   ├── core/                           # Infrastructure
-│   │   │   ├── config.py                  # Environment settings
-│   │   │   ├── database.py                # DB connection
-│   │   │   └── security.py                # JWT auth
-│   │   ├── models/                         # Database models
-│   │   │   ├── user.py                    # User accounts
-│   │   │   ├── role.py                    # User roles
-│   │   │   ├── department.py              # Departments
-│   │   │   ├── conversation.py            # Chat history
-│   │   │   ├── chat.py                    # Chat messages
-│   │   │   ├── assistant.py               # AI assistants
-│   │   │   ├── file_upload.py             # File metadata
-│   │   │   ├── llm_config.py              # LLM settings
-│   │   │   ├── quota.py                   # Usage limits
-│   │   │   └── usage_log.py               # Analytics data
-│   │   ├── schemas/                        # Pydantic validation
-│   │   │   ├── auth.py                    # Login/token schemas
-│   │   │   ├── chat.py                    # Chat request/response
-│   │   │   ├── admin.py                   # Admin operations
-│   │   │   ├── assistant.py               # Assistant schemas
-│   │   │   ├── conversation.py            # Chat history
-│   │   │   └── file_upload.py             # File schemas
-│   │   ├── services/                       # Business logic
-│   │   │   ├── auth_service.py            # Authentication
-│   │   │   ├── llm_service.py             # LLM integration
-│   │   │   ├── conversation_service.py    # Chat history
-│   │   │   ├── file_service.py            # File processing
-│   │   │   ├── admin_service.py           # Admin operations
-│   │   │   ├── quota_service.py           # Usage limits
-│   │   │   ├── assistant_service.py       # AI assistants
-│   │   │   ├── llm/                       # LLM providers
-│   │   │   │   ├── providers/             # OpenAI, Anthropic
-│   │   │   │   ├── handlers/              # Request handling
-│   │   │   │   └── core/                  # Cost calculation
-│   │   │   └── file_processing/           # File utilities
-│   │   │       ├── processors/            # PDF, Word, etc.
-│   │   │       └── exceptions/            # Error handling
-│   │   └── middleware/
-│   │       └── security.py                # CSP headers
-│   ├── alembic/                           # Database migrations
-│   ├── scripts/                           # Utility scripts
-│   ├── requirements.txt                   # Python dependencies
-│   └── uploads/                           # File storage
+│   │   ├── __init__.py                      # Package marker
+│   │   ├── api/                            # HTTP endpoints (FastAPI routers)
+│   │   │   ├── __init__.py                  # Package marker
+│   │   │   ├── auth.py                      # Login/logout/tokens endpoints
+│   │   │   ├── chat/                        # Chat-related endpoints
+│   │   │   │   ├── __init__.py              # Package marker
+│   │   │   │   ├── chat_api.py              # Chat API endpoints
+│   │   │   │   ├── chat_streaming.py        # Streaming chat responses
+│   │   │   │   ├── conversations.py         # Chat history endpoints
+│   │   │   │   └── message.py               # Chat message endpoints
+│   │   │   ├── chat_assistant_integrated.py # Integrated chat+assistant endpoint
+│   │   │   ├── files/                       # File management endpoints
+│   │   │   │   ├── __init__.py              # Package marker
+│   │   │   │   ├── deletion.py              # File deletion endpoints
+│   │   │   │   ├── listing.py               # File listing/search endpoints
+│   │   │   │   ├── retrieval.py             # File download/metadata endpoints
+│   │   │   │   ├── upload.py                # File upload endpoints
+│   │   │   │   ├── file_metadata.py         # File metadata endpoints
+│   │   │   │   ├── file_search.py           # File search endpoints
+│   │   │   │   ├── file_tags.py             # File tag endpoints
+│   │   │   │   └── file_utils.py            # File utility endpoints
+│   │   │   ├── manager/                     # Manager dashboard endpoints
+│   │   │   │   ├── __init__.py              # Package marker
+│   │   │   │   ├── quotas.py                # Quota management endpoints
+│   │   │   │   └── users.py                 # User management endpoints
+│   │   │   ├── projects/                    # Project-related endpoints
+│   │   │   │   ├── __init__.py              # Package marker
+│   │   │   │   ├── project_files.py         # Project file endpoints
+│   │   │   │   ├── project_metadata.py      # Project metadata endpoints
+│   │   │   │   └── project_utils.py         # Project utility endpoints
+│   │   │   ├── assistants/                  # Assistant endpoints
+│   │   │   │   ├── __init__.py              # Package marker
+│   │   │   │   ├── base.py                  # Assistant CRUD operations
+│   │   │   │   ├── bulk_operations.py       # Bulk assistant actions
+│   │   │   │   ├── conversations.py         # Assistant conversation endpoints
+│   │   │   │   ├── assistant_configs.py     # Assistant config endpoints
+│   │   │   │   ├── assistant_files.py       # Assistant file endpoints
+│   │   │   │   ├── assistant_metadata.py    # Assistant metadata endpoints
+│   │   │   │   ├── assistant_tags.py        # Assistant tag endpoints
+│   │   │   │   ├── assistant_utils.py       # Assistant utility endpoints
+│   │   │   │   └── assistant_validation.py  # Assistant validation endpoints
+│   │   │   ├── admin/                       # Admin endpoints
+│   │   │   │   ├── __init__.py              # Package marker
+│   │   │   │   ├── departments.py           # Department management endpoints
+│   │   │   │   ├── llm_configs.py           # LLM config endpoints
+│   │   │   │   ├── quotas.py                # Usage analytics endpoints
+│   │   │   │   ├── usage_analytics.py       # Usage analytics endpoints
+│   │   │   │   ├── users.py                 # User CRUD endpoints
+│   │   │   │   ├── admin_roles.py           # Admin role endpoints
+│   │   │   │   ├── admin_settings.py        # Admin settings endpoints
+│   │   │   │   └── admin_utils.py           # Admin utility endpoints
+│   │   │   └── README.md                    # API module documentation
+│   │   ├── core/                            # Core infrastructure
+│   │   │   ├── __init__.py                  # Package marker
+│   │   │   ├── config.py                    # Environment settings
+│   │   │   ├── database.py                  # DB connection setup
+│   │   │   ├── security.py                  # JWT authentication logic
+│   │   │   └── README.md                    # Core module documentation
+│   │   ├── main.py                          # FastAPI app entry point
+│   │   ├── middleware/
+│   │   │   ├── __init__.py                  # Package marker
+│   │   │   └── security.py                  # Security middleware (CSP headers)
+│   │   ├── models/                          # Database models (SQLAlchemy)
+│   │   │   ├── __init__.py                  # Package marker
+│   │   │   ├── assistant.py                 # Assistant model
+│   │   │   ├── assistant_file.py            # Assistant file model
+│   │   │   ├── chat.py                      # Chat message model
+│   │   │   ├── conversation.py              # Conversation model
+│   │   │   ├── department.py                # Department model
+│   │   │   ├── file_upload.py               # File upload model
+│   │   │   ├── llm_config.py                # LLM config model
+│   │   │   ├── project.py                   # Project model
+│   │   │   ├── quota.py                     # Quota model
+│   │   │   ├── role.py                      # User role model
+│   │   │   ├── usage_log.py                 # Usage log model
+│   │   │   ├── user.py                      # User model
+│   │   │   ├── README.md                    # Models module documentation
+│   │   │   ├── assistant_file_tag.py        # Assistant file tag model
+│   │   │   ├── assistant_tag.py             # Assistant tag model
+│   │   │   ├── file_tag.py                  # File tag model
+│   │   │   └── project_file.py              # Project file model
+│   │   ├── schemas/                         # Pydantic schemas (validation)
+│   │   │   ├── __init__.py                  # Package marker
+│   │   │   ├── admin.py                     # Admin schemas
+│   │   │   ├── assistant.py                 # Assistant schemas
+│   │   │   ├── assistant_file.py            # Assistant file schemas
+│   │   │   ├── chat.py                      # Chat schemas
+│   │   │   ├── conversation.py              # Conversation schemas
+│   │   │   ├── file_upload.py               # File upload schemas
+│   │   │   ├── auth.py                      # Auth schemas
+│   │   │   ├── quota.py                     # Quota schemas
+│   │   │   ├── role.py                      # Role schemas
+│   │   │   ├── user.py                      # User schemas
+│   │   │   ├── chat_api/                    # Chat API schemas
+│   │   │   │   ├── __init__.py              # Package marker
+│   │   │   │   ├── chat_message.py          # Chat message schema
+│   │   │   │   ├── chat_request.py          # Chat request schema
+│   │   │   │   └── chat_response.py         # Chat response schema
+│   │   │   └── README.md                    # Schemas module documentation
+│   │   ├── services/                        # Business logic/services
+│   │   │   ├── __init__.py                  # Package marker
+│   │   │   ├── admin_service.py             # Admin business logic
+│   │   │   ├── assistant_file_service.py    # Assistant file logic
+│   │   │   ├── assistant_service.py         # Assistant business logic
+│   │   │   ├── file_processing/             # File processing utilities
+│   │   │   │   ├── __init__.py              # Package marker
+│   │   │   │   ├── exceptions/              # File processing exceptions
+│   │   │   │   │   ├── __init__.py          # Package marker
+│   │   │   │   │   ├── file_exceptions.py   # File-specific exceptions
+│   │   │   │   │   └── processing_exceptions.py # General processing exceptions
+│   │   │   │   ├── processors/              # File processors (PDF, Word, etc.)
+│   │   │   │   │   ├── __init__.py          # Package marker
+│   │   │   │   │   ├── pdf_processor.py     # PDF file processor
+│   │   │   │   │   ├── word_processor.py    # Word file processor
+│   │   │   │   │   └── text_processor.py    # Text file processor
+│   │   │   │   └── file_utils.py            # File processing utilities
+│   │   │   ├── file_services/               # File-related services
+│   │   │   │   ├── __init__.py              # Package marker
+│   │   │   │   ├── file_metadata_service.py # File metadata logic
+│   │   │   │   ├── file_search_service.py   # File search logic
+│   │   │   │   ├── file_tag_service.py      # File tag logic
+│   │   │   │   ├── file_upload_service.py   # File upload logic
+│   │   │   │   ├── file_utils_service.py    # File utility logic
+│   │   │   │   ├── project_file_service.py  # Project file logic
+│   │   │   │   ├── project_metadata_service.py # Project metadata logic
+│   │   │   │   ├── project_service.py       # Project business logic
+│   │   │   │   └── project_utils_service.py # Project utility logic
+│   │   │   ├── llm/                         # LLM provider logic
+│   │   │   │   ├── __init__.py              # Package marker
+│   │   │   │   ├── core/                    # LLM core logic
+│   │   │   │   │   ├── __init__.py          # Package marker
+│   │   │   │   │   ├── cost_calculator.py   # LLM cost calculation
+│   │   │   │   │   └── llm_utils.py         # LLM utility functions
+│   │   │   │   ├── handlers/                # LLM request handlers
+│   │   │   │   │   ├── __init__.py          # Package marker
+│   │   │   │   │   ├── openai_handler.py    # OpenAI handler
+│   │   │   │   │   ├── anthropic_handler.py # Anthropic handler
+│   │   │   │   │   └── handler_utils.py     # Handler utilities
+│   │   │   │   ├── providers/               # LLM provider modules
+│   │   │   │   │   ├── __init__.py          # Package marker
+│   │   │   │   │   ├── openai_provider.py   # OpenAI provider
+│   │   │   │   │   ├── anthropic_provider.py# Anthropic provider
+│   │   │   │   │   └── provider_utils.py    # Provider utilities
+│   │   │   │   ├── llm_service.py           # LLM service logic
+│   │   │   │   ├── llm_utils.py             # LLM utility functions
+│   │   │   │   ├── openai_utils.py          # OpenAI utility functions
+│   │   │   │   └── README.md                # LLM module documentation
+│   │   │   ├── chat/                        # Chat business logic
+│   │   │   │   ├── __init__.py              # Package marker
+│   │   │   │   ├── chat_service.py          # Chat service logic
+│   │   │   │   ├── conversation_service.py  # Conversation service logic
+│   │   │   │   ├── conversation_update_service.py # Conversation update logic
+│   │   │   │   └── streaming_service.py     # Streaming chat logic
+│   │   │   ├── auth_service.py              # Authentication logic
+│   │   │   ├── file_service.py              # File service logic
+│   │   │   ├── llm_service.py               # LLM integration logic
+│   │   │   ├── admin_service.py             # Admin service logic
+│   │   │   ├── quota_service.py             # Quota service logic
+│   │   │   └── README.md                    # Services module documentation
+│   ├── google_ai_studio_diagnostics.py      # Google AI Studio diagnostics script
+│   ├── GOOGLE_AI_STUDIO_SETUP.md            # Google AI Studio setup guide
+│   ├── migrations/                          # Standalone migration scripts
+│   │   └── add_assistant_files_relationship.py # Migration: add assistant-files relationship
+│   ├── node_modules.disabled/               # Disabled node modules (legacy/compat)
+│   ├── scripts/                             # Utility scripts
+│   │   ├── create_admin_user.py             # Script to create admin user
+│   │   ├── explore_current_db.py            # Script to explore current DB
+│   │   ├── explore_database.py              # Script to explore DB
+│   │   ├── update_claude_default_model.py   # Update Claude default model
+│   │   ├── README.md                        # Scripts documentation
+│   │   ├── db_utils.py                      # DB utility functions
+│   │   ├── file_utils.py                    # File utility functions
+│   │   └── migration_utils.py               # Migration utility functions
+│   ├── simple_health.py                     # Simple health check endpoint
+│   ├── static/                              # Static files for backend
+│   │   └── index.html                       # Static HTML file
+│   └── uploads/                             # File storage (uploaded files)
 ├── Front/                                  # React frontend
+│   ├── index.html                           # Main HTML entry
+│   ├── netlify.toml                         # Netlify deployment config
+│   ├── package-lock.json                    # NPM lockfile
+│   ├── package.json                         # NPM dependencies
+│   ├── public/                              # Public static assets
+│   │   ├── _redirects                       # Netlify redirects
+│   │   ├── favicon.svg                      # Favicon
+│   │   └── profile-pics/                    # User profile pictures
+│   │       ├── avatar1.svg                  # Avatar image
+│   │       ├── avatar2.svg                  # Avatar image
+│   │       ├── avatar3.svg                  # Avatar image
+│   │       ├── avatar4.svg                  # Avatar image
+│   │       ├── avatar5.svg                  # Avatar image
+│   │       └── avatar6.svg                  # Avatar image
 │   ├── src/
-│   │   ├── main.tsx                       # React entry point
-│   │   ├── App.tsx                        # Router setup
-│   │   ├── pages/                         # Route components
-│   │   │   ├── Login.tsx                  # Authentication
-│   │   │   ├── Dashboard.tsx              # Main dashboard
-│   │   │   ├── ChatInterface.tsx          # Chat page
-│   │   │   ├── AdminSettings.tsx          # Admin panel
-│   │   │   └── ManagerDashboard.tsx       # Manager view
-│   │   ├── components/                    # UI components
-│   │   │   ├── ProtectedRoute.tsx         # Auth wrapper
-│   │   │   ├── ui/                        # Base UI components
-│   │   │   │   ├── ChatContainer.tsx      # Chat layout
-│   │   │   │   ├── MessageList.tsx        # Message display
-│   │   │   │   ├── MessageInput.tsx       # Message input
-│   │   │   │   └── ErrorDisplay.tsx       # Error handling
-│   │   │   ├── chat/                      # Chat components
-│   │   │   │   ├── conversation/          # Conversation management
-│   │   │   │   ├── AssistantSelector.tsx  # AI selection
-│   │   │   │   └── FileUploadArea.tsx     # File uploads
-│   │   │   ├── admin/                     # Admin components
-│   │   │   │   ├── UserManagement.tsx     # User CRUD
-│   │   │   │   ├── DepartmentManagement.tsx # Department admin
-│   │   │   │   ├── QuotaManagement.tsx    # Usage limits
-│   │   │   │   └── LLMConfiguration.tsx   # LLM settings
-│   │   │   └── assistant/                 # Assistant components
-│   │   │       ├── AssistantCard.tsx      # Assistant display
-│   │   │       └── edit-modal/            # Editing interface
-│   │   ├── services/                      # API integration
-│   │   │   ├── authService.ts             # Authentication
-│   │   │   ├── chatService.ts             # Chat API
-│   │   │   ├── conversationService.ts     # Chat history
-│   │   │   ├── conversationUpdateService.ts # Smart persistence
-│   │   │   ├── adminService.ts            # Admin operations
-│   │   │   ├── assistantService.ts        # AI assistants
-│   │   │   ├── fileService.ts             # File operations
-│   │   │   └── chat/                      # Chat services
-│   │   │       ├── streaming.ts           # SSE handling
-│   │   │       └── core.ts                # Chat utilities
-│   │   ├── hooks/                         # Custom React hooks
-│   │   │   ├── useAuth.ts                 # Authentication state
-│   │   │   ├── useAutoScroll.ts           # Chat auto-scroll
-│   │   │   └── chat/                      # Chat hooks
-│   │   │       ├── useChatState.ts        # Message state
-│   │   │       ├── useStreamingChat.ts    # Streaming
-│   │   │       └── useConversationManager.ts # Persistence
-│   │   ├── types/                         # TypeScript interfaces
-│   │   │   ├── auth.ts                    # User/login types
-│   │   │   ├── chat.ts                    # Chat message types
-│   │   │   ├── conversation.ts            # Chat history types
-│   │   │   ├── admin.ts                   # Admin types
-│   │   │   └── assistant.ts               # Assistant types
-│   │   ├── contexts/
-│   │   │   └── AuthContext.tsx            # Global auth state
-│   │   └── utils/                         # Helper functions
-│   ├── package.json                       # Frontend dependencies
-│   └── vite.config.ts                     # Build configuration
-├── Helpers/                               # Documentation
-│   ├── project_integration_guide.md       # Architecture guide
-│   ├── folder_structure.txt               # This file
-│   └── refactoring/                       # Refactoring docs
-├── CLAUDE.md                              # AI navigation guide
-├── README_AI.md files                     # Directory-specific guides
-└── package.json                           # Root dependencies
+│   │   ├── App.tsx                          # Router setup
+│   │   ├── components/                      # UI components
+│   │   │   ├── admin/                       # Admin UI components
+│   │   │   │   ├── UserManagement.tsx       # User CRUD UI
+│   │   │   │   ├── DepartmentManagement.tsx # Department admin UI
+│   │   │   │   ├── QuotaManagement.tsx      # Usage limits UI
+│   │   │   │   ├── LLMConfiguration.tsx     # LLM settings UI
+│   │   │   │   ├── [+ more admin components]# Other admin UI
+│   │   │   ├── assistant/                   # Assistant UI components
+│   │   │   │   ├── AssistantCard.tsx        # Assistant display card
+│   │   │   │   ├── edit-modal/              # Assistant edit modal UI
+│   │   │   │   │   ├── [+ edit modal components] # Edit modal subcomponents
+│   │   │   ├── chat/                        # Chat UI components
+│   │   │   │   ├── conversation/            # Conversation management UI
+│   │   │   │   │   ├── [+ conversation components] # Conversation subcomponents
+│   │   │   │   ├── AssistantSelector.tsx    # AI assistant selector UI
+│   │   │   │   ├── FileUploadArea.tsx       # File upload UI
+│   │   │   ├── ProtectedRoute.tsx           # Auth wrapper for routes
+│   │   │   ├── ui/                          # Base UI components
+│   │   │   │   ├── ChatContainer.tsx        # Chat layout container
+│   │   │   │   ├── MessageList.tsx          # Message display UI
+│   │   │   │   ├── MessageInput.tsx         # Message input UI
+│   │   │   │   └── ErrorDisplay.tsx         # Error display UI
+│   │   ├── contexts/                        # React context providers
+│   │   │   └── AuthContext.tsx              # Global auth state context
+│   │   ├── hooks/                           # Custom React hooks
+│   │   │   ├── useAuth.ts                   # Auth state hook
+│   │   │   ├── useAutoScroll.ts             # Chat auto-scroll hook
+│   │   │   ├── chat/                        # Chat-related hooks
+│   │   │   │   ├── useChatState.ts          # Chat state hook
+│   │   │   │   ├── useStreamingChat.ts      # Streaming chat hook
+│   │   │   │   ├── useConversationManager.ts# Conversation persistence hook
+│   │   │   ├── folder/                      # Folder-related hooks
+│   │   │   │   ├── [+ folder hooks]         # Other folder hooks
+│   │   │   ├── quota/                       # Quota-related hooks
+│   │   │   │   ├── [+ quota hooks]          # Other quota hooks
+│   │   ├── main.tsx                         # React entry point
+│   │   ├── pages/                           # Route components
+│   │   │   ├── Login.tsx                    # Login page
+│   │   │   ├── Dashboard.tsx                # Main dashboard page
+│   │   │   ├── ChatInterface.tsx            # Chat interface page
+│   │   │   ├── AdminSettings.tsx            # Admin panel page
+│   │   │   ├── AssistantDiagnosticPage.tsx  # Assistant diagnostics page
+│   │   │   └── ManagerDashboard.tsx         # Manager dashboard page
+│   │   ├── services/                        # API integration/services
+│   │   │   ├── adminService.ts              # Admin API service
+│   │   │   ├── assistant/                   # Assistant API services
+│   │   │   │   ├── [+ assistant services]   # Other assistant services
+│   │   │   ├── assistantFileService.ts      # Assistant file API service
+│   │   │   ├── assistantService.ts          # Assistant API service
+│   │   │   ├── chat/                        # Chat API services
+│   │   │   │   ├── streaming.ts             # Chat streaming API
+│   │   │   │   ├── core.ts                  # Chat core utilities
+│   │   │   ├── chatService.ts               # Chat API service
+│   │   │   ├── conversationService.ts       # Conversation API service
+│   │   │   ├── conversationUpdateService.ts # Conversation update API
+│   │   │   ├── fileService.ts               # File API service
+│   │   │   └── [+ more services]            # Other services
+│   │   ├── styles/                          # CSS styles
+│   │   │   └── [+ styles]                   # Other style files
+│   │   ├── test/                            # Test files
+│   │   │   └── [+ tests]                    # Other test files
+│   │   ├── types/                           # TypeScript interfaces/types
+│   │   │   ├── admin.ts                     # Admin types
+│   │   │   ├── assistant.ts                 # Assistant types
+│   │   │   ├── auth.ts                      # Auth types
+│   │   │   ├── chat.ts                      # Chat types
+│   │   │   ├── conversation.ts              # Conversation types
+│   │   │   └── [+ more types]               # Other type files
+│   │   ├── utils/                           # Helper functions
+│   │   │   └── [+ utils]                    # Other utility files
+│   │   └── README_AI.md                     # Frontend AI guide
+│   ├── verification/                        # Frontend verification docs
+│   │   ├── dropdown_portal_solution.md      # Dropdown portal solution
+│   │   ├── dropdown_zindex_fix.md           # Z-index fix for dropdowns
+│   │   └── modern_custom_dropdowns.md       # Custom dropdowns guide
+│   ├── vite.config.ts                       # Vite build config
+├── Front_TEMP_DISABLED/                    # (Temp/legacy frontend)
+│   ├── index.html                           # Main HTML entry (legacy)
+│   ├── package-lock.json                    # NPM lockfile (legacy)
+│   ├── package.json                         # NPM dependencies (legacy)
+│   ├── public/                              # Public static assets (legacy)
+│   │   ├── favicon.svg                      # Favicon (legacy)
+│   │   └── profile-pics/                    # User profile pictures (legacy)
+│   │       └── [+ avatars]                  # Avatar images (legacy)
+│   ├── src/                                 # Source code (legacy)
+│   │   ├── App.tsx                          # Router setup (legacy)
+│   │   ├── components/                      # UI components (legacy)
+│   │   ├── contexts/                        # Context providers (legacy)
+│   │   ├── hooks/                           # Custom hooks (legacy)
+│   │   ├── main.tsx                         # React entry (legacy)
+│   │   ├── pages/                           # Route components (legacy)
+│   │   ├── services/                        # API services (legacy)
+│   │   ├── styles/                          # CSS styles (legacy)
+│   │   ├── test/                            # Test files (legacy)
+│   │   ├── types/                           # TypeScript types (legacy)
+│   │   ├── utils/                           # Helper functions (legacy)
+│   │   └── README.md                        # Frontend legacy readme
+├── Helpers/                                # Documentation and project guides
+├── folder_structure.txt                    # Project folder structure (this file)
+├── project_integration_guide.md            # Architecture and integration guide
+└── unused/                                 # Old, backup, or reference docs
+    ├── assistant_prompt.md                 # Prompt engineering notes/examples
+    ├── backlog.md                          # Project backlog and planning notes
+    └── refactoring/                        # Refactoring documentation and guides
+        ├── backend_example.md              # Backend refactor example
+        ├── example_refactor.md             # General refactor example
+        ├── progress_tracker.md             # Refactor progress tracker
+        ├── quick_start.md                  # Quick start for refactoring
+        └── refactor_prompt.md              # Prompts for refactoring tasks
+├── CLAUDE.md                               # AI navigation guide
+├── README_AI.md                            # Project-level guide
+├── Dockerfile                              # Docker build file
+├── fix_frontend_urls.sh                    # Script to fix frontend URLs
+├── git_cleanup.sh                          # Script to clean up git branches
+├── node_modules_disabled/                  # Disabled node modules
+│   └── @types/                             # TypeScript type definitions
+│       └── node/                           # Node.js type definitions
+│           └── [+ type files]              # Type definition files
+├── package.json                            # Root dependencies
+└── content.md                              # Project content/notes

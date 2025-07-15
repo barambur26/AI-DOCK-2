@@ -2,7 +2,7 @@
 // Data visualization for usage analytics with modern glassmorphism design
 // Uses Recharts library for professional chart rendering with dark theme
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   BarChart,
   Bar,
@@ -21,19 +21,29 @@ import {
   AreaChart
 } from 'recharts';
 
-import { ProviderStats, UsageSummary } from '../../types/usage';
+import { ProviderStats, UsageSummary, MostUsedModelsResponse } from '../../types/usage';
 
 interface UsageChartsProps {
   summary: UsageSummary | null;
+  mostUsedModels: MostUsedModelsResponse | null;
   isLoading: boolean;
   error: string | null;
 }
 
 const UsageCharts: React.FC<UsageChartsProps> = ({
   summary,
+  mostUsedModels,
   isLoading,
   error
 }) => {
+
+  // =============================================================================
+  // VIEW STATE MANAGEMENT
+  // =============================================================================
+
+  const [viewMode, setViewMode] = useState<'models' | 'providers'>('models');
+  const [showAllModels, setShowAllModels] = useState(false);
+  const defaultModelLimit = 5;
 
   // =============================================================================
   // CHART CONFIGURATION (DEFINE COLORS FIRST)
@@ -96,6 +106,101 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
       .sort((a, b) => b.requests - a.requests);
   }, [summary?.providers]);
 
+  // Model data processing - new functionality
+  const getShortModelName = (model: string): string => {
+    // Truncate very long model names for better chart display
+    if (model.length > 15) {
+      return model.substring(0, 12) + '...';
+    }
+    return model;
+  };
+
+  const modelChartData = useMemo(() => {
+    if (!mostUsedModels?.models) return [];
+    
+    const modelsToShow = showAllModels 
+      ? mostUsedModels.models 
+      : mostUsedModels.models.slice(0, defaultModelLimit);
+    
+    return modelsToShow
+      .map((model, index) => ({
+        name: model.model,
+        displayName: getShortModelName(model.model),
+        fullName: `${model.model} (${model.provider})`,
+        provider: model.provider,
+        requests: model.requests.total,
+        successfulRequests: model.requests.successful,
+        failedRequests: model.requests.failed,
+        tokens: model.tokens.total,
+        cost: model.cost.total_usd,
+        avgResponseTime: model.performance.average_response_time_ms,
+        successRate: model.requests.success_rate_percent,
+        color: CHART_COLORS[index % CHART_COLORS.length]
+      }));
+  }, [mostUsedModels?.models, showAllModels]);
+
+  const modelCostBreakdownData = useMemo(() => {
+    if (!mostUsedModels?.models) return [];
+    
+    const modelsToShow = showAllModels 
+      ? mostUsedModels.models 
+      : mostUsedModels.models.slice(0, defaultModelLimit);
+    
+    const totalCost = modelsToShow.reduce((sum, model) => sum + model.cost.total_usd, 0);
+    const hasAnyCost = modelsToShow.some(model => model.cost.total_usd > 0);
+    
+    if (!hasAnyCost && modelsToShow.length > 0) {
+      return modelsToShow.map((model, index) => ({
+        name: model.model,
+        displayName: getShortModelName(model.model),
+        fullName: `${model.model} (${model.provider})`,
+        provider: model.provider,
+        cost: 0,
+        percentage: (100 / modelsToShow.length).toFixed(1),
+        color: CHART_COLORS[index % CHART_COLORS.length],
+        isZeroCost: true
+      }));
+    }
+    
+    return modelsToShow
+      .filter(model => model.cost.total_usd > 0)
+      .map((model, index) => ({
+        name: model.model,
+        displayName: getShortModelName(model.model),
+        fullName: `${model.model} (${model.provider})`,
+        provider: model.provider,
+        cost: model.cost.total_usd,
+        percentage: totalCost > 0 ? (model.cost.total_usd / totalCost * 100).toFixed(1) : '0',
+        color: CHART_COLORS[index % CHART_COLORS.length],
+        isZeroCost: false
+      }));
+  }, [mostUsedModels?.models, showAllModels]);
+
+  const modelPerformanceData = useMemo(() => {
+    if (!mostUsedModels?.models) return [];
+    
+    const modelsToShow = showAllModels 
+      ? mostUsedModels.models 
+      : mostUsedModels.models.slice(0, defaultModelLimit);
+    
+    return modelsToShow
+      .map((model, index) => ({
+        name: model.model,
+        displayName: getShortModelName(model.model),
+        fullName: `${model.model} (${model.provider})`,
+        provider: model.provider,
+        responseTime: model.performance.average_response_time_ms,
+        successRate: model.requests.success_rate_percent,
+        costPerRequest: model.cost.average_per_request,
+        color: CHART_COLORS[index % CHART_COLORS.length]
+      }));
+  }, [mostUsedModels?.models, showAllModels]);
+
+  // Dynamic data selection based on view mode
+  const currentChartData = viewMode === 'models' ? modelChartData : providerChartData;
+  const currentCostData = viewMode === 'models' ? modelCostBreakdownData : costBreakdownData;
+  const currentPerformanceData = viewMode === 'models' ? modelPerformanceData : performanceData;
+
   const costBreakdownData = useMemo(() => {
     if (!summary?.providers) return [];
     
@@ -150,9 +255,9 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
-      // Find the full name from the data
-      const dataPoint = providerChartData.find(d => d.displayName === label) || 
-                       performanceData.find(d => d.displayName === label);
+      // Find the full name from the current data
+      const dataPoint = currentChartData.find(d => d.displayName === label) || 
+                       currentPerformanceData.find(d => d.displayName === label);
       const fullLabel = dataPoint?.fullName || label;
       
       return (
@@ -201,8 +306,8 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
     // Only show label if percentage is significant enough (> 5%)
     if (percent < 0.05) return null;
     
-    // Use short name for labels
-    const shortName = getShortDisplayName(name);
+    // Use appropriate short name based on view mode
+    const shortName = viewMode === 'models' ? getShortModelName(name) : getShortDisplayName(name);
     
     return (
       <text 
@@ -263,10 +368,84 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
   return (
     <div className="space-y-6 mb-8">
       
-      {/* Provider Overview Charts */}
+      {/* View Controls Header */}
+      <div className="bg-white/5 backdrop-blur-lg rounded-3xl shadow-2xl p-6 border border-white/10">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-white">Usage Analytics Charts</h3>
+              <p className="text-sm text-blue-200">
+                Viewing by {viewMode === 'models' ? 'AI Models' : 'Providers'}
+                {viewMode === 'models' && mostUsedModels?.models && (
+                  <span className="ml-2">
+                    • Showing {showAllModels ? mostUsedModels.models.length : Math.min(defaultModelLimit, mostUsedModels.models.length)} of {mostUsedModels.models.length} models
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-3">
+            {/* View Mode Toggle */}
+            <div className="bg-white/10 rounded-xl p-1 flex space-x-1">
+              <button
+                onClick={() => setViewMode('models')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                  viewMode === 'models'
+                    ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg'
+                    : 'text-blue-200 hover:text-white hover:bg-white/20'
+                }`}
+              >
+                <span className="flex items-center space-x-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <span>Models</span>
+                </span>
+              </button>
+              <button
+                onClick={() => setViewMode('providers')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                  viewMode === 'providers'
+                    ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg'
+                    : 'text-blue-200 hover:text-white hover:bg-white/20'
+                }`}
+              >
+                <span className="flex items-center space-x-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <span>Providers</span>
+                </span>
+              </button>
+            </div>
+            
+            {/* Show All Models Toggle - only visible in models view */}
+            {viewMode === 'models' && mostUsedModels?.models && mostUsedModels.models.length > defaultModelLimit && (
+              <button
+                onClick={() => setShowAllModels(!showAllModels)}
+                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-blue-200 hover:text-white rounded-xl text-sm font-medium transition-all duration-300 flex items-center space-x-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={showAllModels ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"} />
+                </svg>
+                <span>{showAllModels ? `Show Top ${defaultModelLimit}` : `Show All ${mostUsedModels.models.length}`}</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+      
+      {/* Overview Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
-        {/* Requests by Provider Bar Chart */}
+        {/* Requests Chart */}
         <div className="bg-white/5 backdrop-blur-lg rounded-3xl shadow-2xl p-6 border border-white/10 hover:shadow-3xl transition-all duration-300">
           <div className="flex items-center space-x-3 mb-6">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
@@ -275,12 +454,12 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
               </svg>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">Requests by Provider</h3>
+              <h3 className="text-lg font-semibold text-white">Requests by {viewMode === 'models' ? 'Model' : 'Provider'}</h3>
               <p className="text-sm text-blue-200">Success vs failed requests</p>
             </div>
           </div>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={providerChartData}>
+            <BarChart data={currentChartData}>
               <CartesianGrid strokeDasharray="3 3" stroke={DARK_THEME.grid} />
               <XAxis 
                 dataKey="displayName" 
@@ -316,7 +495,7 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
           </ResponsiveContainer>
         </div>
 
-        {/* Cost Distribution Pie Chart */}
+        {/* Cost Distribution Chart */}
         <div className="bg-white/5 backdrop-blur-lg rounded-3xl shadow-2xl p-6 border border-white/10 hover:shadow-3xl transition-all duration-300">
           <div className="flex items-center space-x-3 mb-6">
             <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
@@ -326,8 +505,8 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
             </div>
             <div>
               <h3 className="text-lg font-semibold text-white">
-                Cost Distribution by Provider
-                {costBreakdownData.length > 0 && costBreakdownData[0]?.isZeroCost && (
+                Cost Distribution by {viewMode === 'models' ? 'Model' : 'Provider'}
+                {currentCostData.length > 0 && currentCostData[0]?.isZeroCost && (
                   <span className="ml-2 text-sm text-blue-300 font-normal">
                     (No costs in selected period)
                   </span>
@@ -339,7 +518,7 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
-                data={costBreakdownData}
+                data={currentCostData}
                 cx="50%"
                 cy="45%"
                 labelLine={false}
@@ -347,10 +526,10 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
                 outerRadius={75}
                 innerRadius={20}
                 fill="#8884d8"
-                dataKey={costBreakdownData.length > 0 && costBreakdownData[0]?.isZeroCost ? "percentage" : "cost"}
+                dataKey={currentCostData.length > 0 && currentCostData[0]?.isZeroCost ? "percentage" : "cost"}
                 paddingAngle={2}
               >
-                {costBreakdownData.map((entry, index) => (
+                {currentCostData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
@@ -358,36 +537,36 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
             </PieChart>
           </ResponsiveContainer>
           <div className="mt-4 space-y-2">
-            {costBreakdownData.length === 0 ? (
+            {currentCostData.length === 0 ? (
               <div className="text-center text-blue-200 text-sm py-4">
-                No provider data available
+                No {viewMode === 'models' ? 'model' : 'provider'} data available
               </div>
-            ) : costBreakdownData[0]?.isZeroCost ? (
+            ) : currentCostData[0]?.isZeroCost ? (
               <div className="bg-blue-500/20 border border-blue-400/30 rounded-xl p-3 mb-3">
                 <div className="flex items-center space-x-2">
                   <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
                     <span className="text-white text-xs">i</span>
                   </div>
                   <span className="text-blue-200 text-sm font-medium">
-                    No costs recorded in the selected period. Chart shows provider availability.
+                    No costs recorded in the selected period. Chart shows {viewMode === 'models' ? 'model' : 'provider'} availability.
                   </span>
                 </div>
               </div>
             ) : null}
-            {costBreakdownData.map((provider, index) => (
-              <div key={provider.name} className="flex items-center justify-between text-sm p-3 bg-white/5 rounded-lg hover:bg-white/10 transition-colors">
+            {currentCostData.map((item, index) => (
+              <div key={item.name} className="flex items-center justify-between text-sm p-3 bg-white/5 rounded-lg hover:bg-white/10 transition-colors">
                 <div className="flex items-center space-x-3">
                   <div 
                     className="w-4 h-4 rounded-full shadow-lg" 
-                    style={{ backgroundColor: provider.color }}
+                    style={{ backgroundColor: item.color }}
                   ></div>
-                  <span className="text-white font-medium">{provider.fullName}</span>
+                  <span className="text-white font-medium">{item.fullName}</span>
                 </div>
                 <div className="text-right">
                   <span className="font-semibold text-white">
-                    {provider.isZeroCost ? 'Available' : `${provider.cost.toFixed(4)}`}
+                    {item.isZeroCost ? 'Available' : `${item.cost.toFixed(4)}`}
                   </span>
-                  <span className="text-blue-300 ml-2 text-xs">({provider.percentage}%)</span>
+                  <span className="text-blue-300 ml-2 text-xs">({item.percentage}%)</span>
                 </div>
               </div>
             ))}
@@ -408,12 +587,12 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
               </svg>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">Average Response Time by Provider</h3>
+              <h3 className="text-lg font-semibold text-white">Average Response Time by {viewMode === 'models' ? 'Model' : 'Provider'}</h3>
               <p className="text-sm text-blue-200">Performance comparison</p>
             </div>
           </div>
           <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={performanceData}>
+            <AreaChart data={currentPerformanceData}>
               <CartesianGrid strokeDasharray="3 3" stroke={DARK_THEME.grid} />
               <XAxis 
                 dataKey="displayName" 
@@ -461,12 +640,12 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
               </svg>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">Success Rate by Provider</h3>
+              <h3 className="text-lg font-semibold text-white">Success Rate by {viewMode === 'models' ? 'Model' : 'Provider'}</h3>
               <p className="text-sm text-blue-200">Reliability metrics</p>
             </div>
           </div>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={performanceData}>
+            <BarChart data={currentPerformanceData}>
               <CartesianGrid strokeDasharray="3 3" stroke={DARK_THEME.grid} />
               <XAxis 
                 dataKey="displayName" 
@@ -516,11 +695,11 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
           </div>
           <div>
             <h3 className="text-lg font-semibold text-white">Token Usage and Cost Efficiency</h3>
-            <p className="text-sm text-blue-200">Volume and cost analysis by provider</p>
+            <p className="text-sm text-blue-200">Volume and cost analysis by {viewMode === 'models' ? 'model' : 'provider'}</p>
           </div>
         </div>
         <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={providerChartData}>
+          <BarChart data={currentChartData}>
             <CartesianGrid strokeDasharray="3 3" stroke={DARK_THEME.grid} />
             <XAxis 
               dataKey="displayName" 
@@ -568,22 +747,22 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
           </BarChart>
         </ResponsiveContainer>
         <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-          {providerChartData.map((provider) => (
-            <div key={provider.name} className="bg-white/5 backdrop-blur-lg rounded-xl p-4 border border-white/10 hover:bg-white/10 transition-colors">
-              <div className="font-semibold text-white mb-3 text-center">{provider.fullName}</div>
+          {currentChartData.map((item) => (
+            <div key={item.name} className="bg-white/5 backdrop-blur-lg rounded-xl p-4 border border-white/10 hover:bg-white/10 transition-colors">
+              <div className="font-semibold text-white mb-3 text-center">{item.fullName}</div>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between text-blue-200">
                   <span>Tokens:</span>
-                  <span className="font-medium text-white">{provider.tokens.toLocaleString()}</span>
+                  <span className="font-medium text-white">{item.tokens.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-blue-200">
                   <span>Cost:</span>
-                  <span className="font-medium text-white">${provider.cost.toFixed(4)}</span>
+                  <span className="font-medium text-white">${item.cost.toFixed(4)}</span>
                 </div>
                 <div className="flex justify-between text-blue-200">
                   <span>Efficiency:</span>
                   <span className="font-medium text-white">
-                    {provider.tokens > 0 ? (provider.cost / provider.tokens * 1000).toFixed(2) : '0'} $/1K
+                    {item.tokens > 0 ? (item.cost / item.tokens * 1000).toFixed(2) : '0'} $/1K
                   </span>
                 </div>
               </div>
