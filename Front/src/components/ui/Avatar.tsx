@@ -153,7 +153,7 @@ export const Avatar: React.FC<AvatarProps> = ({
           />
         </>
       ) : (
-        <div className={`${config.container} ${fallbackBg} flex items-center justify-center`}>
+        <div className={`w-full h-full ${fallbackBg} flex items-center justify-center`}>
           {fallbackIcon || <User className={`${config.icon} text-white`} />}
         </div>
       )}
