@@ -435,10 +435,8 @@ async def delete_llm_configuration(
     """
     Delete an LLM configuration.
     
-    Learning: This endpoint removes configurations permanently.
-    - Returns 204 No Content on success (standard for deletes)
-    - Proper validation that configuration exists
-    - Could add safety checks (like "don't delete if in use")
+    Safety: This endpoint prevents deletion of configurations that have usage history
+    to preserve audit trails for billing and compliance purposes.
     
     Args:
         config_id: ID of configuration to delete
@@ -460,14 +458,27 @@ async def delete_llm_configuration(
                 detail=f"LLM configuration with ID {config_id} not found"
             )
         
-        # TODO: Add safety checks here
-        # - Check if configuration is currently being used
-        # - Warn if it's the only active configuration
-        # - Maybe require confirmation for critical configs
+        # CRITICAL SAFETY CHECK: Prevent deletion if usage logs exist
+        # This preserves audit trail for billing/compliance
+        from ..models.usage_log import UsageLog
+        usage_count = db.query(UsageLog).filter(
+            UsageLog.llm_config_id == config_id
+        ).count()
+        
+        if usage_count > 0:
+            logger.warning(f"Cannot delete LLM config {config_id}: {usage_count} usage logs exist")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot delete LLM configuration '{config.name}' because it has {usage_count} usage log entries. Deactivate the configuration instead to preserve audit history."
+            )
+        
+        # Additional safety checks
+        if config.is_active:
+            logger.warning(f"Deleting active LLM config {config_id}: {config.name}")
         
         config_name = config.name
         
-        # Delete the configuration
+        # Safe to delete - no usage history exists
         db.delete(config)
         db.commit()
         
@@ -480,12 +491,12 @@ async def delete_llm_configuration(
         # Re-raise HTTP exceptions
         raise
     except Exception as e:
-        # Handle unexpected errors
+        # Handle unexpected errors including foreign key violations
         logger.error(f"Failed to delete LLM configuration {config_id}: {str(e)}")
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to delete LLM configuration"
+            detail=f"Failed to delete LLM configuration: {str(e)}"
         )
 
 # =============================================================================
