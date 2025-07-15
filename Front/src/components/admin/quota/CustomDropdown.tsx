@@ -180,7 +180,7 @@ export const CustomDropdown: React.FC<CustomDropdownProps> = ({
   // =============================================================================
 
   return (
-    <div className={`custom-dropdown min-w-[150px] ${className}`} ref={dropdownRef}>
+    <div className={`custom-dropdown min-w-[150px] relative ${className}`} ref={dropdownRef}>
       {/* Label */}
       <label htmlFor={id} className="block text-sm font-semibold text-gray-700 mb-2">
         {icon && <span className="mr-2">{icon}</span>}
@@ -223,7 +223,7 @@ export const CustomDropdown: React.FC<CustomDropdownProps> = ({
 
         {/* Dropdown Menu */}
         {isOpen && (
-          <div className="absolute z-50 w-full mt-2 bg-white/95 backdrop-blur-lg border border-gray-200 rounded-xl shadow-2xl overflow-hidden">
+          <div className="absolute z-[9999] w-full mt-2 bg-white/95 backdrop-blur-lg border border-gray-200 rounded-xl shadow-2xl overflow-hidden">
             <ul
               ref={listRef}
               className="max-h-60 overflow-y-auto py-1"
