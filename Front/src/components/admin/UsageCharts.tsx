@@ -22,6 +22,7 @@ import {
 } from 'recharts';
 
 import { ProviderStats, UsageSummary, MostUsedModelsResponse } from '../../types/usage';
+import { formatCurrency } from '../../utils/formatUtils';
 
 interface UsageChartsProps {
   summary: UsageSummary | null;
@@ -285,7 +286,7 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
               <p><span className="font-medium text-white">Distribution:</span> {data.percentage}%</p>
             ) : (
               <>
-                <p><span className="font-medium text-white">Cost:</span> ${Number(data.cost).toFixed(4)}</p>
+                <p><span className="font-medium text-white">Cost:</span> {formatCurrency(Number(data.cost))}</p>
                 <p><span className="font-medium text-white">Percentage:</span> {data.percentage}%</p>
               </>
             )}
@@ -757,12 +758,12 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
                 </div>
                 <div className="flex justify-between text-blue-200">
                   <span>Cost:</span>
-                  <span className="font-medium text-white">${item.cost.toFixed(4)}</span>
+                  <span className="font-medium text-white">{formatCurrency(item.cost)}</span>
                 </div>
                 <div className="flex justify-between text-blue-200">
                   <span>Efficiency:</span>
                   <span className="font-medium text-white">
-                    {item.tokens > 0 ? (item.cost / item.tokens * 1000).toFixed(2) : '0'} $/1K
+                    {item.tokens > 0 ? formatCurrency(item.cost / item.tokens * 1000) : formatCurrency(0)} /1K
                   </span>
                 </div>
               </div>

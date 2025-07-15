@@ -5,13 +5,10 @@
 /**
  * Format currency values consistently across the application
  * 
- * This function handles the full range of AI usage costs:
- * - Large amounts ($1000+): Shows abbreviated format like "$2.5k"
- * - Regular amounts ($1-999): Shows standard dollars like "$15.75"
- * - Small amounts (1¢-99¢): Shows cents only like "15.2¢"
- * - Micro amounts (<1¢): Shows precise dollars like "$0.0034"
- * 
- * FIXED: No more confusing "$xx.x¢" format that mixed symbols
+ * This function ensures ALL costs are shown as $x.xxx with up to 3 decimal points:
+ * - Large amounts ($1000+): Shows abbreviated format like "$1.500k" (always 3 decimal places)
+ * - All other amounts: Shows as $x.xxx with up to 3 decimal places
+ * - Amounts less than $0.001: Shows as "< $0.001"
  * 
  * @param amount - The amount in USD
  * @returns Formatted currency string
@@ -19,17 +16,19 @@
 export const formatCurrency = (amount: number | null): string => {
   if (amount === null || amount === 0) return 'Free';
   
-  if (amount >= 1000) {
-    return `$${(amount / 1000).toFixed(1)}k`;
-  } else if (amount >= 1) {
-    return `$${amount.toFixed(2)}`;
-  } else if (amount >= 0.01) {
-    // Show just cents for small amounts (clear it's currency)
-    return `${(amount * 100).toFixed(1)}¢`;
-  } else {
-    // For very small amounts, show as dollars with more precision
-    return `$${amount.toFixed(4)}`;
+  // Handle very small amounts
+  if (amount < 0.001) {
+    return '< $0.001';
   }
+  
+  // Handle large amounts with abbreviation - always 3 decimal places
+  if (amount >= 1000) {
+    return `$${(amount / 1000).toFixed(3)}k`;
+  }
+  
+  // All other amounts: show as $x.xxx with up to 3 decimal points
+  // Remove trailing zeros for cleaner display
+  return `$${amount.toFixed(3).replace(/\.?0+$/, '')}`;
 };
 
 /**
@@ -92,11 +91,14 @@ export const formatTokens = (tokens: number): string => {
 /**
  * Example usage across the app:
  * 
- * // Usage Analytics
- * {formatCurrency(0.0096)}     → "$0.0096"
- * {formatCurrency(0.15)}       → "15.0¢"  
- * {formatCurrency(2.50)}       → "$2.50"
- * {formatCurrency(1500)}       → "$1.5k"
+ * // Usage Analytics - Consistent $x.xxx formatting with 3 decimal places for large amounts
+ * {formatCurrency(0.0005)}     → "< $0.001"
+ * {formatCurrency(0.0096)}     → "$0.01"
+ * {formatCurrency(0.15)}       → "$0.15"  
+ * {formatCurrency(2.50)}       → "$2.5"
+ * {formatCurrency(2.567)}      → "$2.567"
+ * {formatCurrency(1500)}       → "$1.500k"
+ * {formatCurrency(12345)}      → "$12.345k"
  * 
  * // Numbers and metrics
  * {formatNumber(1234)}         → "1.2K"

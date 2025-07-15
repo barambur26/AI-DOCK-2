@@ -20,6 +20,7 @@ import {
   QUOTA_TYPE_OPTIONS,
   QUOTA_PERIOD_OPTIONS
 } from '../types/quota';
+import { formatCurrency } from '../utils/formatUtils';
 
 // =============================================================================
 // CONFIGURATION
@@ -461,11 +462,7 @@ class QuotaService {
   formatQuotaAmount(amount: number, quotaType: string): string {
     switch (quotaType) {
       case 'cost':
-        return new Intl.NumberFormat('en-US', {
-          style: 'currency',
-          currency: 'USD',
-          minimumFractionDigits: 2,
-        }).format(amount);
+        return formatCurrency(amount);
       
       case 'tokens':
         return new Intl.NumberFormat('en-US').format(amount) + ' tokens';

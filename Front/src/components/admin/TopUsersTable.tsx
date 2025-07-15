@@ -51,21 +51,9 @@ const TopUsersTable: React.FC<TopUsersTableProps> = ({
   const formatMetricValue = (metric: TopUserMetric, value: number): string => {
     switch (metric) {
       case 'total_cost':
-        if (value >= 1) {
-          return `${value.toFixed(2)}`;
-        } else if (value >= 0.01) {
-          return `${(value * 100).toFixed(1)}¢`;
-        } else {
-          return `${value.toFixed(4)}`;
-        }
+        return formatCurrency(value);
       case 'total_tokens':
-        if (value >= 1000000) {
-          return `${(value / 1000000).toFixed(1)}M`;
-        } else if (value >= 1000) {
-          return `${(value / 1000).toFixed(1)}K`;
-        } else {
-          return value.toLocaleString();
-        }
+        return formatNumber(value);
       case 'request_count':
         return value.toLocaleString();
       default:
@@ -286,7 +274,7 @@ const TopUsersTable: React.FC<TopUsersTableProps> = ({
                         )}
                       </div>
                       <div className="text-sm text-blue-300">
-                        {selectedMetric === 'total_cost' && `${userStats.metrics.average_cost_per_request.toFixed(4)} avg/req`}
+                        {selectedMetric === 'total_cost' && `${formatCurrency(userStats.metrics.average_cost_per_request)} avg/req`}
                         {selectedMetric === 'total_tokens' && `${(userStats.metrics.total_tokens / userStats.metrics.successful_requests).toFixed(0)} avg/req`}
                         {selectedMetric === 'request_count' && `${userStats.metrics.average_response_time_ms.toFixed(0)}ms avg`}
                       </div>
@@ -326,10 +314,10 @@ const TopUsersTable: React.FC<TopUsersTableProps> = ({
                       <div className="bg-green-500/20 backdrop-blur-lg rounded-xl p-3 border border-green-400/30">
                         <div className="font-medium text-green-200">Total Cost</div>
                         <div className="text-green-100 text-lg font-semibold">
-                          ${userStats.metrics.total_cost.toFixed(4)}
+                          {formatCurrency(userStats.metrics.total_cost)}
                         </div>
                         <div className="text-green-300 text-xs">
-                          ${userStats.metrics.average_cost_per_request.toFixed(4)} avg
+                          {formatCurrency(userStats.metrics.average_cost_per_request)} avg
                         </div>
                       </div>
 

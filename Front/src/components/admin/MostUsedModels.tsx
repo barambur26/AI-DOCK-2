@@ -3,6 +3,7 @@
 
 import React from 'react';
 import { MostUsedModelsResponse } from '../../services/usageAnalyticsService';
+import { formatCurrency, formatNumber } from '../../utils/formatUtils';
 
 interface MostUsedModelsProps {
   mostUsedModels: MostUsedModelsResponse | null;
@@ -93,21 +94,7 @@ const MostUsedModels: React.FC<MostUsedModelsProps> = ({
     </div>
   );
 
-  /**
-   * Format cost value
-   */
-  const formatCost = (cost: number): string => {
-    if (cost === 0) return '$0.00';
-    if (cost < 0.01) return '<$0.01';
-    return `$${cost.toFixed(cost < 1 ? 3 : 2)}`;
-  };
 
-  /**
-   * Format number with commas
-   */
-  const formatNumber = (num: number): string => {
-    return num.toLocaleString();
-  };
 
   /**
    * Get provider color
@@ -163,7 +150,7 @@ const MostUsedModels: React.FC<MostUsedModelsProps> = ({
               <p className="text-xs text-blue-200">requests</p>
             </div>
             <div>
-              <p className="font-semibold text-white">{formatCost(model.cost.total_usd)}</p>
+              <p className="font-semibold text-white">{formatCurrency(model.cost.total_usd)}</p>
               <p className="text-xs text-blue-200">cost</p>
             </div>
             <div>
@@ -192,7 +179,7 @@ const MostUsedModels: React.FC<MostUsedModelsProps> = ({
           </div>
           <div>
             <p className="text-blue-200">Cost per 1K Tokens</p>
-            <p className="font-semibold text-white">{formatCost(model.cost.cost_per_1k_tokens)}</p>
+            <p className="font-semibold text-white">{formatCurrency(model.cost.cost_per_1k_tokens)}</p>
             <p className="text-blue-300">rate</p>
           </div>
         </div>
