@@ -1,7 +1,7 @@
 // AI Dock Conversation Sidebar - ENHANCED with Folder Management
 // UI component for managing saved conversations and organizing them into folders
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   MessageSquare, 
   Search, 
@@ -68,7 +68,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   const [loadingFolders, setLoadingFolders] = useState(false);
   const [showFolderDropdown, setShowFolderDropdown] = useState<number | null>(null);
   const [assigningToFolder, setAssigningToFolder] = useState<number | null>(null);
-  const [dropdownJustOpened, setDropdownJustOpened] = useState(false);
   
   useEffect(() => {
     if (isOpen) {
@@ -92,13 +91,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       setSearchResults([]);
     }
   }, [searchQuery]);
-  
-  // NEW: Reset dropdown flag when dropdown closes
-  useEffect(() => {
-    if (!showFolderDropdown) {
-      setDropdownJustOpened(false);
-    }
-  }, [showFolderDropdown]);
   
   // NEW: Load available folders
   const loadFolders = useCallback(async () => {
@@ -486,20 +478,17 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       </div>
 
       {!isStreaming && editingTitle !== conversation.id && (
-        <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity absolute top-3 right-3">
+        <div 
+          className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity absolute top-3 right-3"
+          onClick={(e) => e.stopPropagation()} // Prevent conversation selection when clicking action buttons
+        >
           {/* NEW: Folder assignment button */}
           <div className="relative">
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                if (showFolderDropdown === conversation.id) {
-                  setShowFolderDropdown(null);
-                } else {
-                  setShowFolderDropdown(conversation.id);
-                  setDropdownJustOpened(true);
-                  // Clear the flag after a brief delay
-                  setTimeout(() => setDropdownJustOpened(false), 100);
-                }
+                e.preventDefault();
+                setShowFolderDropdown(showFolderDropdown === conversation.id ? null : conversation.id);
               }}
               className="p-1 text-blue-300 hover:text-white hover:bg-white/10 rounded transition-colors"
               title="Move to folder"
@@ -743,11 +732,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       {showFolderDropdown && (
         <div
           className="fixed inset-0 z-10"
-          onClick={() => {
-            if (!dropdownJustOpened) {
-              setShowFolderDropdown(null);
-            }
-          }}
+          onClick={() => setShowFolderDropdown(null)}
         />
       )}
     </>
