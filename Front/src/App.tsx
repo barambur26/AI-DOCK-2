@@ -24,7 +24,6 @@ function App() {
     // Only run in development mode to avoid console spam in production
     if (import.meta.env.DEV) {
       console.log('🎆 AI Dock Frontend Starting - Running Environment Diagnostics...');
-      debugService.runFullDiagnostics();
     } else {
       // In production, just log basic info
       console.log('🎆 AI Dock Frontend Started');

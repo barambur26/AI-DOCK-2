@@ -1,0 +1,31 @@
+/* 
+ * Invisible Scrollbar Styles
+ * Applied to specific pages: Dashboard, Settings, Admin
+ * Completely hides scrollbars while maintaining scroll functionality
+ */
+
+.invisible-scrollbar {
+  /* Webkit browsers (Chrome, Safari, Edge) */
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.invisible-scrollbar::-webkit-scrollbar {
+  display: none !important;
+}
+
+/* Apply to all child elements to ensure complete coverage */
+.invisible-scrollbar *::-webkit-scrollbar {
+  display: none !important;
+}
+
+.invisible-scrollbar * {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+/* Ensure scrolling still works smoothly */
+.invisible-scrollbar {
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
