@@ -15,42 +15,42 @@
   
   /* Apply seamless glassmorphism scrollbar globally to html and body */
   html, body {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(59, 130, 246, 0.4) rgba(255, 255, 255, 0.05);
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(59, 130, 246, 0.4) rgba(255, 255, 255, 0.05) !important;
   }
   
   html::-webkit-scrollbar, body::-webkit-scrollbar {
-    width: 8px;
+    width: 8px !important;
   }
   
   html::-webkit-scrollbar-track, body::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-radius: 12px !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
   }
   
   html::-webkit-scrollbar-thumb, body::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.4), rgba(37, 99, 235, 0.6));
-    border-radius: 12px;
-    border: 1px solid rgba(59, 130, 246, 0.3);
-    backdrop-filter: blur(8px);
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.4), rgba(37, 99, 235, 0.6)) !important;
+    border-radius: 12px !important;
+    border: 1px solid rgba(59, 130, 246, 0.3) !important;
+    backdrop-filter: blur(8px) !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2) !important;
   }
   
   html::-webkit-scrollbar-thumb:hover, body::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.6), rgba(37, 99, 235, 0.8));
-    transform: scaleY(1.1);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.6), rgba(37, 99, 235, 0.8)) !important;
+    transform: scaleY(1.1) !important;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4) !important;
   }
   
   html::-webkit-scrollbar-thumb:active, body::-webkit-scrollbar-thumb:active {
-    background: linear-gradient(135deg, rgba(37, 99, 235, 0.7), rgba(29, 78, 216, 0.9));
-    transform: scaleY(1.05);
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.7), rgba(29, 78, 216, 0.9)) !important;
+    transform: scaleY(1.05) !important;
   }
   
   html::-webkit-scrollbar-corner, body::-webkit-scrollbar-corner {
-    background: transparent;
+    background: transparent !important;
   }
 }
 
