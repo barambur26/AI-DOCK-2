@@ -51,20 +51,30 @@ export const QuotaFilters: React.FC<QuotaFiltersProps> = ({
    * Render text search input
    */
   const renderSearchInput = () => (
-    <div className="flex-1 min-w-[200px]">
-      <label htmlFor="quota-search" className="block text-sm font-medium text-gray-800 mb-1">
-        Search Quotas
+    <div className="w-full">
+      <label htmlFor="quota-search" className="block text-sm font-semibold text-gray-700 mb-2">
+        🔍 Search Quotas
       </label>
-      <input
-        id="quota-search"
-        name="quota-search"
-        type="text"
-        value={filters.search}
-        onChange={(e) => onFilterChange({ search: e.target.value })}
-        placeholder="Search by name or description..."
-        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        autoComplete="off"
-      />
+      <div className="relative">
+        <input
+          id="quota-search"
+          name="quota-search"
+          type="text"
+          value={filters.search}
+          onChange={(e) => onFilterChange({ search: e.target.value })}
+          placeholder="Search by name or description..."
+          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-white/80 backdrop-blur-sm hover:bg-white/90"
+          autoComplete="off"
+        />
+        {filters.search && (
+          <button
+            onClick={() => onFilterChange({ search: '' })}
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            ✕
+          </button>
+        )}
+      </div>
     </div>
   );
 
@@ -73,21 +83,21 @@ export const QuotaFilters: React.FC<QuotaFiltersProps> = ({
    */
   const renderDepartmentFilter = () => (
     <div className="min-w-[150px]">
-      <label htmlFor="quota-department-filter" className="block text-sm font-medium text-gray-800 mb-1">
-        Department
+      <label htmlFor="quota-department-filter" className="block text-sm font-semibold text-gray-700 mb-2">
+        🏢 Department
       </label>
       <select
         id="quota-department-filter"
         name="quota-department-filter"
         value={filters.departmentId || ''}
         onChange={(e) => onFilterChange({ departmentId: e.target.value ? Number(e.target.value) : null })}
-        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-white/80 backdrop-blur-sm hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed"
         disabled={referencesLoading}
       >
         <option value="">All Departments</option>
         {departments.map(dept => (
           <option key={dept.id} value={dept.id}>
-            {dept.name}
+            {dept.name} {dept.code && `(${dept.code})`}
           </option>
         ))}
       </select>
@@ -228,15 +238,13 @@ export const QuotaFilters: React.FC<QuotaFiltersProps> = ({
     if (!hasActiveFilters) return null;
     
     return (
-      <div className="flex items-end">
-        <button
-          type="button"
-          onClick={onResetFilters}
-          className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-        >
-          Clear Filters
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={onResetFilters}
+        className="px-4 py-3 text-sm font-medium text-red-600 hover:text-white border-2 border-red-500 rounded-xl hover:bg-red-500 transition-all duration-300 bg-white/80 backdrop-blur-sm hover:shadow-lg transform hover:scale-105"
+      >
+        🗑️ Clear
+      </button>
     );
   };
 
@@ -247,9 +255,17 @@ export const QuotaFilters: React.FC<QuotaFiltersProps> = ({
     if (filterSummary.length === 0) return null;
 
     return (
-      <div className="mt-3 pt-3 border-t border-gray-200">
-        <div className="text-sm text-gray-600">
-          <strong>Active filters:</strong> {filterSummary.join(', ')}
+      <div className="mt-4 pt-4 border-t border-gray-200/50">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold text-gray-700">🏷️ Active filters:</span>
+          {filterSummary.map((filter, index) => (
+            <span
+              key={index}
+              className="inline-flex items-center px-3 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full border border-blue-200"
+            >
+              {filter}
+            </span>
+          ))}
         </div>
       </div>
     );
@@ -260,17 +276,21 @@ export const QuotaFilters: React.FC<QuotaFiltersProps> = ({
   // =============================================================================
 
   return (
-    <div className={`quota-filters bg-white/95 backdrop-blur-sm p-4 rounded-2xl shadow-2xl border border-white/20 ${className}`}>
+    <div className={`quota-filters bg-gradient-to-br from-white/95 to-white/90 backdrop-blur-lg p-6 rounded-3xl shadow-2xl border border-white/30 hover:shadow-3xl transition-all duration-500 ${className}`}>
       {/* Filter Controls Grid */}
-      <div className="flex flex-wrap gap-4 items-end">
-        {renderSearchInput()}
+      <div className="grid grid-cols-1 lg:grid-cols-4 xl:grid-cols-7 gap-4 items-end">
+        <div className="lg:col-span-2 xl:col-span-2">
+          {renderSearchInput()}
+        </div>
         {renderDepartmentFilter()}
         {renderLLMConfigFilter()}
         {renderQuotaTypeFilter()}
         {renderStatusFilter()}
         {renderEnforcementFilter()}
-        {renderExceededFilter()}
-        {renderClearButton()}
+        <div className="flex items-end gap-2">
+          {renderExceededFilter()}
+          {renderClearButton()}
+        </div>
       </div>
 
       {/* Active Filters Summary */}
@@ -278,7 +298,8 @@ export const QuotaFilters: React.FC<QuotaFiltersProps> = ({
 
       {/* Loading State for References */}
       {referencesLoading && (
-        <div className="mt-2 text-sm text-gray-500">
+        <div className="mt-3 flex items-center gap-2 text-sm text-blue-600">
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
           <span className="animate-pulse">Loading filter options...</span>
         </div>
       )}

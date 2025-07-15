@@ -325,39 +325,29 @@ class QuotaService {
   /**
    * Get list of departments for quota form dropdowns
    * 
-   * Learning: We reuse the admin API to get department data
-   * but format it specifically for quota forms.
+   * Learning: Reuse the existing departmentService to get real department data
+   * and transform it to the format expected by quota components.
    */
   async getDepartments(): Promise<DepartmentOption[]> {
     try {
       console.log('🏢 Fetching departments for quota forms...');
       
-      // Reuse the admin service to get departments
-      // Note: This is a simplified approach - in a larger app you might have a dedicated departments service
-      const response = await fetch(`${API_BASE_URL}/admin/users/search?page=1&page_size=1`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${authService.getToken()}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      // Import departmentService dynamically to avoid circular dependencies
+      const { departmentService } = await import('./departmentService');
       
-      if (!response.ok) {
-        throw new Error('Failed to fetch departments');
-      }
+      // Get departments using the proper service
+      const departments = await departmentService.getDepartmentsForDropdown();
       
-      // For now, return mock data - in a real app, you'd have a proper departments endpoint
-      // This matches the pattern we'll need for the UI
-      const mockDepartments: DepartmentOption[] = [
-        { id: 1, name: 'Engineering', code: 'ENG', is_active: true },
-        { id: 2, name: 'Marketing', code: 'MKT', is_active: true },
-        { id: 3, name: 'Sales', code: 'SALES', is_active: true },
-        { id: 4, name: 'HR', code: 'HR', is_active: true },
-        { id: 5, name: 'Finance', code: 'FIN', is_active: true }
-      ];
+      // Transform DepartmentDropdownOption[] to DepartmentOption[] format
+      const quotaDepartments: DepartmentOption[] = departments.map(dept => ({
+        id: dept.value,
+        name: dept.label,
+        code: dept.code,
+        is_active: true // Assume active since they're in the dropdown
+      }));
       
-      console.log('✅ Departments loaded:', mockDepartments);
-      return mockDepartments;
+      console.log('✅ Departments loaded from real API:', quotaDepartments);
+      return quotaDepartments;
       
     } catch (error) {
       console.error('❌ Error fetching departments:', error);

@@ -47,26 +47,29 @@ export const QuotaSummaryCards: React.FC<QuotaSummaryCardsProps> = ({
     value: number,
     label: string,
     colorClass: string,
+    bgGradient: string,
     icon?: string
   ) => (
-    <div className="bg-white/95 backdrop-blur-sm p-4 rounded-2xl shadow-2xl border border-white/20">
+    <div className={`relative bg-gradient-to-br ${bgGradient} backdrop-blur-lg p-6 rounded-3xl shadow-2xl border border-white/30 hover:shadow-3xl transition-all duration-500 transform hover:scale-105 group overflow-hidden`}>
       <div className="flex items-center justify-between">
-        <div>
-          <div className={`text-2xl font-bold ${colorClass}`}>
+        <div className="flex-1">
+          <div className={`text-3xl font-bold ${colorClass} mb-2`}>
             {loading ? (
-              <div className="animate-pulse bg-gray-200 h-8 w-16 rounded"></div>
+              <div className="animate-pulse bg-gray-200/50 h-8 w-16 rounded-lg"></div>
             ) : (
-              value.toLocaleString()
+              <span className="tabular-nums">{value.toLocaleString()}</span>
             )}
           </div>
-          <div className="text-sm text-gray-700 mt-1">{label}</div>
+          <div className="text-sm font-semibold text-gray-600 uppercase tracking-wide">{label}</div>
         </div>
         {icon && (
-          <div className="text-2xl opacity-60">
+          <div className="text-4xl opacity-80 group-hover:opacity-100 transition-opacity duration-300 group-hover:scale-110 transform transition-transform">
             {icon}
           </div>
         )}
       </div>
+      {/* Subtle glow effect */}
+      <div className={`absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-20 transition-opacity duration-500 bg-gradient-to-br ${bgGradient}`}></div>
     </div>
   );
 
@@ -76,32 +79,36 @@ export const QuotaSummaryCards: React.FC<QuotaSummaryCardsProps> = ({
 
   return (
     <div className={`quota-summary-cards ${className}`}>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         {renderCard(
           summary.totalQuotas,
           'Total Quotas',
-          'text-gray-900',
+          'text-slate-900',
+          'from-slate-50 to-gray-100',
           '📊'
         )}
         
         {renderCard(
           summary.activeQuotas,
           'Active Quotas',
-          'text-green-600',
+          'text-emerald-700',
+          'from-emerald-50 to-green-100',
           '✅'
         )}
         
         {renderCard(
           summary.nearLimitQuotas,
           'Near Limit',
-          'text-yellow-600',
+          'text-amber-700',
+          'from-amber-50 to-yellow-100',
           '⚠️'
         )}
         
         {renderCard(
           summary.exceededQuotas,
           'Exceeded',
-          'text-red-600',
+          'text-red-700',
+          'from-red-50 to-rose-100',
           '🚨'
         )}
       </div>
