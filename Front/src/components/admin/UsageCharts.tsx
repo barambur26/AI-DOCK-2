@@ -196,11 +196,6 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
       }));
   }, [mostUsedModels?.models, showAllModels]);
 
-  // Dynamic data selection based on view mode
-  const currentChartData = viewMode === 'models' ? modelChartData : providerChartData;
-  const currentCostData = viewMode === 'models' ? modelCostBreakdownData : costBreakdownData;
-  const currentPerformanceData = viewMode === 'models' ? modelPerformanceData : performanceData;
-
   const costBreakdownData = useMemo(() => {
     if (!summary?.providers) return [];
     
@@ -248,6 +243,11 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
       }))
       .sort((a, b) => a.responseTime - b.responseTime);
   }, [summary?.providers]);
+
+  // Dynamic data selection based on view mode - defined after all base data
+  const currentChartData = viewMode === 'models' ? modelChartData : providerChartData;
+  const currentCostData = viewMode === 'models' ? modelCostBreakdownData : costBreakdownData;
+  const currentPerformanceData = viewMode === 'models' ? modelPerformanceData : performanceData;
 
   // =============================================================================
   // CUSTOM COMPONENTS
