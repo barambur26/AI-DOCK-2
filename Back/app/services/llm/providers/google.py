@@ -359,6 +359,155 @@ class GoogleProvider(BaseLLMProvider):
             "output_tokens": estimated_output_tokens,
             "total_tokens": estimated_input_tokens + estimated_output_tokens
         }
+    
+    async def stream_chat_request(self, request: ChatRequest):
+        """
+        Stream responses from Google Gemini using their native streaming API.
+        
+        Google Gemini supports streaming via the streamGenerateContent endpoint.
+        
+        Yields:
+            Dict[str, Any]: Streaming chunks with Google content
+        """
+        self._validate_configuration()
+        
+        # Get model name
+        model = request.model or self.config.default_model
+        
+        # Convert messages to Gemini format (same as non-streaming)
+        contents = []
+        for msg in request.messages:
+            role = "model" if msg.role == "assistant" else "user"
+            contents.append({
+                "parts": [{"text": msg.content}],
+                "role": role
+            })
+        
+        # Build streaming request payload
+        payload = {
+            "contents": contents
+        }
+        
+        # Add generation config
+        generation_config = {}
+        
+        if request.temperature is not None:
+            generation_config["temperature"] = request.temperature
+        elif self.config.model_parameters and "temperature" in self.config.model_parameters:
+            generation_config["temperature"] = self.config.model_parameters["temperature"]
+        
+        if request.max_tokens is not None:
+            generation_config["maxOutputTokens"] = request.max_tokens
+        elif self.config.model_parameters and "max_tokens" in self.config.model_parameters:
+            generation_config["maxOutputTokens"] = self.config.model_parameters["max_tokens"]
+        
+        if generation_config:
+            payload["generationConfig"] = generation_config
+        
+        payload.update(request.extra_params)
+        
+        start_time = time.time()
+        
+        async with self._get_http_client() as client:
+            try:
+                # Google streaming API endpoint
+                api_key = self.config.get_decrypted_api_key()
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?key={api_key}"
+                
+                # Enhanced logging for streaming
+                safe_url = url.replace(api_key, "[API_KEY_HIDDEN]")
+                self.logger.info(f"🌊 Starting Google streaming request to: {safe_url}")
+                self.logger.info(f"🌊 Streaming payload: {len(str(payload))} chars")
+                
+                # Make streaming request
+                async with client.stream(
+                    "POST",
+                    url,
+                    json=payload
+                ) as response:
+                    
+                    if response.status_code != 200:
+                        self.logger.error(f"🌊 Google streaming failed with status {response.status_code}")
+                        await self._handle_error_response(response)
+                    
+                    # Process streaming response
+                    accumulated_content = ""
+                    
+                    async for line in response.aiter_lines():
+                        try:
+                            # Google returns JSONL format for streaming
+                            if line.strip():
+                                chunk_data = json.loads(line)
+                                
+                                # Extract content from Google streaming chunk
+                                candidates = chunk_data.get("candidates", [])
+                                if candidates and candidates[0].get("content"):
+                                    parts = candidates[0]["content"].get("parts", [])
+                                    if parts:
+                                        content = parts[0].get("text", "")
+                                        
+                                        if content:
+                                            accumulated_content += content
+                                            
+                                            # Yield content chunk
+                                            yield {
+                                                "content": content,
+                                                "is_final": False,
+                                                "model": model,
+                                                "provider": self.provider_name
+                                            }
+                                
+                                # Check if this is the final chunk
+                                if candidates and "finishReason" in candidates[0]:
+                                    # Final chunk - calculate usage and cost
+                                    response_time_ms = int((time.time() - start_time) * 1000)
+                                    
+                                    # Extract usage metadata if available
+                                    usage_metadata = chunk_data.get("usageMetadata", {})
+                                    if usage_metadata:
+                                        final_usage = {
+                                            "input_tokens": usage_metadata.get("promptTokenCount", 0),
+                                            "output_tokens": usage_metadata.get("candidatesTokenCount", 0),
+                                            "total_tokens": usage_metadata.get("totalTokenCount", 0)
+                                        }
+                                    else:
+                                        # Estimate usage if not provided
+                                        final_usage = self._estimate_usage_from_content(accumulated_content, payload)
+                                    
+                                    final_cost = self._calculate_actual_cost(final_usage)
+                                    
+                                    yield {
+                                        "content": "",
+                                        "is_final": True,
+                                        "model": model,
+                                        "provider": self.provider_name,
+                                        "usage": final_usage,
+                                        "cost": final_cost,
+                                        "response_time_ms": response_time_ms
+                                    }
+                                    break
+                                    
+                        except json.JSONDecodeError:
+                            # Skip malformed lines
+                            continue
+                        except Exception as e:
+                            self.logger.error(f"🌊 Error processing streaming chunk: {str(e)}")
+                            continue
+                    
+                    self.logger.info(f"🌊 Google streaming completed. Total content: {len(accumulated_content)} chars")
+                    
+            except httpx.TimeoutException:
+                raise LLMProviderError(
+                    "Google streaming request timed out",
+                    provider=self.provider_name,
+                    error_details={"timeout": True, "streaming": True}
+                )
+            except httpx.RequestError as e:
+                raise LLMProviderError(
+                    f"Google streaming network error: {str(e)}",
+                    provider=self.provider_name,
+                    error_details={"network_error": str(e), "streaming": True}
+                )
 
 
 # Export Google provider

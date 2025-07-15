@@ -6,6 +6,7 @@ from typing import Dict, Any, Optional, AsyncGenerator, List
 import logging
 import httpx
 import time
+import asyncio
 
 from app.models.llm_config import LLMConfiguration
 from ..models import ChatRequest, ChatResponse
