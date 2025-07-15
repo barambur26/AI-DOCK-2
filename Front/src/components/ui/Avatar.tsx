@@ -116,8 +116,6 @@ export const Avatar: React.FC<AvatarProps> = ({
     from-gray-400/80
     to-gray-500/80
     backdrop-blur-sm
-    border
-    border-white/20
   `;
 
   const ContainerComponent = onClick ? 'button' : 'div';
@@ -153,7 +151,7 @@ export const Avatar: React.FC<AvatarProps> = ({
           />
         </>
       ) : (
-        <div className={`w-full h-full ${fallbackBg} flex items-center justify-center`}>
+        <div className={`absolute inset-0 ${fallbackBg} flex items-center justify-center`}>
           {fallbackIcon || <User className={`${config.icon} text-white`} />}
         </div>
       )}
