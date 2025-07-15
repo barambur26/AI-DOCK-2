@@ -72,7 +72,7 @@ async def get_my_usage_stats(
         end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=days)
         
-        logger.info(f"🔍 [MY-STATS] Date range: {start_date} to {end_date}")
+        logger.info(f"🔍 [MY-STATS] Date range (timezone-aware): {start_date} to {end_date}")
         
         # 🔧 FIX: Add null safety check for usage_service
         if usage_service is None:

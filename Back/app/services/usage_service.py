@@ -328,18 +328,23 @@ class UsageService:
         Returns:
             Dictionary with usage statistics
         """
-        # 🔧 FIX: Ensure all datetime objects are timezone-aware
+        # 🔧 FIX: Handle timezone-aware datetime objects and convert to naive for PostgreSQL
         from datetime import timezone
         if not start_date:
             start_date = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         if not end_date:
             end_date = datetime.now(timezone.utc)
             
-        # Ensure provided dates are timezone-aware
+        # Ensure provided dates are timezone-aware first
         if start_date.tzinfo is None:
             start_date = start_date.replace(tzinfo=timezone.utc)
         if end_date.tzinfo is None:
             end_date = end_date.replace(tzinfo=timezone.utc)
+            
+        # 🔑 KEY FIX: Convert to naive datetime for PostgreSQL TIMESTAMP WITHOUT TIME ZONE
+        # PostgreSQL TIMESTAMP WITHOUT TIME ZONE cannot handle timezone-aware Python datetimes
+        start_date_naive = start_date.replace(tzinfo=None)
+        end_date_naive = end_date.replace(tzinfo=None)
         
         async with get_async_session_factory()() as session:
             # 🔧 FIX: Add cache-busting parameter to prevent query caching
@@ -350,8 +355,8 @@ class UsageService:
             base_query = select(UsageLog).where(
                 and_(
                     UsageLog.user_id == user_id,
-                    UsageLog.created_at >= start_date,
-                    UsageLog.created_at <= end_date
+                    UsageLog.created_at >= start_date_naive,
+                    UsageLog.created_at <= end_date_naive
                 )
             )
             
@@ -359,8 +364,8 @@ class UsageService:
             total_requests_query = select(func.count(UsageLog.id)).where(
                 and_(
                     UsageLog.user_id == user_id,
-                    UsageLog.created_at >= start_date,
-                    UsageLog.created_at <= end_date,
+                    UsageLog.created_at >= start_date_naive,
+                    UsageLog.created_at <= end_date_naive,
                     # Add cache-busting condition that's always true
                     UsageLog.id >= 0
                 )
@@ -369,8 +374,8 @@ class UsageService:
             successful_requests_query = select(func.count(UsageLog.id)).where(
                 and_(
                     UsageLog.user_id == user_id,
-                    UsageLog.created_at >= start_date,
-                    UsageLog.created_at <= end_date,
+                    UsageLog.created_at >= start_date_naive,
+                    UsageLog.created_at <= end_date_naive,
                     UsageLog.success == True,
                     # Add cache-busting condition that's always true
                     UsageLog.id >= 0
@@ -388,8 +393,8 @@ class UsageService:
             ).where(
                 and_(
                     UsageLog.user_id == user_id,
-                    UsageLog.created_at >= start_date,
-                    UsageLog.created_at <= end_date,
+                    UsageLog.created_at >= start_date_naive,
+                    UsageLog.created_at <= end_date_naive,
                     UsageLog.success == True,
                     # Add cache-busting condition that's always true
                     UsageLog.id >= 0
@@ -403,8 +408,8 @@ class UsageService:
             ).where(
                 and_(
                     UsageLog.user_id == user_id,
-                    UsageLog.created_at >= start_date,
-                    UsageLog.created_at <= end_date,
+                    UsageLog.created_at >= start_date_naive,
+                    UsageLog.created_at <= end_date_naive,
                     UsageLog.success == True,
                     UsageLog.provider.isnot(None),
                     # Add cache-busting condition that's always true
@@ -504,18 +509,22 @@ class UsageService:
         
         This is crucial for quota management and departmental billing.
         """
-        # 🔧 FIX: Ensure all datetime objects are timezone-aware
+        # 🔧 FIX: Handle timezone-aware datetime objects and convert to naive for PostgreSQL
         from datetime import timezone
         if not start_date:
             start_date = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         if not end_date:
             end_date = datetime.now(timezone.utc)
             
-        # Ensure provided dates are timezone-aware
+        # Ensure provided dates are timezone-aware first
         if start_date.tzinfo is None:
             start_date = start_date.replace(tzinfo=timezone.utc)
         if end_date.tzinfo is None:
             end_date = end_date.replace(tzinfo=timezone.utc)
+            
+        # 🔑 KEY FIX: Convert to naive datetime for PostgreSQL TIMESTAMP WITHOUT TIME ZONE
+        start_date_naive = start_date.replace(tzinfo=None)
+        end_date_naive = end_date.replace(tzinfo=None)
         
         async with get_async_session_factory()() as session:
             # 🔧 FIX: Add cache-busting parameter to prevent query caching
@@ -532,8 +541,8 @@ class UsageService:
             ).where(
                 and_(
                     UsageLog.department_id == department_id,
-                    UsageLog.created_at >= start_date,
-                    UsageLog.created_at <= end_date,
+                    UsageLog.created_at >= start_date_naive,
+                    UsageLog.created_at <= end_date_naive,
                     # Add cache-busting condition that's always true
                     UsageLog.id >= 0
                 )
@@ -580,18 +589,22 @@ class UsageService:
         Useful for understanding which providers are most popular
         and comparing their performance and costs.
         """
-        # 🔧 FIX: Ensure all datetime objects are timezone-aware
+        # 🔧 FIX: Handle timezone-aware datetime objects and convert to naive for PostgreSQL
         from datetime import timezone
         if not start_date:
             start_date = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         if not end_date:
             end_date = datetime.now(timezone.utc)
             
-        # Ensure provided dates are timezone-aware
+        # Ensure provided dates are timezone-aware first
         if start_date.tzinfo is None:
             start_date = start_date.replace(tzinfo=timezone.utc)
         if end_date.tzinfo is None:
             end_date = end_date.replace(tzinfo=timezone.utc)
+            
+        # 🔑 KEY FIX: Convert to naive datetime for PostgreSQL TIMESTAMP WITHOUT TIME ZONE
+        start_date_naive = start_date.replace(tzinfo=None)
+        end_date_naive = end_date.replace(tzinfo=None)
         
         async with get_async_session_factory()() as session:
             # 🔧 FIX: Add cache-busting parameter to prevent query caching
@@ -607,8 +620,8 @@ class UsageService:
                 func.count(UsageLog.id).filter(UsageLog.success == True).label('successful_requests')
             ).where(
                 and_(
-                    UsageLog.created_at >= start_date,
-                    UsageLog.created_at <= end_date,
+                    UsageLog.created_at >= start_date_naive,
+                    UsageLog.created_at <= end_date_naive,
                     # Add cache-busting condition that's always true
                     UsageLog.id >= 0
                 )
@@ -660,7 +673,7 @@ class UsageService:
         
         This will be expanded in AID-005-B for quota enforcement.
         """
-        # 🔧 FIX: Use timezone-aware datetime objects
+        # 🔧 FIX: Use timezone-aware datetime objects for calculations, but convert to naive for queries
         from datetime import timezone
         now_utc = datetime.now(timezone.utc)
         start_date = now_utc - timedelta(days=period_days)
@@ -687,7 +700,7 @@ class UsageService:
         
         This will be expanded in AID-005-B for quota enforcement.
         """
-        # 🔧 FIX: Use timezone-aware datetime objects
+        # 🔧 FIX: Use timezone-aware datetime objects for calculations, but convert to naive for queries
         from datetime import timezone
         now_utc = datetime.now(timezone.utc)
         start_date = now_utc - timedelta(days=period_days)
