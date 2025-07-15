@@ -69,7 +69,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   const [showFolderDropdown, setShowFolderDropdown] = useState<number | null>(null);
   const [assigningToFolder, setAssigningToFolder] = useState<number | null>(null);
   const [overlayActive, setOverlayActive] = useState(false);
-  const [openingButton, setOpeningButton] = useState<HTMLElement | null>(null);
+  const [justOpened, setJustOpened] = useState(false);
   
   useEffect(() => {
     if (isOpen) {
@@ -98,19 +98,29 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   useEffect(() => {
     if (showFolderDropdown) {
       console.log('🟢 Dropdown opened for conversation:', showFolderDropdown);
+      
+      // Set just opened flag
+      setJustOpened(true);
+      
       // Delay overlay activation to prevent immediate close
       const timer = setTimeout(() => {
         console.log('🟡 Overlay activated');
         setOverlayActive(true);
+        
+        // Clear just opened flag after overlay is active
+        setTimeout(() => {
+          setJustOpened(false);
+          console.log('🔓 Just opened flag cleared');
+        }, 50);
       }, 100);
+      
       return () => {
         clearTimeout(timer);
       };
     } else {
       console.log('🔴 Dropdown closed');
       setOverlayActive(false);
-      // Clear the opening button reference when dropdown closes
-      setOpeningButton(null);
+      setJustOpened(false);
     }
   }, [showFolderDropdown]);
   
@@ -514,9 +524,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                 e.stopPropagation();
                 e.preventDefault();
                 
-                // Track which button opened the dropdown
-                setOpeningButton(e.currentTarget as HTMLElement);
-                
                 if (showFolderDropdown === conversation.id) {
                   console.log('🗬 Closing dropdown');
                   setShowFolderDropdown(null);
@@ -770,9 +777,9 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
           onClick={(e) => {
             console.log('🛆 Overlay clicked - checking if should close dropdown');
             
-            // Don't close if the click originated from the button that opened it
-            if (openingButton && (e.target === openingButton || openingButton.contains(e.target as Node))) {
-              console.log('🚫 Ignoring overlay click - originated from opening button');
+            // Don't close if dropdown was just opened
+            if (justOpened) {
+              console.log('🚫 Ignoring overlay click - dropdown just opened');
               return;
             }
             
