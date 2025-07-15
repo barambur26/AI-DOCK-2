@@ -2,8 +2,9 @@
 // Filter controls for quota table with search and dropdown filters
 
 import React from 'react';
-import { DepartmentOption, LLMConfigOption, QuotaType, QuotaStatus } from '../../../types/quota';
+import { DepartmentOption, LLMConfigOption, QuotaType } from '../../../types/quota';
 import { FilterState } from '../../../hooks/quota/useQuotaTable';
+import { CustomDropdown, DropdownOption } from './CustomDropdown';
 
 // =============================================================================
 // INTERFACES
@@ -89,155 +90,139 @@ export const QuotaFilters: React.FC<QuotaFiltersProps> = ({
   /**
    * Render department filter dropdown
    */
-  const renderDepartmentFilter = () => (
-    <div className="min-w-[150px]">
-      <label htmlFor="quota-department-filter" className="block text-sm font-semibold text-gray-700 mb-2">
-        🏢 Department
-      </label>
-      <select
+  const renderDepartmentFilter = () => {
+    const departmentOptions: DropdownOption[] = [
+      { value: '', label: 'All Departments' },
+      ...departments.map(dept => ({
+        value: dept.id,
+        label: dept.code ? `${dept.name} (${dept.code})` : dept.name,
+        disabled: !dept.is_active
+      }))
+    ];
+
+    return (
+      <CustomDropdown
         id="quota-department-filter"
         name="quota-department-filter"
+        label="Department"
+        icon="🏢"
         value={filters.departmentId || ''}
-        onChange={(e) => onFilterChange({ departmentId: e.target.value ? Number(e.target.value) : null })}
-        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-white/80 backdrop-blur-sm hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed hover:border-gray-300 focus:shadow-lg focus:ring-offset-2"
+        options={departmentOptions}
+        onChange={(value) => onFilterChange({ departmentId: value ? Number(value) : null })}
+        placeholder="All Departments"
         disabled={referencesLoading}
-      >
-        <option value="">All Departments</option>
-        {departments.map(dept => (
-          <option key={dept.id} value={dept.id}>
-            {dept.name} {dept.code && `(${dept.code})`}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
+      />
+    );
+  };
 
   /**
    * Render LLM config filter dropdown
    */
-  const renderLLMConfigFilter = () => (
-    <div className="min-w-[150px]">
-      <label htmlFor="quota-llm-filter" className="block text-sm font-semibold text-gray-700 mb-2">
-        🤖 LLM Config
-      </label>
-      <select
+  const renderLLMConfigFilter = () => {
+    const llmConfigOptions: DropdownOption[] = [
+      { value: '', label: 'All LLM Configs' },
+      ...llmConfigs.map(config => ({
+        value: config.id,
+        label: `${config.name} (${config.provider})`,
+        disabled: !config.is_active
+      }))
+    ];
+
+    return (
+      <CustomDropdown
         id="quota-llm-filter"
         name="quota-llm-filter"
+        label="LLM Config"
+        icon="🤖"
         value={filters.llmConfigId || ''}
-        onChange={(e) => onFilterChange({ llmConfigId: e.target.value ? Number(e.target.value) : null })}
-        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-white/80 backdrop-blur-sm hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed hover:border-gray-300 focus:shadow-lg focus:ring-offset-2"
+        options={llmConfigOptions}
+        onChange={(value) => onFilterChange({ llmConfigId: value ? Number(value) : null })}
+        placeholder="All LLM Configs"
         disabled={referencesLoading}
-      >
-        <option value="">All LLM Configs</option>
-        {llmConfigs.map(config => (
-          <option key={config.id} value={config.id}>
-            {config.name} ({config.provider})
-          </option>
-        ))}
-      </select>
-    </div>
-  );
+      />
+    );
+  };
 
   /**
    * Render quota type filter dropdown
    */
-  const renderQuotaTypeFilter = () => (
-    <div className="min-w-[120px]">
-      <label htmlFor="quota-type-filter" className="block text-sm font-semibold text-gray-700 mb-2">
-        💰 Type
-      </label>
-      <select
+  const renderQuotaTypeFilter = () => {
+    const quotaTypeOptions: DropdownOption[] = [
+      { value: '', label: 'All Types' },
+      { value: 'cost', label: 'Cost', icon: '💰' },
+      { value: 'tokens', label: 'Tokens', icon: '🎯' },
+      { value: 'requests', label: 'Requests', icon: '📞' }
+    ];
+
+    return (
+      <CustomDropdown
         id="quota-type-filter"
         name="quota-type-filter"
+        label="Type"
+        icon="💰"
         value={filters.quotaType || ''}
-        onChange={(e) => onFilterChange({ quotaType: e.target.value as QuotaType || null })}
-        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-white/80 backdrop-blur-sm hover:bg-white/90 hover:border-gray-300 focus:shadow-lg focus:ring-offset-2"
-      >
-        <option value="">All Types</option>
-        <option value="cost">💰 Cost</option>
-        <option value="tokens">🎯 Tokens</option>
-        <option value="requests">📞 Requests</option>
-      </select>
-    </div>
-  );
-
-  /**
-   * Render status filter dropdown
-   */
-  const renderStatusFilter = () => (
-    <div className="min-w-[120px]">
-      <label htmlFor="quota-status-filter" className="block text-sm font-semibold text-gray-700 mb-2">
-        📊 Status
-      </label>
-      <select
-        id="quota-status-filter"
-        name="quota-status-filter"
-        value={filters.status || ''}
-        onChange={(e) => onFilterChange({ status: e.target.value as QuotaStatus || null })}
-        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-white/80 backdrop-blur-sm hover:bg-white/90 hover:border-gray-300 focus:shadow-lg focus:ring-offset-2"
-      >
-        <option value="">All Status</option>
-        <option value="active">✅ Active</option>
-        <option value="inactive">⏸️ Inactive</option>
-        <option value="suspended">⏹️ Suspended</option>
-        <option value="exceeded">🚨 Exceeded</option>
-      </select>
-    </div>
-  );
+        options={quotaTypeOptions}
+        onChange={(value) => onFilterChange({ quotaType: value as QuotaType || null })}
+        placeholder="All Types"
+      />
+    );
+  };
 
   /**
    * Render enforcement filter
    */
-  const renderEnforcementFilter = () => (
-    <div className="min-w-[120px]">
-      <label htmlFor="quota-enforcement-filter" className="block text-sm font-semibold text-gray-700 mb-2">
-        🛡️ Enforcement
-      </label>
-      <select
+  const renderEnforcementFilter = () => {
+    const enforcementOptions: DropdownOption[] = [
+      { value: '', label: 'All' },
+      { value: 'true', label: 'Enforced', icon: '🛡️' },
+      { value: 'false', label: 'Not Enforced', icon: '⚪' }
+    ];
+
+    return (
+      <CustomDropdown
         id="quota-enforcement-filter"
         name="quota-enforcement-filter"
+        label="Enforcement"
+        icon="🛡️"
         value={filters.isEnforced === null ? '' : filters.isEnforced.toString()}
-        onChange={(e) => {
-          const value = e.target.value;
+        options={enforcementOptions}
+        onChange={(value) => {
           onFilterChange({ 
             isEnforced: value === '' ? null : value === 'true' 
           });
         }}
-        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-white/80 backdrop-blur-sm hover:bg-white/90 hover:border-gray-300 focus:shadow-lg focus:ring-offset-2"
-      >
-        <option value="">All</option>
-        <option value="true">🛡️ Enforced</option>
-        <option value="false">⚪ Not Enforced</option>
-      </select>
-    </div>
-  );
+        placeholder="All"
+      />
+    );
+  };
 
   /**
    * Render exceeded filter
    */
-  const renderExceededFilter = () => (
-    <div className="min-w-[120px]">
-      <label htmlFor="quota-exceeded-filter" className="block text-sm font-semibold text-gray-700 mb-2">
-        📈 Usage Status
-      </label>
-      <select
+  const renderExceededFilter = () => {
+    const exceededOptions: DropdownOption[] = [
+      { value: '', label: 'All' },
+      { value: 'true', label: 'Exceeded', icon: '🚨' },
+      { value: 'false', label: 'Within Limit', icon: '✅' }
+    ];
+
+    return (
+      <CustomDropdown
         id="quota-exceeded-filter"
         name="quota-exceeded-filter"
+        label="Usage Status"
+        icon="📈"
         value={filters.isExceeded === null ? '' : filters.isExceeded.toString()}
-        onChange={(e) => {
-          const value = e.target.value;
+        options={exceededOptions}
+        onChange={(value) => {
           onFilterChange({ 
             isExceeded: value === '' ? null : value === 'true' 
           });
         }}
-        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-white/80 backdrop-blur-sm hover:bg-white/90 hover:border-gray-300 focus:shadow-lg focus:ring-offset-2"
-      >
-        <option value="">All</option>
-        <option value="true">🚨 Exceeded</option>
-        <option value="false">✅ Within Limit</option>
-      </select>
-    </div>
-  );
+        placeholder="All"
+      />
+    );
+  };
 
   /**
    * Render clear filters button
@@ -291,14 +276,13 @@ export const QuotaFilters: React.FC<QuotaFiltersProps> = ({
   return (
     <div className={`quota-filters bg-gradient-to-br from-white/95 to-white/90 backdrop-blur-lg p-6 rounded-3xl shadow-2xl border border-white/30 hover:shadow-3xl transition-all duration-500 hover:from-white/98 hover:to-white/95 ${className}`}>
       {/* Filter Controls Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 xl:grid-cols-7 gap-4 items-end">
+      <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-6 gap-4 items-end">
         <div className="lg:col-span-2 xl:col-span-2">
           {renderSearchInput()}
         </div>
         {renderDepartmentFilter()}
         {renderLLMConfigFilter()}
         {renderQuotaTypeFilter()}
-        {renderStatusFilter()}
         {renderEnforcementFilter()}
         <div className="flex items-end gap-2">
           {renderExceededFilter()}

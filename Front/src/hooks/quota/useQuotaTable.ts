@@ -3,7 +3,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { quotaService, QuotaListResponse, QuotaSearchFilters } from '../../services/quotaService';
-import { QuotaResponse, QuotaType, QuotaPeriod, QuotaStatus } from '../../types/quota';
+import { QuotaResponse, QuotaType, QuotaPeriod } from '../../types/quota';
 
 // =============================================================================
 // INTERFACES
@@ -36,7 +36,6 @@ export interface FilterState {
   llmConfigId: number | null;
   quotaType: QuotaType | null;
   quotaPeriod: QuotaPeriod | null;
-  status: QuotaStatus | null;
   isEnforced: boolean | null;
   isExceeded: boolean | null;
 }
@@ -104,7 +103,6 @@ export const useQuotaTable = (): UseQuotaTableReturn => {
     llmConfigId: null,
     quotaType: null,
     quotaPeriod: null,
-    status: null,
     isEnforced: null,
     isExceeded: null,
   });
@@ -139,7 +137,6 @@ export const useQuotaTable = (): UseQuotaTableReturn => {
       if (filters.llmConfigId) searchFilters.llm_config_id = filters.llmConfigId;
       if (filters.quotaType) searchFilters.quota_type = filters.quotaType;
       if (filters.quotaPeriod) searchFilters.quota_period = filters.quotaPeriod;
-      if (filters.status) searchFilters.status = filters.status;
       if (filters.isEnforced !== null) searchFilters.is_enforced = filters.isEnforced;
       if (filters.isExceeded !== null) searchFilters.is_exceeded = filters.isExceeded;
 
@@ -201,7 +198,6 @@ export const useQuotaTable = (): UseQuotaTableReturn => {
       if (filters.llmConfigId) searchFilters.llm_config_id = filters.llmConfigId;
       if (filters.quotaType) searchFilters.quota_type = filters.quotaType;
       if (filters.quotaPeriod) searchFilters.quota_period = filters.quotaPeriod;
-      if (filters.status) searchFilters.status = filters.status;
       if (filters.isEnforced !== null) searchFilters.is_enforced = filters.isEnforced;
       if (filters.isExceeded !== null) searchFilters.is_exceeded = filters.isExceeded;
 
@@ -265,7 +261,6 @@ export const useQuotaTable = (): UseQuotaTableReturn => {
       llmConfigId: null,
       quotaType: null,
       quotaPeriod: null,
-      status: null,
       isEnforced: null,
       isExceeded: null,
     });
@@ -383,7 +378,6 @@ export const useQuotaTable = (): UseQuotaTableReturn => {
            filters.llmConfigId !== null ||
            filters.quotaType !== null ||
            filters.quotaPeriod !== null ||
-           filters.status !== null ||
            filters.isEnforced !== null ||
            filters.isExceeded !== null;
   }, [filters]);
@@ -396,7 +390,6 @@ export const useQuotaTable = (): UseQuotaTableReturn => {
     if (filters.search.trim()) active.push(`Search: "${filters.search}"`);
     if (filters.departmentId) active.push(`Dept: ${filters.departmentId}`);
     if (filters.quotaType) active.push(`Type: ${filters.quotaType}`);
-    if (filters.status) active.push(`Status: ${filters.status}`);
     if (filters.isExceeded === true) active.push('Exceeded only');
     if (filters.isEnforced === false) active.push('Unenforced only');
     return active;

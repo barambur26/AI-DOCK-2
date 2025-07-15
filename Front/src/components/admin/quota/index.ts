@@ -6,3 +6,5 @@ export { default as QuotaFilters } from './QuotaFilters';
 export { default as QuotaPagination } from './QuotaPagination';
 export { default as QuotaBulkActions } from './QuotaBulkActions';
 export { default as QuotaToolbar } from './QuotaToolbar';
+export { default as CustomDropdown } from './CustomDropdown';
+export type { DropdownOption } from './CustomDropdown';
