@@ -69,6 +69,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   const [showFolderDropdown, setShowFolderDropdown] = useState<number | null>(null);
   const [assigningToFolder, setAssigningToFolder] = useState<number | null>(null);
   const [overlayActive, setOverlayActive] = useState(false);
+  const [openingButton, setOpeningButton] = useState<HTMLElement | null>(null);
   
   useEffect(() => {
     if (isOpen) {
@@ -108,6 +109,8 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     } else {
       console.log('🔴 Dropdown closed');
       setOverlayActive(false);
+      // Clear the opening button reference when dropdown closes
+      setOpeningButton(null);
     }
   }, [showFolderDropdown]);
   
@@ -463,7 +466,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
             <Check className="w-3 h-3" />
           </button>
           <button
-            onClick={() => {
+            onClick={(e) => {
               setEditingTitle(null);
               setNewTitle('');
             }}
@@ -510,6 +513,10 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                 console.log('📱 Folder button clicked for conversation:', conversation.id);
                 e.stopPropagation();
                 e.preventDefault();
+                
+                // Track which button opened the dropdown
+                setOpeningButton(e.currentTarget as HTMLElement);
+                
                 if (showFolderDropdown === conversation.id) {
                   console.log('🗬 Closing dropdown');
                   setShowFolderDropdown(null);
@@ -760,8 +767,16 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       {showFolderDropdown && overlayActive && (
         <div
           className="fixed inset-0 z-10"
-          onClick={() => {
-            console.log('🛆 Overlay clicked - closing dropdown');
+          onClick={(e) => {
+            console.log('🛆 Overlay clicked - checking if should close dropdown');
+            
+            // Don't close if the click originated from the button that opened it
+            if (openingButton && (e.target === openingButton || openingButton.contains(e.target as Node))) {
+              console.log('🚫 Ignoring overlay click - originated from opening button');
+              return;
+            }
+            
+            console.log('✅ Valid overlay click - closing dropdown');
             setShowFolderDropdown(null);
           }}
         />
