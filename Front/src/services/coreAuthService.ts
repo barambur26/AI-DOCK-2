@@ -38,16 +38,17 @@ class CoreAuthService {
    */
   private async handleTokenRefresh(): Promise<void> {
     try {
-      const newToken = await tokenManager.refreshToken();
-      if (newToken) {
-        console.log('✅ Token refreshed successfully');
-      } else {
-        console.log('❌ Token refresh failed, user needs to re-login');
-        this.logout();
-      }
+      console.log('🔄 Token refresh requested but disabled - using long-lived tokens instead');
+      
+      // DISABLED: Token refresh is not implemented in backend
+      // Using 8-hour tokens instead of 30-minute tokens + refresh
+      // TODO: Implement proper refresh token endpoint in backend
+      
+      console.log('💡 Long-lived token strategy in use, no refresh needed');
+      
     } catch (error) {
       console.error('Token refresh error:', error);
-      this.logout();
+      // Don't logout on refresh errors when using long-lived tokens
     }
   }
 

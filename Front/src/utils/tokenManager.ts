@@ -3,7 +3,7 @@
 // Extracted from authService.ts for better separation of concerns
 
 const TOKEN_KEY = 'ai-dock-token';
-const REFRESH_THRESHOLD = 5 * 60; // Refresh token 5 minutes before expiry
+const REFRESH_THRESHOLD = 30 * 60; // Refresh token 30 minutes before expiry (conservative for 8-hour tokens)
 
 export interface TokenPayload {
   exp: number;
@@ -157,20 +157,18 @@ export class TokenManager {
    */
   private async handleTokenRefresh(): Promise<void> {
     try {
-      console.log('🔄 Attempting automatic token refresh...');
+      console.log('🔄 Token refresh disabled - using longer token expiry instead');
       
-      // This will be implemented when we have refresh endpoint
-      // For now, we'll emit an event that can be handled by auth context
-      const event = new CustomEvent('tokenRefreshNeeded');
-      window.dispatchEvent(event);
+      // DISABLED: Token refresh is not implemented on backend
+      // Users will get 8-hour tokens instead of frequent refreshes
+      // TODO: Implement proper refresh token flow when backend supports it
+      
+      // Do nothing for now - just log that refresh was attempted
+      console.log('💡 Long-lived token in use, no refresh needed');
       
     } catch (error) {
-      console.error('❌ Token refresh failed:', error);
-      this.clearToken();
-      
-      // Emit logout event
-      const event = new CustomEvent('tokenExpired');
-      window.dispatchEvent(event);
+      console.error('❌ Token refresh error:', error);
+      // Don't clear token on refresh errors when using long-lived tokens
     }
   }
 

@@ -1,7 +1,11 @@
 # AI Dock Backend - Main FastAPI Application
 # This is the "entry point" of our backend - like main() in a program
 
-from fastapi import FastAPI
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.starlette import StarletteIntegration
+from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+from fastapi import FastAPI, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -13,6 +17,26 @@ from pathlib import Path
 # Import our database and configuration
 from .core.config import settings, validate_config
 from .core.database import startup_database, shutdown_database, check_database_connection
+
+# Initialize Sentry error monitoring
+if os.getenv('SENTRY_DSN'):
+    sentry_sdk.init(
+        dsn=os.getenv('SENTRY_DSN'),
+        integrations=[
+            FastApiIntegration(auto_record=True),
+            StarletteIntegration(transaction_style="endpoint"),
+            SqlalchemyIntegration(),
+        ],
+        traces_sample_rate=1.0 if settings.debug else 0.1,
+        send_default_pii=settings.debug,  # Only send PII in debug mode
+        environment=settings.environment,
+        release=settings.app_version,
+    )
+    logger = logging.getLogger(__name__)
+    logger.info(f"🔍 Sentry initialized for environment: {settings.environment}")
+else:
+    logger = logging.getLogger(__name__)
+    logger.info("🔍 Sentry DSN not configured - error monitoring disabled")
 
 # Import our security middleware
 from .middleware.security import SecurityHeadersMiddleware, create_security_test_response
@@ -27,7 +51,8 @@ from .api.chat_streaming import router as chat_streaming_router  # 🆕 NEW: Str
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+if 'logger' not in locals():
+    logger = logging.getLogger(__name__)
 
 # Create our FastAPI application instance
 # Think of this as creating a "web server" object
@@ -172,6 +197,44 @@ async def cors_test():
             "credentials_allowed": True
         },
         "test_instructions": "Make a POST request to this endpoint from your frontend to test CORS"
+    }
+
+# Sentry test endpoint - verify Sentry error monitoring is working
+@app.get("/sentry/test")
+async def sentry_test(
+    error: bool = Query(False, description="Trigger a test error"),
+    exception: bool = Query(False, description="Trigger a test exception")
+):
+    """
+    Test endpoint to verify Sentry error monitoring is working.
+    
+    This endpoint can trigger different types of events to test Sentry integration:
+    - GET /sentry/test - Returns Sentry configuration status
+    - GET /sentry/test?error=true - Triggers a test error
+    - GET /sentry/test?exception=true - Triggers a test exception
+    """
+    
+    if error:
+        # Trigger a test error for Sentry
+        import sentry_sdk
+        sentry_sdk.capture_message("Test error from AI Dock API", level="error")
+        return {"message": "Test error sent to Sentry! 🔍"}
+    
+    if exception:
+        # Trigger a test exception for Sentry
+        raise Exception("Test exception from AI Dock API for Sentry monitoring")
+    
+    # Return Sentry configuration status
+    sentry_enabled = bool(os.getenv('SENTRY_DSN'))
+    return {
+        "message": "Sentry monitoring endpoint 🔍",
+        "sentry_enabled": sentry_enabled,
+        "environment": settings.environment,
+        "test_options": {
+            "trigger_error": "GET /sentry/test?error=true",
+            "trigger_exception": "GET /sentry/test?exception=true"
+        },
+        "instructions": "Use the test options to verify Sentry is capturing errors properly"
     }
 
 # =============================================================================

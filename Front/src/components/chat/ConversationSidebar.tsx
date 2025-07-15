@@ -537,8 +537,8 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
           className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity absolute top-3 right-3"
           onClick={(e) => e.stopPropagation()} // Prevent conversation selection when clicking action buttons
         >
-          {/* NEW: Folder assignment button */}
-          <div className="relative">
+          {/* 🚨 TEMPORARILY HIDDEN: Folder assignment button (buggy - fix in progress) */}
+          {/* <div className="relative">
             <button
               onClick={(e) => {
                 console.log('📱 Folder button clicked for conversation:', conversation.id);
@@ -567,7 +567,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
             </button>
             
             {renderFolderDropdown(conversation)}
-          </div>
+          </div> */
           
           <button
             onClick={(e) => {

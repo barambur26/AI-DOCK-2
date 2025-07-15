@@ -100,7 +100,7 @@ def verify_password(password: str, hashed_password: str) -> bool:
 
 # JWT Configuration
 ALGORITHM = "HS256"  # HMAC with SHA-256 - secure and fast
-ACCESS_TOKEN_EXPIRE_MINUTES = 30  # Short-lived for security
+ACCESS_TOKEN_EXPIRE_MINUTES = 480  # 8 hours - reasonable for productivity apps
 REFRESH_TOKEN_EXPIRE_DAYS = 7     # Longer-lived for convenience
 
 
