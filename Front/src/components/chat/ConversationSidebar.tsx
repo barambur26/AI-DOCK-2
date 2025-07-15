@@ -102,6 +102,19 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       // Set just opened flag
       setJustOpened(true);
       
+      // Add mouse event debugging
+      const handleMouseMove = (e: MouseEvent) => {
+        console.log('🐭 Mouse moved - target:', e.target, 'dropdown:', showFolderDropdown);
+      };
+      
+      const handleMouseEnter = (e: MouseEvent) => {
+        console.log('🐭 Mouse entered - target:', e.target);
+      };
+      
+      const handleMouseLeave = (e: MouseEvent) => {
+        console.log('🐭 Mouse left - target:', e.target);
+      };
+      
       // Delay overlay activation to prevent immediate close
       const timer = setTimeout(() => {
         console.log('🟡 Overlay activated');
@@ -114,8 +127,16 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
         }, 50);
       }, 100);
       
+      // Add debugging event listeners
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseenter', handleMouseEnter, true);
+      document.addEventListener('mouseleave', handleMouseLeave, true);
+      
       return () => {
         clearTimeout(timer);
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseenter', handleMouseEnter, true);
+        document.removeEventListener('mouseleave', handleMouseLeave, true);
       };
     } else {
       console.log('🔴 Dropdown closed');
@@ -774,6 +795,18 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       {showFolderDropdown && overlayActive && (
         <div
           className="fixed inset-0 z-10"
+          onMouseMove={(e) => {
+            console.log('🛆 OVERLAY MOUSE MOVE - this should not trigger!');
+            e.stopPropagation();
+          }}
+          onMouseEnter={(e) => {
+            console.log('🛆 OVERLAY MOUSE ENTER - this should not trigger!');
+            e.stopPropagation();
+          }}
+          onMouseLeave={(e) => {
+            console.log('🛆 OVERLAY MOUSE LEAVE - this should not trigger!');
+            e.stopPropagation();
+          }}
           onClick={(e) => {
             console.log('🛆 Overlay clicked - checking if should close dropdown');
             
