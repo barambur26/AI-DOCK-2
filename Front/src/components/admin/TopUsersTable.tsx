@@ -229,7 +229,7 @@ const TopUsersTable: React.FC<TopUsersTableProps> = ({
           renderLoading()
         ) : (
           <div>
-            <div className="max-h-96 overflow-y-auto space-y-3 scrollbar-thin scrollbar-thumb-amber-500/20 scrollbar-track-transparent">
+            <div className="max-h-96 overflow-y-auto space-y-3 custom-scrollbar">
               {currentData.top_users.slice(0, 5).map((userStats, index) => (
               <div key={`user-${userStats.user.id}-${index}`} className="p-4 bg-white/5 backdrop-blur-lg rounded-xl hover:bg-white/10 transition-all duration-300 border border-white/10">
                 

@@ -233,7 +233,7 @@ const MostUsedModels: React.FC<MostUsedModelsProps> = ({
           renderEmpty()
         ) : (
           <div>
-            <div className="max-h-96 overflow-y-auto space-y-3 scrollbar-thin scrollbar-thumb-blue-500/20 scrollbar-track-transparent">
+            <div className="max-h-96 overflow-y-auto space-y-3 custom-scrollbar">
               {mostUsedModels.models.slice(0, 5).map((model, index) => renderModelItem(model, index))}
             </div>
             
