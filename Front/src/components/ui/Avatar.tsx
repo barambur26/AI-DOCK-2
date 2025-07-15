@@ -218,7 +218,7 @@ export const AvatarPicker: React.FC<{
         fallbackIcon={
           <span className="text-white text-lg font-bold">∅</span>
         }
-        className="hover:ring-2 hover:ring-blue-400/50"
+        className="w-20 h-20 hover:ring-2 hover:ring-blue-400/50"
       />
       
       {/* Available avatars */}
