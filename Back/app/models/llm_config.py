@@ -664,6 +664,59 @@ def create_claude_config(
         
     return config
 
+def create_gemini_config(
+    name: str = "Google Gemini",
+    api_key: str = None,
+    description: str = "Google Gemini configuration"
+) -> LLMConfiguration:
+    """
+    Create a sample Gemini configuration for testing/development.
+    
+    Args:
+        name: Configuration name
+        api_key: Google AI API key
+        description: Configuration description
+        
+    Returns:
+        LLMConfiguration object for Gemini
+    """
+    config = LLMConfiguration(
+        name=name,
+        description=description,
+        provider=LLMProvider.GOOGLE,
+        api_endpoint="https://generativelanguage.googleapis.com/v1beta",
+        api_version="v1beta",
+        default_model="gemini-1.5-pro",
+        available_models=[
+            "gemini-2.5-pro",
+            "gemini-2.5-flash",
+            "gemini-2.5-flash-lite-preview-06-17",
+            "gemini-2.0-flash",
+            "gemini-2.0-flash-lite",
+            "gemini-1.5-flash",
+            "gemini-1.5-flash-8b",
+            "gemini-1.5-pro",
+            "gemini-embedding-001"
+        ],
+        model_parameters={
+            "maxOutputTokens": 4000,
+            "temperature": 0.7
+        },
+        rate_limit_rpm=60,  # Google has lower rate limits on free tier
+        rate_limit_tpm=30000,
+        cost_per_1k_input_tokens=0.0125,  # Gemini 1.5 Pro pricing
+        cost_per_1k_output_tokens=0.0375,
+        monthly_budget_usd=1000.00,
+        is_active=True,
+        is_public=True,
+        priority=30
+    )
+    
+    if api_key:
+        config.set_encrypted_api_key(api_key)
+        
+    return config
+
 def get_default_configs() -> List[LLMConfiguration]:
     """
     Get a list of default LLM configurations for initial setup.
@@ -673,5 +726,6 @@ def get_default_configs() -> List[LLMConfiguration]:
     """
     return [
         create_openai_config(),
-        create_claude_config()
+        create_claude_config(),
+        create_gemini_config()
     ]

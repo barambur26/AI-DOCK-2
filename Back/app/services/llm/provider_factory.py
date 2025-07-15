@@ -9,6 +9,7 @@ from .exceptions import LLMServiceError
 from .providers.base import BaseLLMProvider
 from .providers.openai import OpenAIProvider
 from .providers.anthropic import AnthropicProvider
+from .providers.google import GoogleProvider
 
 
 class LLMProviderFactory:
@@ -31,8 +32,8 @@ class LLMProviderFactory:
         self._provider_classes: Dict[LLMProvider, Type[BaseLLMProvider]] = {
             LLMProvider.OPENAI: OpenAIProvider,
             LLMProvider.ANTHROPIC: AnthropicProvider,
+            LLMProvider.GOOGLE: GoogleProvider,
             # Future providers can be added here:
-            # LLMProvider.GOOGLE: GoogleProvider,
             # LLMProvider.MISTRAL: MistralProvider,
         }
     
