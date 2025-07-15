@@ -216,11 +216,7 @@ export const AvatarPicker: React.FC<{
         showCheckmark
         isSelected={selectedAvatar === ''}
         fallbackIcon={
-        <div className="flex items-center justify-center w-full h-full p-2">
-          <div className="w-6 h-6 border-2 border-white rounded-full flex items-center justify-center">
-            <span className="text-white text-lg font-bold">∅</span>
-            </div>
-            </div>
+          <span className="text-white text-lg font-bold">∅</span>
         }
         className="hover:ring-2 hover:ring-blue-400/50"
       />
