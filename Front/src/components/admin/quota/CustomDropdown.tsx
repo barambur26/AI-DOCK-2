@@ -2,6 +2,7 @@
 // Replaces default browser dropdowns with modern, interactive design
 
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
 // =============================================================================
@@ -59,7 +60,9 @@ export const CustomDropdown: React.FC<CustomDropdownProps> = ({
 
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
   // =============================================================================
@@ -69,7 +72,19 @@ export const CustomDropdown: React.FC<CustomDropdownProps> = ({
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      
+      // If dropdown is not open, no need to check
+      if (!isOpen) return;
+      
+      // Check if click is outside the dropdown container
+      const isOutsideContainer = dropdownRef.current && !dropdownRef.current.contains(target);
+      
+      // Check if click is outside the portal menu (if it exists)
+      const isOutsidePortal = listRef.current && !listRef.current.contains(target);
+      
+      // Close if click is outside both container and portal
+      if (isOutsideContainer && isOutsidePortal) {
         setIsOpen(false);
         setHighlightedIndex(-1);
       }
@@ -77,7 +92,7 @@ export const CustomDropdown: React.FC<CustomDropdownProps> = ({
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [isOpen]);
 
   // Handle keyboard navigation
   useEffect(() => {
@@ -117,12 +132,58 @@ export const CustomDropdown: React.FC<CustomDropdownProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, highlightedIndex, options, onChange]);
 
+  // Handle window resize and scroll to reposition dropdown
+  useEffect(() => {
+    const handleWindowEvent = () => {
+      if (isOpen) {
+        calculateDropdownPosition();
+      }
+    };
+
+    if (isOpen) {
+      window.addEventListener('resize', handleWindowEvent);
+      window.addEventListener('scroll', handleWindowEvent, true);
+      
+      return () => {
+        window.removeEventListener('resize', handleWindowEvent);
+        window.removeEventListener('scroll', handleWindowEvent, true);
+      };
+    }
+  }, [isOpen]);
+
   // =============================================================================
   // HANDLERS
   // =============================================================================
 
+  const calculateDropdownPosition = () => {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const scrollY = window.scrollY;
+      const scrollX = window.scrollX;
+      const viewportHeight = window.innerHeight;
+      const dropdownHeight = 240; // max-h-60 = ~240px
+      
+      let top = rect.bottom + scrollY + 8; // 8px gap
+      
+      // Check if dropdown would go below viewport
+      if (rect.bottom + dropdownHeight > viewportHeight) {
+        // Position above the button instead
+        top = rect.top + scrollY - dropdownHeight - 8;
+      }
+      
+      setDropdownPosition({
+        top: Math.max(scrollY + 8, top), // Ensure it's not above viewport
+        left: rect.left + scrollX,
+        width: rect.width
+      });
+    }
+  };
+
   const handleToggle = () => {
     if (!disabled) {
+      if (!isOpen) {
+        calculateDropdownPosition();
+      }
       setIsOpen(!isOpen);
       setHighlightedIndex(-1);
     }
@@ -175,12 +236,34 @@ export const CustomDropdown: React.FC<CustomDropdownProps> = ({
 
   const selectedOption = getSelectedOption();
 
+  // Create portal element for dropdown
+  const dropdownPortal = isOpen ? createPortal(
+    <div 
+      className="fixed bg-white/95 backdrop-blur-lg border border-gray-200 rounded-xl shadow-2xl overflow-hidden"
+      style={{
+        top: dropdownPosition.top,
+        left: dropdownPosition.left,
+        width: dropdownPosition.width,
+        zIndex: 99999
+      }}
+    >
+      <ul
+        ref={listRef}
+        className="max-h-60 overflow-y-auto py-1"
+        role="listbox"
+      >
+        {options.map(renderOption)}
+      </ul>
+    </div>,
+    document.body
+  ) : null;
+
   // =============================================================================
   // MAIN RENDER
   // =============================================================================
 
   return (
-    <div className={`custom-dropdown min-w-[150px] relative ${className}`} ref={dropdownRef}>
+    <div className={`custom-dropdown min-w-[150px] ${className}`} ref={dropdownRef}>
       {/* Label */}
       <label htmlFor={id} className="block text-sm font-semibold text-gray-700 mb-2">
         {icon && <span className="mr-2">{icon}</span>}
@@ -190,6 +273,7 @@ export const CustomDropdown: React.FC<CustomDropdownProps> = ({
       {/* Dropdown Button */}
       <div className="relative">
         <button
+          ref={buttonRef}
           id={id}
           name={name}
           type="button"
@@ -220,20 +304,10 @@ export const CustomDropdown: React.FC<CustomDropdownProps> = ({
             )}
           </div>
         </button>
-
-        {/* Dropdown Menu */}
-        {isOpen && (
-          <div className="absolute z-[9999] w-full mt-2 bg-white/95 backdrop-blur-lg border border-gray-200 rounded-xl shadow-2xl overflow-hidden">
-            <ul
-              ref={listRef}
-              className="max-h-60 overflow-y-auto py-1"
-              role="listbox"
-            >
-              {options.map(renderOption)}
-            </ul>
-          </div>
-        )}
       </div>
+
+      {/* Render dropdown portal */}
+      {dropdownPortal}
     </div>
   );
 };
