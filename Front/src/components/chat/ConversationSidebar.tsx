@@ -1,7 +1,7 @@
 // AI Dock Conversation Sidebar - ENHANCED with Folder Management
 // UI component for managing saved conversations and organizing them into folders
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   MessageSquare, 
   Search, 
@@ -68,6 +68,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   const [loadingFolders, setLoadingFolders] = useState(false);
   const [showFolderDropdown, setShowFolderDropdown] = useState<number | null>(null);
   const [assigningToFolder, setAssigningToFolder] = useState<number | null>(null);
+  const [overlayActive, setOverlayActive] = useState(false);
   
   useEffect(() => {
     if (isOpen) {
@@ -91,6 +92,24 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       setSearchResults([]);
     }
   }, [searchQuery]);
+  
+  // Handle overlay timing to prevent immediate close
+  useEffect(() => {
+    if (showFolderDropdown) {
+      console.log('🟢 Dropdown opened for conversation:', showFolderDropdown);
+      // Delay overlay activation to prevent immediate close
+      const timer = setTimeout(() => {
+        console.log('🟡 Overlay activated');
+        setOverlayActive(true);
+      }, 100);
+      return () => {
+        clearTimeout(timer);
+      };
+    } else {
+      console.log('🔴 Dropdown closed');
+      setOverlayActive(false);
+    }
+  }, [showFolderDropdown]);
   
   // NEW: Load available folders
   const loadFolders = useCallback(async () => {
@@ -355,6 +374,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
           {/* No folder option */}
           <button
             onClick={(e) => {
+              console.log('📁 No folder option clicked');
               e.stopPropagation();
               handleAssignToFolder(conversation.id, null);
             }}
@@ -375,6 +395,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
             <button
               key={folder.id}
               onClick={(e) => {
+                console.log('📁 Folder option clicked:', folder.name);
                 e.stopPropagation();
                 handleAssignToFolder(conversation.id, folder.id);
               }}
@@ -486,9 +507,16 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
           <div className="relative">
             <button
               onClick={(e) => {
+                console.log('📱 Folder button clicked for conversation:', conversation.id);
                 e.stopPropagation();
                 e.preventDefault();
-                setShowFolderDropdown(showFolderDropdown === conversation.id ? null : conversation.id);
+                if (showFolderDropdown === conversation.id) {
+                  console.log('🗬 Closing dropdown');
+                  setShowFolderDropdown(null);
+                } else {
+                  console.log('🗬 Opening dropdown');
+                  setShowFolderDropdown(conversation.id);
+                }
               }}
               className="p-1 text-blue-300 hover:text-white hover:bg-white/10 rounded transition-colors"
               title="Move to folder"
@@ -729,10 +757,13 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       )}
       
       {/* Click outside to close dropdown */}
-      {showFolderDropdown && (
+      {showFolderDropdown && overlayActive && (
         <div
           className="fixed inset-0 z-10"
-          onClick={() => setShowFolderDropdown(null)}
+          onClick={() => {
+            console.log('🛆 Overlay clicked - closing dropdown');
+            setShowFolderDropdown(null);
+          }}
         />
       )}
     </>
