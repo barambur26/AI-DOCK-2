@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { authService } from '../services/authService'
 import { usageAnalyticsService } from '../services/usageAnalyticsService'
 import { UnifiedTraversalButtons } from '../components/ui/UnifiedTraversalButtons'
+import { AvatarPicker } from '../components/ui/Avatar'
 import { UserUsageStats } from '../types/usage'
 
 // 👤 User Settings Page - Personal Profile Management
@@ -240,56 +241,13 @@ export const UserSettings: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-200 mb-2">
                     Profile Picture
                   </label>
-                  <p className="text-xs text-gray-400 mb-3">Choose an avatar for your account. This will appear in the navigation and across the app.</p>
-                  <div className="flex space-x-4">
-                    {/* No Picture Option (ø) */}
-                    <button
-                      type="button"
-                      onClick={() => handleInputChange('profile_picture_url', '')}
-                      className={`relative rounded-full overflow-hidden border-2 transition-all duration-200 focus:outline-none ${profileForm.profile_picture_url === '' ? 'border-blue-500 ring-2 ring-blue-400' : 'border-transparent'}`}
-                      style={{ width: 64, height: 64 }}
-                      aria-label="Remove profile picture"
-                    >
-                      <div className="w-16 h-16 bg-gray-400 rounded-full flex items-center justify-center">
-                        <span className="text-white text-2xl font-bold">ø</span>
-                      </div>
-                      {profileForm.profile_picture_url === '' && (
-                        <span className="absolute inset-0 flex items-center justify-center">
-                          <svg className="w-7 h-7 text-blue-500 bg-white/80 rounded-full p-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                          </svg>
-                        </span>
-                      )}
-                    </button>
-                    
-                    {/* Avatar Options */}
-                    {['avatar1.svg','avatar2.svg','avatar3.svg','avatar4.svg','avatar5.svg','avatar6.svg'].map((avatar, idx) => {
-                      const selected = profileForm.profile_picture_url === `/profile-pics/${avatar}`
-                      return (
-                        <button
-                          key={avatar}
-                          type="button"
-                          onClick={() => handleInputChange('profile_picture_url', `/profile-pics/${avatar}`)}
-                          className={`relative rounded-full overflow-hidden border-2 transition-all duration-200 focus:outline-none ${selected ? 'border-blue-500 ring-2 ring-blue-400' : 'border-transparent'}`}
-                          style={{ width: 64, height: 64 }}
-                          aria-label={`Select avatar ${idx+1}`}
-                        >
-                          <img
-                            src={`/profile-pics/${avatar}`}
-                            alt={`Avatar ${idx+1}`}
-                            className="w-16 h-16 object-cover rounded-full bg-white/20"
-                          />
-                          {selected && (
-                            <span className="absolute inset-0 flex items-center justify-center">
-                              <svg className="w-7 h-7 text-blue-500 bg-white/80 rounded-full p-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                              </svg>
-                            </span>
-                          )}
-                        </button>
-                      )
-                    })}
-                  </div>
+                  <p className="text-xs text-gray-400 mb-4">Choose an avatar for your account. This will appear in the navigation and across the app.</p>
+                  
+                  <AvatarPicker
+                    selectedAvatar={profileForm.profile_picture_url}
+                    onAvatarSelect={(avatar) => handleInputChange('profile_picture_url', avatar)}
+                    className="max-w-lg"
+                  />
                 </div>
 
                 {/* Basic Info */}
