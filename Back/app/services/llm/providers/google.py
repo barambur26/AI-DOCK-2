@@ -23,6 +23,18 @@ class GoogleProvider(BaseLLMProvider):
     def provider_name(self) -> str:
         return "Google"
     
+    def _validate_configuration(self):
+        """Validate that the necessary configuration for the provider is present."""
+        if not self.config.api_key_encrypted:
+            raise LLMProviderError("❌ Google AI Studio API key is not configured. Please set up your API key in the configuration.")
+        if not self.config.api_endpoint:
+            raise LLMProviderError("❌ Google API endpoint is not configured.")
+            
+        # 🔍 ENHANCED LOGGING: Log configuration details (without exposing full API key)
+        api_key = self.config.get_decrypted_api_key()
+        key_preview = f"{api_key[:8]}...{api_key[-4:]}" if len(api_key) > 12 else "[too_short]"
+        self.logger.info(f"🔍 Google config validation - Endpoint: {self.config.api_endpoint}, Key: {key_preview}")
+    
     async def send_chat_request(self, request: ChatRequest) -> ChatResponse:
         """
         Send chat request to Google Gemini API.
@@ -95,6 +107,11 @@ class GoogleProvider(BaseLLMProvider):
                 api_key = self.config.get_decrypted_api_key()
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
                 
+                # 🔍 ENHANCED LOGGING: Log request details (without exposing API key)
+                safe_url = url.replace(api_key, "[API_KEY_HIDDEN]")
+                self.logger.info(f"🔍 Making Google API request to: {safe_url}")
+                self.logger.info(f"🔍 Request payload size: {len(str(payload))} chars")
+                
                 response = await client.post(url, json=payload)
                 
                 response_time_ms = int((time.time() - start_time) * 1000)
@@ -162,23 +179,37 @@ class GoogleProvider(BaseLLMProvider):
             error_data = response.json()
             error_message = error_data.get("error", {}).get("message", "Unknown error")
             error_code = error_data.get("error", {}).get("code", "unknown")
+            error_status = error_data.get("error", {}).get("status", "unknown")
+            
+            # 🔍 ENHANCED LOGGING: Log detailed error information
+            self.logger.error(f"🔍 GOOGLE API ERROR: status={response.status_code}, code={error_code}, status={error_status}, message={error_message}")
+            self.logger.error(f"🔍 Full error response: {error_data}")
+            
         except:
             error_message = f"HTTP {response.status_code}: {response.text}"
             error_code = "http_error"
+            error_status = "unknown"
+            
+            # Log raw response for debugging
+            self.logger.error(f"🔍 RAW GOOGLE API ERROR: {response.status_code} - {response.text}")
         
-        # Map Google error codes to our exceptions
+        # Map Google error codes to our exceptions with detailed messages
         if response.status_code == 401 or response.status_code == 403:
-            raise LLMConfigurationError(f"Invalid API key: {error_message}")
+            detailed_message = f"Invalid API key or insufficient permissions. Please check your Google AI Studio API key. Error: {error_message}"
+            raise LLMConfigurationError(detailed_message)
         elif response.status_code == 429:
-            raise LLMQuotaExceededError(f"Rate limit exceeded: {error_message}")
+            detailed_message = f"Google AI Studio rate limit exceeded. Free tier has very low limits (15 RPM). Consider upgrading to paid tier or wait before retrying. Error: {error_message}"
+            raise LLMQuotaExceededError(detailed_message)
         elif response.status_code == 400:
-            raise LLMProviderError(f"Bad request: {error_message}", self.provider_name, response.status_code)
+            detailed_message = f"Bad request to Google API. Check model name and parameters. Error: {error_message}"
+            raise LLMProviderError(detailed_message, self.provider_name, response.status_code)
         else:
+            detailed_message = f"Google API error (status: {response.status_code}, code: {error_code}): {error_message}"
             raise LLMProviderError(
-                f"Google API error: {error_message}",
+                detailed_message,
                 provider=self.provider_name,
                 status_code=response.status_code,
-                error_details={"error_code": error_code}
+                error_details={"error_code": error_code, "error_status": error_status}
             )
     
     async def test_connection(self) -> Dict[str, Any]:
