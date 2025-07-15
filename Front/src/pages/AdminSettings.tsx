@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { Home } from 'lucide-react';
 import { authService } from '../services/authService';
 import { UnifiedTraversalButtons } from '../components/ui/UnifiedTraversalButtons';
+import '../styles/invisible-scrollbar.css';
 
 // Component imports
 import { UserManagement } from '../components/admin/UserManagement';
@@ -456,7 +457,7 @@ const AdminSettings: React.FC = () => {
 
   // Main admin interface
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-blue-950">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-blue-950 invisible-scrollbar">
 
       
       {renderHeader()}

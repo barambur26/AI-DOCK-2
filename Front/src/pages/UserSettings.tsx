@@ -7,6 +7,7 @@ import { usageAnalyticsService } from '../services/usageAnalyticsService'
 import { UnifiedTraversalButtons } from '../components/ui/UnifiedTraversalButtons'
 import { AvatarPicker } from '../components/ui/Avatar'
 import { UserUsageStats } from '../types/usage'
+import '../styles/invisible-scrollbar.css'
 
 // 👤 User Settings Page - Personal Profile Management
 export const UserSettings: React.FC = () => {
@@ -182,7 +183,7 @@ export const UserSettings: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-blue-950">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-blue-950 invisible-scrollbar">
       {/* Header */}
       <header className="bg-white/5 backdrop-blur-lg border-b border-white/10 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
