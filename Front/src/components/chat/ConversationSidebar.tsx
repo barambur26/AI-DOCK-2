@@ -68,8 +68,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   const [loadingFolders, setLoadingFolders] = useState(false);
   const [showFolderDropdown, setShowFolderDropdown] = useState<number | null>(null);
   const [assigningToFolder, setAssigningToFolder] = useState<number | null>(null);
-  const [overlayActive, setOverlayActive] = useState(false);
-  const [justOpened, setJustOpened] = useState(false);
   
   useEffect(() => {
     if (isOpen) {
@@ -94,56 +92,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     }
   }, [searchQuery]);
   
-  // Handle overlay timing to prevent immediate close
-  useEffect(() => {
-    if (showFolderDropdown) {
-      console.log('🟢 Dropdown opened for conversation:', showFolderDropdown);
-      
-      // Set just opened flag
-      setJustOpened(true);
-      
-      // Add mouse event debugging
-      const handleMouseMove = (e: MouseEvent) => {
-        console.log('🐭 Mouse moved - target:', e.target, 'dropdown:', showFolderDropdown);
-      };
-      
-      const handleMouseEnter = (e: MouseEvent) => {
-        console.log('🐭 Mouse entered - target:', e.target);
-      };
-      
-      const handleMouseLeave = (e: MouseEvent) => {
-        console.log('🐭 Mouse left - target:', e.target);
-      };
-      
-      // Delay overlay activation to prevent immediate close
-      const timer = setTimeout(() => {
-        console.log('🟡 Overlay activated');
-        setOverlayActive(true);
-        
-        // Clear just opened flag after overlay is active
-        setTimeout(() => {
-          setJustOpened(false);
-          console.log('🔓 Just opened flag cleared');
-        }, 50);
-      }, 100);
-      
-      // Add debugging event listeners
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseenter', handleMouseEnter, true);
-      document.addEventListener('mouseleave', handleMouseLeave, true);
-      
-      return () => {
-        clearTimeout(timer);
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseenter', handleMouseEnter, true);
-        document.removeEventListener('mouseleave', handleMouseLeave, true);
-      };
-    } else {
-      console.log('🔴 Dropdown closed');
-      setOverlayActive(false);
-      setJustOpened(false);
-    }
-  }, [showFolderDropdown]);
+
   
   // NEW: Load available folders
   const loadFolders = useCallback(async () => {
@@ -399,7 +348,8 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     if (showFolderDropdown !== conversation.id) return null;
 
     return (
-      <div className="absolute right-0 top-full mt-1 w-56 bg-white/10 backdrop-blur-lg rounded-xl shadow-2xl border border-white/20 z-20">
+      <div className="absolute right-0 top-full mt-1 w-56 bg-white/10 backdrop-blur-lg rounded-xl shadow-2xl border border-white/20 z-20"
+           onClick={(e) => e.stopPropagation()}>
         <div className="py-2">
           <div className="px-3 py-2 text-xs font-semibold text-blue-300 uppercase tracking-wide border-b border-white/10">
             Move to Folder
@@ -408,7 +358,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
           {/* No folder option */}
           <button
             onClick={(e) => {
-              console.log('📁 No folder option clicked');
               e.stopPropagation();
               handleAssignToFolder(conversation.id, null);
             }}
@@ -429,7 +378,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
             <button
               key={folder.id}
               onClick={(e) => {
-                console.log('📁 Folder option clicked:', folder.name);
                 e.stopPropagation();
                 handleAssignToFolder(conversation.id, folder.id);
               }}
@@ -538,18 +486,13 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
           onClick={(e) => e.stopPropagation()} // Prevent conversation selection when clicking action buttons
         >
           {/* 🚨 TEMPORARILY HIDDEN: Folder assignment button (buggy - fix in progress) */}
-          {/* <div className="relative">
+           <div className="relative">
             <button
               onClick={(e) => {
-                console.log('📱 Folder button clicked for conversation:', conversation.id);
                 e.stopPropagation();
-                e.preventDefault();
-                
                 if (showFolderDropdown === conversation.id) {
-                  console.log('🗬 Closing dropdown');
                   setShowFolderDropdown(null);
                 } else {
-                  console.log('🗬 Opening dropdown');
                   setShowFolderDropdown(conversation.id);
                 }
               }}
@@ -567,7 +510,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
             </button>
             
             {renderFolderDropdown(conversation)}
-          </div> */
+          </div>
           
           <button
             onClick={(e) => {
@@ -792,33 +735,10 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       )}
       
       {/* Click outside to close dropdown */}
-      {showFolderDropdown && overlayActive && (
+      {showFolderDropdown && (
         <div
           className="fixed inset-0 z-10"
-          onMouseMove={(e) => {
-            console.log('🛆 OVERLAY MOUSE MOVE - this should not trigger!');
-            e.stopPropagation();
-          }}
-          onMouseEnter={(e) => {
-            console.log('🛆 OVERLAY MOUSE ENTER - this should not trigger!');
-            e.stopPropagation();
-          }}
-          onMouseLeave={(e) => {
-            console.log('🛆 OVERLAY MOUSE LEAVE - this should not trigger!');
-            e.stopPropagation();
-          }}
-          onClick={(e) => {
-            console.log('🛆 Overlay clicked - checking if should close dropdown');
-            
-            // Don't close if dropdown was just opened
-            if (justOpened) {
-              console.log('🚫 Ignoring overlay click - dropdown just opened');
-              return;
-            }
-            
-            console.log('✅ Valid overlay click - closing dropdown');
-            setShowFolderDropdown(null);
-          }}
+          onClick={() => setShowFolderDropdown(null)}
         />
       )}
     </>
