@@ -23,8 +23,8 @@ if os.getenv('SENTRY_DSN'):
     sentry_sdk.init(
         dsn=os.getenv('SENTRY_DSN'),
         integrations=[
-            FastApiIntegration(auto_record=True),
-            StarletteIntegration(transaction_style="endpoint"),
+            FastApiIntegration(),
+            StarletteIntegration(),
             SqlalchemyIntegration(),
         ],
         traces_sample_rate=1.0 if settings.debug else 0.1,
