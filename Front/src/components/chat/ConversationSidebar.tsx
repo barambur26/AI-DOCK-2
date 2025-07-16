@@ -370,8 +370,14 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     if (showFolderDropdown !== conversation.id) return null;
 
     return (
-      <div className="absolute right-0 top-full mt-1 w-56 bg-white/10 backdrop-blur-lg rounded-xl shadow-2xl border border-white/20 z-20"
-           onClick={(e) => e.stopPropagation()}>
+      <div className="fixed w-56 bg-white/10 backdrop-blur-lg rounded-xl shadow-2xl border border-white/20"
+           onClick={(e) => e.stopPropagation()}
+           style={{ 
+             zIndex: 9999,
+             top: '50%',
+             left: '50%',
+             transform: 'translate(-50%, -50%)'
+           }}> {/* Center it on screen for now to test clicks */}
         <div className="py-2">
           <div className="px-3 py-2 text-xs font-semibold text-blue-300 uppercase tracking-wide border-b border-white/10">
             Move to Folder
@@ -381,9 +387,11 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
           <button
             onClick={(e) => {
               e.stopPropagation();
+              e.preventDefault();
+              console.log('Clicked No Folder!');
               handleAssignToFolder(conversation.id, null);
             }}
-            className={`flex items-center w-full px-3 py-2 text-sm hover:bg-white/10 transition-colors ${
+            className={`flex items-center w-full px-3 py-2 text-sm hover:bg-white/10 transition-colors cursor-pointer ${
               !conversation.project ? 'text-blue-200 font-medium' : 'text-blue-100'
             }`}
             disabled={assigningToFolder === conversation.id}
@@ -401,9 +409,11 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
               key={folder.id}
               onClick={(e) => {
                 e.stopPropagation();
+                e.preventDefault();
+                console.log(`Clicked folder: ${folder.name}`);
                 handleAssignToFolder(conversation.id, folder.id);
               }}
-              className={`flex items-center w-full px-3 py-2 text-sm hover:bg-white/10 transition-colors ${
+              className={`flex items-center w-full px-3 py-2 text-sm hover:bg-white/10 transition-colors cursor-pointer ${
                 conversation.project?.id === folder.id ? 'text-blue-200 font-medium' : 'text-blue-100'
               }`}
               disabled={assigningToFolder === conversation.id}
@@ -419,6 +429,19 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
               No folders available
             </div>
           )}
+          
+          {/* Close button for testing */}
+          <div className="border-t border-white/10 mt-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowFolderDropdown(null);
+              }}
+              className="w-full px-3 py-2 text-xs text-blue-300 hover:bg-white/10 transition-colors"
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -504,7 +527,9 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
 
       {!isStreaming && editingTitle !== conversation.id && (
         <div 
-          className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity absolute top-3 right-3"
+          className={`flex items-center space-x-1 transition-opacity absolute top-3 right-3 ${
+            showFolderDropdown === conversation.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+          }`}
           onClick={(e) => e.stopPropagation()} // Prevent conversation selection when clicking action buttons
         >
           {/* Folder assignment button - FIXED dropdown behavior */}
