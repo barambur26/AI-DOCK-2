@@ -69,6 +69,30 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   const [showFolderDropdown, setShowFolderDropdown] = useState<number | null>(null);
   const [assigningToFolder, setAssigningToFolder] = useState<number | null>(null);
   
+  // Fix for dropdown timing issue - delay click-outside handler setup
+  useEffect(() => {
+    if (showFolderDropdown !== null) {
+      // Small delay to prevent immediate closure from same click event
+      const timer = setTimeout(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+          const target = event.target as Element;
+          if (!target.closest('.folder-dropdown-container')) {
+            setShowFolderDropdown(null);
+          }
+        };
+        
+        document.addEventListener('click', handleClickOutside);
+        return () => {
+          document.removeEventListener('click', handleClickOutside);
+        };
+      }, 10);
+      
+      return () => {
+        clearTimeout(timer);
+      };
+    }
+  }, [showFolderDropdown]);
+  
   useEffect(() => {
     if (isOpen) {
       loadConversations();
@@ -483,8 +507,8 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
           className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity absolute top-3 right-3"
           onClick={(e) => e.stopPropagation()} // Prevent conversation selection when clicking action buttons
         >
-          {/* 🚨 TEMPORARILY HIDDEN: Folder assignment button (buggy - fix in progress) */}
-           <div className="relative">
+          {/* Folder assignment button - FIXED dropdown behavior */}
+           <div className="relative folder-dropdown-container">
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -731,14 +755,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
           )}
         </div>
       )}
-      
-      {/* Click outside to close dropdown */}
-      {showFolderDropdown && (
-        <div
-          className="fixed inset-0 z-10"
-          onClick={() => setShowFolderDropdown(null)}
-        />
-      )}
+
     </>
   );
 

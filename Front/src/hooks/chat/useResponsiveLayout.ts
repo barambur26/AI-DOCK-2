@@ -46,11 +46,7 @@ export const useResponsiveLayout = (): ResponsiveLayoutReturn => {
       setBreakpoint('desktop');
     }
     
-    console.log('📱 Screen size updated:', {
-      width,
-      isMobile: mobile,
-      breakpoint: width < BREAKPOINTS.mobile ? 'mobile' : width < BREAKPOINTS.desktop ? 'tablet' : 'desktop'
-    });
+    
   }, []);
   
   // Initialize and listen for resize events

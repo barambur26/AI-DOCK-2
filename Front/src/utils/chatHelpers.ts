@@ -322,25 +322,7 @@ export function formatConversationTimestamp(dateString: string | null | undefine
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     
-    // Debug logging for troubleshooting (only when in development)
-    if (process.env.NODE_ENV === 'development' && Math.random() < 0.1) { // Random sampling to avoid spam
-      console.log('🕒 Timestamp formatting debug:', {
-        input: dateString,
-        parsed: date.toISOString(),
-        now: now.toISOString(),
-        diffMs,
-        diffMinutes,
-        diffHours,
-        diffDays,
-        isToday: date.toDateString() === now.toDateString(),
-        isYesterday: (() => {
-          const yesterday = new Date(now);
-          yesterday.setDate(yesterday.getDate() - 1);
-          return date.toDateString() === yesterday.toDateString();
-        })()
-      });
-    }
-    
+
     // Handle future timestamps (clock skew protection)
     if (diffMs < 0) {
       const futureMs = Math.abs(diffMs);
