@@ -92,8 +92,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     }
   }, [searchQuery]);
   
-
-  
   // NEW: Load available folders
   const loadFolders = useCallback(async () => {
     try {
