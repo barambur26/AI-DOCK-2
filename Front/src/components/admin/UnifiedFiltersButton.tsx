@@ -1,7 +1,7 @@
 // 🔧 Modern Unified Filters Button Component
 // Combines all filtering options with smart logic and modern UI
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Filter, X, ChevronDown, Check } from 'lucide-react';
 import { Department, Provider, Model } from '../../services/usageAnalyticsService';
 
@@ -52,6 +52,7 @@ const UnifiedFiltersButton: React.FC<UnifiedFiltersButtonProps> = ({
   isRefreshing = false
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Calculate total active filters
   const activeFiltersCount = [
@@ -69,6 +70,11 @@ const UnifiedFiltersButton: React.FC<UnifiedFiltersButtonProps> = ({
 
   // Smart provider toggle with model syncing
   const handleProviderToggle = (providerId: string) => {
+    // Clear any existing debounce timeout
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+    
     const isCurrentlySelected = selectedProviders.includes(providerId);
     const providerModels = modelsByProvider[providerId] || [];
     const providerModelIds = providerModels.map(m => m.value);
@@ -77,19 +83,28 @@ const UnifiedFiltersButton: React.FC<UnifiedFiltersButtonProps> = ({
       // Deselecting provider - remove it and its models
       const newProviders = selectedProviders.filter(id => id !== providerId);
       const newModels = selectedModels.filter(id => !providerModelIds.includes(id));
+      
+      // Apply both changes immediately to prevent async issues
       onProvidersChange(newProviders);
-      onModelsChange(newModels);
+      setTimeout(() => onModelsChange(newModels), 0);
     } else {
       // Selecting provider - add it and all its models
       const newProviders = [...selectedProviders, providerId];
       const newModels = [...new Set([...selectedModels, ...providerModelIds])];
+      
+      // Apply both changes immediately to prevent async issues
       onProvidersChange(newProviders);
-      onModelsChange(newModels);
+      setTimeout(() => onModelsChange(newModels), 0);
     }
   };
 
   // Smart model toggle with provider syncing
   const handleModelToggle = (modelId: string) => {
+    // Clear any existing debounce timeout
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+    
     const isCurrentlySelected = selectedModels.includes(modelId);
     const model = models.find(m => m.value === modelId);
     
@@ -108,10 +123,11 @@ const UnifiedFiltersButton: React.FC<UnifiedFiltersButtonProps> = ({
       if (remainingProviderModels.length === 0) {
         // Remove the provider as well (no models left)
         const newProviders = selectedProviders.filter(id => id !== model.provider);
-        onProvidersChange(newProviders);
+        onModelsChange(newModels);
+        setTimeout(() => onProvidersChange(newProviders), 0);
+      } else {
+        onModelsChange(newModels);
       }
-      
-      onModelsChange(newModels);
     } else {
       // Selecting model
       const newModels = [...selectedModels, modelId];
@@ -119,10 +135,11 @@ const UnifiedFiltersButton: React.FC<UnifiedFiltersButtonProps> = ({
       // Always ensure the provider is included when ANY of its models are selected
       if (!selectedProviders.includes(model.provider)) {
         const newProviders = [...selectedProviders, model.provider];
-        onProvidersChange(newProviders);
+        onModelsChange(newModels);
+        setTimeout(() => onProvidersChange(newProviders), 0);
+      } else {
+        onModelsChange(newModels);
       }
-      
-      onModelsChange(newModels);
     }
   };
 
@@ -139,6 +156,15 @@ const UnifiedFiltersButton: React.FC<UnifiedFiltersButtonProps> = ({
   const isProviderFullySelected = (providerId: string): boolean => {
     return selectedProviders.includes(providerId);
   };
+
+  // Cleanup effect for timeouts
+  useEffect(() => {
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="relative">

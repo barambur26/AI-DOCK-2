@@ -147,7 +147,7 @@ class UsageAnalyticsService {
    * Returns:
    *   Comprehensive usage summary
    */
-  async getUsageSummary(days: number = 30, departmentId?: number, providerNames?: string[], modelNames?: string[]): Promise<UsageSummary> {
+  async getUsageSummary(days: number = 30, departmentId?: number, providerNames?: string[], modelNames?: string[], signal?: AbortSignal): Promise<UsageSummary> {
     console.log(`📊 Fetching usage summary for ${days} days${departmentId ? ` (department: ${departmentId})` : ''}${providerNames?.length ? ` (providers: ${providerNames.join(', ')})` : ''}${modelNames?.length ? ` (models: ${modelNames.join(', ')})` : ''}...`);
     
     const params = new URLSearchParams({ days: days.toString() });
@@ -165,7 +165,8 @@ class UsageAnalyticsService {
       `${API_BASE_URL}/admin/usage/summary?${params}`,
       {
         method: 'GET',
-        headers: this.getAuthHeaders()
+        headers: this.getAuthHeaders(),
+        signal: signal
       }
     );
     
@@ -288,7 +289,8 @@ class UsageAnalyticsService {
     metric: 'total_cost' | 'total_tokens' | 'request_count' = 'total_cost',
     departmentId?: number,
     providerNames?: string[],
-    modelNames?: string[]
+    modelNames?: string[],
+    signal?: AbortSignal
   ): Promise<TopUsersResponse> {
     console.log(`🏆 Fetching top ${limit} users by ${metric} (${days} days)${departmentId ? ` (department: ${departmentId})` : ''}${providerNames?.length ? ` (providers: ${providerNames.join(', ')})` : ''}${modelNames?.length ? ` (models: ${modelNames.join(', ')})` : ''}...`);
     
@@ -311,7 +313,8 @@ class UsageAnalyticsService {
       `${API_BASE_URL}/admin/usage/top-users?${params}`,
       {
         method: 'GET',
-        headers: this.getAuthHeaders()
+        headers: this.getAuthHeaders(),
+        signal: signal
       }
     );
     
@@ -342,7 +345,7 @@ class UsageAnalyticsService {
     departmentId?: number;
     provider?: string;
     successOnly?: boolean;
-  } = {}): Promise<RecentLogsResponse> {
+  } = {}, signal?: AbortSignal): Promise<RecentLogsResponse> {
     const {
       limit = 50,
       offset = 0,
@@ -369,7 +372,8 @@ class UsageAnalyticsService {
       `${API_BASE_URL}/admin/usage/logs/recent?${params}`,
       {
         method: 'GET',
-        headers: this.getAuthHeaders()
+        headers: this.getAuthHeaders(),
+        signal: signal
       }
     );
     
@@ -391,7 +395,7 @@ class UsageAnalyticsService {
    * - Recent activity levels
    * - Data integrity
    */
-  async getUsageSystemHealth(): Promise<UsageSystemHealth> {
+  async getUsageSystemHealth(signal?: AbortSignal): Promise<UsageSystemHealth> {
     console.log('🏥 Checking usage system health...');
     
     try {
@@ -399,7 +403,8 @@ class UsageAnalyticsService {
         `${API_BASE_URL}/admin/usage/health`,
         {
           method: 'GET',
-          headers: this.getAuthHeaders()
+          headers: this.getAuthHeaders(),
+          signal: signal
         }
       );
 
@@ -473,7 +478,8 @@ class UsageAnalyticsService {
     limit: number = 20,
     departmentId?: number,
     providerNames?: string[],
-    modelNames?: string[]
+    modelNames?: string[],
+    signal?: AbortSignal
   ): Promise<MostUsedModelsResponse> {
     console.log(`🤖 Fetching most used models (${days} days, limit: ${limit})${departmentId ? ` (department: ${departmentId})` : ''}${providerNames?.length ? ` (providers: ${providerNames.join(', ')})` : ''}${modelNames?.length ? ` (models: ${modelNames.join(', ')})` : ''}...`);
     
@@ -495,7 +501,8 @@ class UsageAnalyticsService {
       `${API_BASE_URL}/admin/usage/most-used-models?${params}`,
       {
         method: 'GET',
-        headers: this.getAuthHeaders()
+        headers: this.getAuthHeaders(),
+        signal: signal
       }
     );
     
@@ -576,8 +583,10 @@ class UsageAnalyticsService {
    * separate calls for each piece.
    * 
    * Now includes fallback data for when authentication fails or system is not set up.
+   * 
+   * 🔧 FIXED: Added AbortSignal support for request cancellation
    */
-  async getDashboardData(days: number = 30, departmentId?: number, providerNames?: string[], modelNames?: string[]): Promise<DashboardData> {
+  async getDashboardData(days: number = 30, departmentId?: number, providerNames?: string[], modelNames?: string[], signal?: AbortSignal): Promise<DashboardData> {
     console.log(`🎯 Loading complete dashboard data for ${days} days${departmentId ? ` (department: ${departmentId})` : ''}${providerNames?.length ? ` (providers: ${providerNames.join(', ')})` : ''}${modelNames?.length ? ` (models: ${modelNames.join(', ')})` : ''}...`);
     
     try {
@@ -810,34 +819,34 @@ class UsageAnalyticsService {
         checked_at: new Date().toISOString()
       };
       
-      // Load data with fallbacks
+      // Load data with fallbacks and abort signal support
       const usageSummary = await this.safeApiCall(
-        () => this.getUsageSummary(days, departmentId, providerNames, modelNames),
+        () => this.getUsageSummary(days, departmentId, providerNames, modelNames, signal),
         fallbackSummary
       );
       
       const topUsersByCost = await this.safeApiCall(
-        () => this.getTopUsers(days, 5, 'total_cost', departmentId, providerNames, modelNames),
+        () => this.getTopUsers(days, 5, 'total_cost', departmentId, providerNames, modelNames, signal),
         { ...fallbackTopUsers, sort_metric: 'total_cost' }
       );
       
       const topUsersByTokens = await this.safeApiCall(
-        () => this.getTopUsers(days, 5, 'total_tokens', departmentId, providerNames, modelNames),
+        () => this.getTopUsers(days, 5, 'total_tokens', departmentId, providerNames, modelNames, signal),
         { ...fallbackTopUsers, sort_metric: 'total_tokens' }
       );
       
       const topUsersByRequests = await this.safeApiCall(
-        () => this.getTopUsers(days, 5, 'request_count', departmentId, providerNames, modelNames),
+        () => this.getTopUsers(days, 5, 'request_count', departmentId, providerNames, modelNames, signal),
         { ...fallbackTopUsers, sort_metric: 'request_count' }
       );
       
       const recentLogs = await this.safeApiCall(
-        () => this.getRecentLogs({ limit: 20, successOnly: false }),
+        () => this.getRecentLogs({ limit: 20, successOnly: false }, signal),
         fallbackRecentLogs
       );
       
       const systemHealth = await this.safeApiCall(
-        () => this.getUsageSystemHealth(),
+        () => this.getUsageSystemHealth(signal),
         fallbackSystemHealth
       );
 
@@ -881,7 +890,7 @@ class UsageAnalyticsService {
       
       // Load most used models (with fallback)
       const mostUsedModels = await this.safeApiCall(
-        () => this.getMostUsedModels(days, 10, departmentId, providerNames, modelNames),
+        () => this.getMostUsedModels(days, 10, departmentId, providerNames, modelNames, signal),
         {
           period: fallbackSummary.period,
           models: [],

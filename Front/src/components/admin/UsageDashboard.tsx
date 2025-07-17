@@ -66,9 +66,29 @@ const UsageDashboard: React.FC = () => {
   
 
 
-  // Prevent duplicate API calls
+  // Prevent duplicate API calls and handle request cancellation
   const loadingRef = useRef(false);
   const mountedRef = useRef(true);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const filterTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // State refs for latest values (to avoid stale closures in debounced functions)
+  const stateRef = useRef({
+    selectedDepartment,
+    selectedProviders,
+    selectedModels,
+    selectedPeriod: dashboardState.selectedPeriod
+  });
+  
+  // Update state ref whenever state changes
+  useEffect(() => {
+    stateRef.current = {
+      selectedDepartment,
+      selectedProviders,
+      selectedModels,
+      selectedPeriod: dashboardState.selectedPeriod
+    };
+  }, [selectedDepartment, selectedProviders, selectedModels, dashboardState.selectedPeriod]);
 
   // =============================================================================
   // DATA LOADING FUNCTIONS
@@ -145,15 +165,28 @@ const UsageDashboard: React.FC = () => {
    * Learning: Loading multiple datasets in parallel improves performance.
    * We use Promise.all to fetch everything at once rather than sequentially.
    * This provides better user experience with faster load times.
+   * 
+   * 🔧 FIXED: Added request cancellation to prevent race conditions
    */
   const loadDashboardData = useCallback(async (days: number = 30, departmentId: number | null = null, providerIds: string[] = [], modelIds: string[] = [], isRefresh: boolean = false) => {
+    // Cancel any previous request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
     // Prevent duplicate requests
-    if (loadingRef.current) {
+    if (loadingRef.current && !isRefresh) {
       console.log('⏭️ Skipping dashboard load - already in progress');
       return;
     }
 
     console.log(`📊 Loading dashboard data for ${days} days${departmentId ? ` (department: ${departmentId})` : ''}${providerIds.length ? ` (providers: ${providerIds.join(', ')})` : ''}${modelIds.length ? ` (models: ${modelIds.join(', ')})` : ''} (refresh: ${isRefresh})`);
+    
+    // Create new abort controller for this request
+    abortControllerRef.current = new AbortController();
+    const requestId = Date.now();
+    
     loadingRef.current = true;
 
     // Update loading state only if not already set by optimistic update
@@ -161,21 +194,22 @@ const UsageDashboard: React.FC = () => {
       ...prev,
       isLoading: prev.isLoading || (!isRefresh && !prev.data), // Preserve optimistic loading state
       isRefreshing: isRefresh,
-      error: null
+      error: null // Clear any previous errors when starting new request
     }));
 
     try {
-      // Load all dashboard data in parallel  
+      // Load all dashboard data in parallel with abort signal
       const dashboardData = await usageAnalyticsService.getDashboardData(
         days, 
         departmentId || undefined, 
         providerIds.length > 0 ? providerIds : undefined,
-        modelIds.length > 0 ? modelIds : undefined
+        modelIds.length > 0 ? modelIds : undefined,
+        abortControllerRef.current?.signal
       );
       
-      // Only update state if component is still mounted
-      if (mountedRef.current) {
-        console.log('✅ Dashboard data loaded successfully');
+      // Only update state if component is still mounted and request wasn't cancelled
+      if (mountedRef.current && !abortControllerRef.current?.signal.aborted) {
+        console.log(`✅ Dashboard data loaded successfully (requestId: ${requestId})`);
         setDashboardState(prev => ({
           ...prev,
           isLoading: false,
@@ -183,33 +217,35 @@ const UsageDashboard: React.FC = () => {
           error: null,
           data: dashboardData,
           lastUpdated: new Date().toISOString(),
-          // Only update selectedPeriod if it hasn't been optimistically updated
-          selectedPeriod: prev.selectedPeriod === days ? prev.selectedPeriod : days
+          selectedPeriod: days // Always update to match the actual data loaded
         }));
       }
 
     } catch (error) {
+      // Don't update state if request was cancelled (this is expected during rapid filter changes)
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log(`🔄 Dashboard load cancelled due to newer request (requestId: ${requestId}) - keeping loading state`);
+        // Don't change loading state - let the newer request handle it
+        return;
+      }
+      
       console.error('❌ Failed to load dashboard data:', error);
       
-      if (mountedRef.current) {
-        setDashboardState(prev => {
-          // If we have existing data and this was a period change that failed,
-          // reset to a period that doesn't cause confusion
-          const shouldResetPeriod = prev.data && prev.selectedPeriod !== days;
-          
-          return {
-            ...prev,
-            isLoading: false,
-            isRefreshing: false,
-            error: error instanceof Error ? error.message : 'Failed to load dashboard data',
-            // Reset selectedPeriod if this was a failed period change to avoid UI confusion
-            selectedPeriod: shouldResetPeriod ? (prev.data ? 30 : days) : days
-          };
-        });
+      if (mountedRef.current && !abortControllerRef.current?.signal.aborted) {
+        setDashboardState(prev => ({
+          ...prev,
+          isLoading: false,
+          isRefreshing: false,
+          error: error instanceof Error ? error.message : 'Failed to load dashboard data'
+        }));
       }
 
     } finally {
       loadingRef.current = false;
+      // Clear abort controller if this request completed
+      if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
+        abortControllerRef.current = null;
+      }
     }
   }, []);
 
@@ -218,9 +254,16 @@ const UsageDashboard: React.FC = () => {
    * 
    * Learning: Period selection is a common pattern in analytics dashboards.
    * Different time periods reveal different usage patterns and trends.
+   * 
+   * 🔧 FIXED: Added debouncing to prevent rapid consecutive calls
    */
   const handlePeriodChange = useCallback((days: number) => {
     console.log(`📅 Changing period to ${days} days`);
+    
+    // Clear any pending filter changes
+    if (filterTimeoutRef.current) {
+      clearTimeout(filterTimeoutRef.current);
+    }
     
     // Update period immediately for UI responsiveness (optimistic update)
     setDashboardState(prev => ({
@@ -228,47 +271,115 @@ const UsageDashboard: React.FC = () => {
       selectedPeriod: days,
       isLoading: true,
       isRefreshing: false,
-      error: null
+      error: null // Clear any previous errors
     }));
     
-    loadDashboardData(days, selectedDepartment, selectedProviders, selectedModels, false);
-  }, [loadDashboardData, selectedDepartment, selectedProviders, selectedModels]);
+    // Debounce the actual data loading
+    filterTimeoutRef.current = setTimeout(() => {
+      const currentState = stateRef.current;
+      loadDashboardData(days, currentState.selectedDepartment, currentState.selectedProviders, currentState.selectedModels, false);
+    }, 100); // 100ms debounce
+  }, [loadDashboardData]);
 
   /**
    * Handle department change
    * 
    * Learning: Department filtering allows admins to focus on specific
    * organizational units and their usage patterns.
+   * 
+   * 🔧 FIXED: Added debouncing to prevent rapid consecutive calls
    */
   const handleDepartmentChange = useCallback((departmentId: number | null) => {
     console.log(`🏢 Changing department filter to: ${departmentId || 'All Departments'}`);
+    
+    // Clear any pending filter changes
+    if (filterTimeoutRef.current) {
+      clearTimeout(filterTimeoutRef.current);
+    }
+    
     setSelectedDepartment(departmentId);
-    loadDashboardData(dashboardState.selectedPeriod, departmentId, selectedProviders, selectedModels, false);
-  }, [loadDashboardData, dashboardState.selectedPeriod, selectedProviders, selectedModels]);
+    
+    // Show loading state immediately for better UX
+    setDashboardState(prev => ({
+      ...prev,
+      isLoading: true,
+      error: null // Clear any previous errors
+    }));
+    
+    // Debounce the data loading
+    filterTimeoutRef.current = setTimeout(() => {
+      const currentState = stateRef.current;
+      loadDashboardData(currentState.selectedPeriod, departmentId, currentState.selectedProviders, currentState.selectedModels, false);
+    }, 150); // 150ms debounce for filters
+  }, [loadDashboardData]);
 
   /**
    * Handle multiple providers selection change
    * 
    * Learning: Multi-select provider filtering allows admins to focus on specific
    * combinations of LLM providers and their usage patterns.
+   * 
+   * 🔧 FIXED: Added debouncing to prevent rapid consecutive calls
    */
   const handleProvidersChange = useCallback((providerIds: string[]) => {
     console.log(`🔧 Changing provider filters to: ${providerIds.length ? providerIds.join(', ') : 'All Providers'}`);
+    console.log(`🔧 DEBUG: Current stateRef providers: ${stateRef.current.selectedProviders.join(', ')}`);
+    
+    // Clear any pending filter changes
+    if (filterTimeoutRef.current) {
+      clearTimeout(filterTimeoutRef.current);
+    }
+    
     setSelectedProviders(providerIds);
-    loadDashboardData(dashboardState.selectedPeriod, selectedDepartment, providerIds, selectedModels, false);
-  }, [loadDashboardData, dashboardState.selectedPeriod, selectedDepartment, selectedModels]);
+    
+    // Show loading state immediately for better UX
+    setDashboardState(prev => ({
+      ...prev,
+      isLoading: true,
+      error: null // Clear any previous errors
+    }));
+    
+    // Debounce the data loading
+    filterTimeoutRef.current = setTimeout(() => {
+      const currentState = stateRef.current;
+      console.log(`🔧 DEBUG: Debounced API call with providers: ${providerIds.join(', ')}, state providers: ${currentState.selectedProviders.join(', ')}`);
+      loadDashboardData(currentState.selectedPeriod, currentState.selectedDepartment, providerIds, currentState.selectedModels, false);
+    }, 150); // 150ms debounce for filters
+  }, [loadDashboardData]);
 
   /**
    * Handle multiple models selection change
    * 
    * Learning: Multi-select model filtering allows admins to focus on specific
    * combinations of AI models and their usage patterns.
+   * 
+   * 🔧 FIXED: Added debouncing to prevent rapid consecutive calls
    */
   const handleModelsChange = useCallback((modelIds: string[]) => {
     console.log(`🤖 Changing model filters to: ${modelIds.length ? modelIds.join(', ') : 'All Models'}`);
+    console.log(`🤖 DEBUG: Current stateRef models: ${stateRef.current.selectedModels.join(', ')}`);
+    
+    // Clear any pending filter changes
+    if (filterTimeoutRef.current) {
+      clearTimeout(filterTimeoutRef.current);
+    }
+    
     setSelectedModels(modelIds);
-    loadDashboardData(dashboardState.selectedPeriod, selectedDepartment, selectedProviders, modelIds, false);
-  }, [loadDashboardData, dashboardState.selectedPeriod, selectedDepartment, selectedProviders]);
+    
+    // Show loading state immediately for better UX
+    setDashboardState(prev => ({
+      ...prev,
+      isLoading: true,
+      error: null // Clear any previous errors
+    }));
+    
+    // Debounce the data loading
+    filterTimeoutRef.current = setTimeout(() => {
+      const currentState = stateRef.current;
+      console.log(`🤖 DEBUG: Debounced API call with models: ${modelIds.join(', ')}, state models: ${currentState.selectedModels.join(', ')}`);
+      loadDashboardData(currentState.selectedPeriod, currentState.selectedDepartment, currentState.selectedProviders, modelIds, false);
+    }, 150); // 150ms debounce for filters
+  }, [loadDashboardData]);
 
 
 
@@ -327,6 +438,18 @@ const UsageDashboard: React.FC = () => {
       console.log('🧹 Usage Dashboard unmounting');
       mountedRef.current = false;
       loadingRef.current = false;
+      
+      // Cancel any pending requests
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+      
+      // Clear any pending timeouts
+      if (filterTimeoutRef.current) {
+        clearTimeout(filterTimeoutRef.current);
+        filterTimeoutRef.current = null;
+      }
     };
   }, [loadDepartments, loadProviders, loadModels, loadDashboardData]); // Include dependencies
 
