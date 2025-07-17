@@ -120,3 +120,72 @@
     background: rgba(59, 130, 246, 0.05);
   }
 }
+
+/* 🏢 Custom Logo Loading Animation */
+/* Branded loading spinner using company logo design */
+
+/* Main rotation with scale breathing effect */
+@keyframes logoSpin {
+  0% { 
+    transform: rotate(0deg) scale(0.9);
+    filter: brightness(1) drop-shadow(0 4px 8px rgba(59, 130, 246, 0.2));
+  }
+  25% { 
+    transform: rotate(90deg) scale(1.05);
+    filter: brightness(1.1) drop-shadow(0 6px 12px rgba(59, 130, 246, 0.3));
+  }
+  50% { 
+    transform: rotate(180deg) scale(0.9);
+    filter: brightness(1) drop-shadow(0 4px 8px rgba(59, 130, 246, 0.2));
+  }
+  75% { 
+    transform: rotate(270deg) scale(1.05);
+    filter: brightness(1.1) drop-shadow(0 6px 12px rgba(59, 130, 246, 0.3));
+  }
+  100% { 
+    transform: rotate(360deg) scale(0.9);
+    filter: brightness(1) drop-shadow(0 4px 8px rgba(59, 130, 246, 0.2));
+  }
+}
+
+/* Pulsing glow ring effect */
+@keyframes logoGlow {
+  0%, 100% { 
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 0.6;
+    transform: scale(1.05);
+  }
+}
+
+/* Apply animations to logo loader elements */
+.logo-loader {
+  animation: logoSpin 2s linear infinite;
+}
+
+.logo-image {
+  /* The image inherits the rotation from the parent container */
+  transition: filter 0.3s ease;
+}
+
+.logo-glow-ring {
+  animation: logoGlow 1.5s ease-in-out infinite;
+}
+
+/* Logo loader accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .logo-loader,
+  .logo-glow-ring {
+    animation: none;
+  }
+  
+  .logo-loader {
+    opacity: 0.8;
+  }
+  
+  .logo-glow-ring {
+    opacity: 0.2;
+  }
+}

@@ -489,8 +489,19 @@ class LLMConfigService {
     const defaults: Record<LLMProvider, Partial<LLMConfigurationCreate>> = {
       openai: {
         api_endpoint: 'https://api.openai.com/v1',
-        default_model: 'gpt-4',
-        available_models: ['gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo'],
+        default_model: 'gpt-4o',
+        available_models: [
+          'gpt-4o',
+          'gpt-4o-mini', 
+          'gpt-4', 
+          'gpt-4-turbo', 
+          'gpt-4-turbo-preview',
+          'gpt-3.5-turbo', 
+          'gpt-3.5-turbo-16k',
+          'gpt-3.5-turbo-1106',
+          'gpt-4-1106-preview',
+          'gpt-4-0125-preview'
+        ],
         model_parameters: {
           temperature: 0.7,
           max_tokens: 4000,

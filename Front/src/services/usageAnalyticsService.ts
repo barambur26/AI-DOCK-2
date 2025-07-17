@@ -3,6 +3,7 @@
 // This connects to the comprehensive usage APIs we already have working
 
 import { authService } from './authService';
+import { llmConfigService } from './llmConfigService';
 
 // Base API configuration
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://idyllic-moxie-aedb62.netlify.app/0';
@@ -21,6 +22,12 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://idyllic-moxie-aedb
  * - /admin/usage/logs/recent - Recent usage logs
  * - /admin/usage/top-users - Top users by various metrics
  * - /admin/usage/health - Usage system health
+ * 
+ * 🔧 ENHANCED: All analytics now filtered to only show data from active LLM configurations:
+ *   - Model dropdowns only show models from active configs
+ *   - Provider statistics only include providers with active configs  
+ *   - Most Used Models analytics excludes deactivated models
+ *   - Usage summary excludes providers with no active models
  */
 class UsageAnalyticsService {
 
@@ -148,6 +155,8 @@ class UsageAnalyticsService {
    * 
    * Returns:
    *   Comprehensive usage summary
+   * 
+   * 🔧 ENHANCED: Now filters providers to only show those with active LLM configurations
    */
   async getUsageSummary(days: number = 30, departmentId?: number, providerNames?: string[], modelNames?: string[], signal?: AbortSignal, startDate?: string, endDate?: string): Promise<UsageSummary> {
     const dateRangeText = startDate && endDate 
@@ -196,7 +205,12 @@ class UsageAnalyticsService {
     
     const result = await this.handleResponse<UsageSummary>(response);
     console.log('✅ Usage summary loaded:', result);
-    return result;
+    
+    // 🔧 ENHANCED: Filter providers to only show those with active models
+    const filteredResult = await this.filterUsageSummaryProviders(result);
+    console.log(`📊 Filtered provider stats from ${result.providers.length} to ${filteredResult.providers.length} active providers`);
+    
+    return filteredResult;
   }
 
   // =============================================================================
@@ -500,6 +514,324 @@ class UsageAnalyticsService {
   }
 
   // =============================================================================
+  // UTILITY METHODS
+  // =============================================================================
+
+  /**
+   * Filter models to only include those from active LLM configurations
+   * 
+   * This method cross-references the usage analytics models with active
+   * LLM configurations to hide models from deactivated configurations.
+   * 
+   * Learning: This provides a cleaner user experience by only showing
+   * models that are currently available for use, reducing confusion.
+   * 
+   * 🔧 ENHANCED: Now fetches full config details to get complete available_models lists
+   * 🔧 IMPROVED: More permissive approach - shows models with usage data if provider is active
+   * 
+   * @param models - All models from usage analytics
+   * @returns Filtered models from active configurations only
+   */
+  private async filterActiveModels(models: Model[]): Promise<Model[]> {
+    try {
+      console.log('🔍 Filtering models by active LLM configurations...');
+      
+      // Get active LLM configurations (summary)
+      const activeConfigs = await llmConfigService.getConfigurations(false); // false = only active
+      console.log(`🔧 Found ${activeConfigs.length} active LLM configurations`);
+      
+      // Extract active providers and their models
+      const activeProviders = new Set<string>();
+      const explicitlyActiveModels = new Set<string>();
+      
+      // For each active config, get full details to access available_models
+      for (const config of activeConfigs) {
+        // Add both lowercase and capitalized versions to handle API inconsistencies
+        activeProviders.add(config.provider.toLowerCase());
+        activeProviders.add(config.provider_name.toLowerCase());
+        activeProviders.add(config.provider);
+        activeProviders.add(config.provider_name);
+        
+        try {
+          const fullConfig = await llmConfigService.getConfiguration(config.id);
+          
+          // Add default model
+          if (fullConfig.default_model) {
+            explicitlyActiveModels.add(fullConfig.default_model);
+          }
+          
+          // Add all available models
+          if (fullConfig.available_models && Array.isArray(fullConfig.available_models)) {
+            fullConfig.available_models.forEach(model => {
+              explicitlyActiveModels.add(model);
+            });
+          }
+          
+          console.log(`🔧 Config "${fullConfig.name}": ${fullConfig.default_model} + ${fullConfig.available_models?.length || 0} available models`);
+          
+        } catch (error) {
+          console.warn(`⚠️ Failed to fetch details for config ${config.id}, using default model only:`, error);
+          // Fallback: use just the default model from summary
+          if (config.default_model) {
+            explicitlyActiveModels.add(config.default_model);
+          }
+        }
+      }
+      
+      console.log(`🔍 Active providers (${activeProviders.size} total):`, Array.from(activeProviders).sort());
+      console.log(`🔍 Explicitly active models (${explicitlyActiveModels.size} total):`, Array.from(explicitlyActiveModels).sort());
+      
+      // Filter models using a more permissive approach:
+      // 1. If model is explicitly listed in an active config -> show it
+      // 2. If model's provider is active (even if model not explicitly listed) -> show it (with usage data)
+      // 3. If provider is not active -> hide it
+      // 🔧 FIXED: Case-insensitive provider matching
+      const filteredModels = models.filter(model => {
+        const hasActiveProvider = activeProviders.has(model.provider) || 
+                                activeProviders.has(model.provider.toLowerCase()) ||
+                                activeProviders.has(model.provider.toUpperCase());
+        const isExplicitlyActive = explicitlyActiveModels.has(model.value);
+        
+        if (isExplicitlyActive) {
+          console.log(`✅ Explicitly active model: ${model.value} (${model.provider})`);
+          return true;
+        }
+        
+        if (hasActiveProvider) {
+          console.log(`✅ Model from active provider: ${model.value} (${model.provider}) - has usage data`);
+          return true;
+        }
+        
+        console.log(`❌ Filtering out model from inactive provider: ${model.value} (${model.provider})`);
+        return false;
+      });
+      
+      console.log(`✅ Filtered ${models.length} models down to ${filteredModels.length} active models`);
+      return filteredModels;
+      
+    } catch (error) {
+      console.warn('⚠️ Failed to filter models by active configurations, returning all models:', error);
+      // Fallback: return all models if filtering fails
+      return models;
+    }
+  }
+
+  /**
+   * Get active providers and model names from LLM configurations
+   * 
+   * Helper method to get both active providers and explicit model names for filtering.
+   * This avoids duplicating the LLM config fetching logic.
+   * 
+   * 🔧 FIXED: Case-insensitive provider matching to handle backend inconsistencies
+   * 
+   * @returns Object with active providers and explicit model names
+   */
+  private async getActiveProvidersAndModels(): Promise<{ activeProviders: Set<string>, explicitModels: Set<string> }> {
+    try {
+      const activeConfigs = await llmConfigService.getConfigurations(false); // false = only active
+      const activeProviders = new Set<string>();
+      const explicitModels = new Set<string>();
+      
+      for (const config of activeConfigs) {
+        // Add both lowercase and capitalized versions to handle API inconsistencies
+        activeProviders.add(config.provider.toLowerCase());
+        activeProviders.add(config.provider_name.toLowerCase());
+        activeProviders.add(config.provider);
+        activeProviders.add(config.provider_name);
+        
+        try {
+          const fullConfig = await llmConfigService.getConfiguration(config.id);
+          
+          if (fullConfig.default_model) {
+            explicitModels.add(fullConfig.default_model);
+          }
+          
+          if (fullConfig.available_models && Array.isArray(fullConfig.available_models)) {
+            fullConfig.available_models.forEach(model => {
+              explicitModels.add(model);
+            });
+          }
+        } catch (error) {
+          console.warn(`⚠️ Failed to fetch config ${config.id}, using default model only:`, error);
+          if (config.default_model) {
+            explicitModels.add(config.default_model);
+          }
+        }
+      }
+      
+      console.log(`🔍 Active providers (case-insensitive):`, Array.from(activeProviders).sort());
+      
+      return { activeProviders, explicitModels };
+    } catch (error) {
+      console.warn('⚠️ Failed to get active providers and models:', error);
+      return { activeProviders: new Set(), explicitModels: new Set() }; // Return empty sets on error
+    }
+  }
+
+  /**
+   * Filter MostUsedModelsResponse to only include models from active providers
+   * 
+   * This filters the actual analytics data to hide statistics for
+   * models from deactivated LLM configurations.
+   * 
+   * 🔧 IMPROVED: More permissive approach - shows models with usage data if provider is active
+   * 
+   * @param response - Original response from backend
+   * @returns Filtered response with only models from active providers
+   */
+  private async filterMostUsedModelsResponse(response: MostUsedModelsResponse): Promise<MostUsedModelsResponse> {
+    try {
+      console.log('🔍 Filtering most used models response by active configurations...');
+      
+      const { activeProviders, explicitModels } = await this.getActiveProvidersAndModels();
+      console.log(`🔍 Found ${activeProviders.size} active providers and ${explicitModels.size} explicit models for analytics filtering`);
+      
+      // Filter models in the response using permissive approach
+      const filteredModels = response.models.filter(modelStat => {
+        const hasActiveProvider = activeProviders.has(modelStat.provider) ||
+                                activeProviders.has(modelStat.provider.toLowerCase()) ||
+                                activeProviders.has(modelStat.provider.toUpperCase());
+        const isExplicitlyActive = explicitModels.has(modelStat.model);
+        
+        if (isExplicitlyActive) {
+          console.log(`✅ Explicitly active model in analytics: ${modelStat.model} (${modelStat.provider})`);
+          return true;
+        }
+        
+        if (hasActiveProvider) {
+          console.log(`✅ Model from active provider in analytics: ${modelStat.model} (${modelStat.provider}) - has usage data`);
+          return true;
+        }
+        
+        console.log(`❌ Filtering out model from inactive provider: ${modelStat.model} (${modelStat.provider})`);
+        return false;
+      });
+      
+      console.log(`✅ Filtered analytics models from ${response.models.length} to ${filteredModels.length}`);
+      
+      return {
+        ...response,
+        models: filteredModels
+      };
+      
+    } catch (error) {
+      console.warn('⚠️ Failed to filter most used models response, returning original:', error);
+      // Fallback: return original response if filtering fails
+      return response;
+    }
+  }
+
+  /**
+   * Filter UsageSummary to only include providers with active configurations
+   * 
+   * This filters provider statistics to hide providers that have no active models.
+   * 
+   * 🔧 IMPROVED: Uses consistent filtering logic with other methods
+   * 🔧 FIXED: Now recalculates overview totals to match filtered providers
+   * 
+   * @param summary - Original usage summary
+   * @returns Filtered summary with only providers that have active configurations
+   */
+  private async filterUsageSummaryProviders(summary: UsageSummary): Promise<UsageSummary> {
+    try {
+      console.log('🔍 Filtering usage summary providers by active configurations...');
+      
+      const { activeProviders } = await this.getActiveProvidersAndModels();
+      
+      console.log(`🔍 Active providers:`, Array.from(activeProviders));
+      
+      // Filter provider stats to only include those with active configurations
+      const filteredProviders = summary.providers.filter(providerStat => {
+        const hasActiveProvider = activeProviders.has(providerStat.provider) ||
+                                activeProviders.has(providerStat.provider.toLowerCase()) ||
+                                activeProviders.has(providerStat.provider.toUpperCase());
+        if (!hasActiveProvider) {
+          console.log(`❌ Filtering out provider with no active configuration: ${providerStat.provider}`);
+        } else {
+          console.log(`✅ Keeping provider with active configuration: ${providerStat.provider}`);
+        }
+        return hasActiveProvider;
+      });
+      
+      console.log(`✅ Filtered provider stats from ${summary.providers.length} to ${filteredProviders.length}`);
+      
+      // 🔧 NEW: Recalculate overview totals based on filtered providers
+      const recalculatedOverview = this.recalculateOverviewFromProviders(summary.overview, filteredProviders);
+      console.log(`📊 Recalculated overview totals:`);
+      console.log(`   - Total requests: ${summary.overview.total_requests} → ${recalculatedOverview.total_requests}`);
+      console.log(`   - Total cost: ${summary.overview.total_cost_usd.toFixed(4)} → ${recalculatedOverview.total_cost_usd.toFixed(4)}`);
+      console.log(`   - Total tokens: ${summary.overview.total_tokens} → ${recalculatedOverview.total_tokens}`);
+      
+      return {
+        ...summary,
+        overview: recalculatedOverview,
+        providers: filteredProviders
+      };
+      
+    } catch (error) {
+      console.warn('⚠️ Failed to filter usage summary providers, returning original:', error);
+      // Fallback: return original summary if filtering fails
+      return summary;
+    }
+  }
+
+  /**
+   * Recalculate overview totals from filtered provider statistics
+   * 
+   * This ensures that overview numbers (total requests, cost, tokens) only reflect
+   * data from active providers, excluding deactivated providers.
+   * 
+   * @param originalOverview - Original overview with all providers
+   * @param filteredProviders - Only providers with active configurations
+   * @returns New overview totals based on filtered providers
+   */
+  private recalculateOverviewFromProviders(originalOverview: any, filteredProviders: ProviderStats[]): any {
+    // Sum up totals from filtered providers
+    const totals = filteredProviders.reduce((acc, provider) => ({
+      total_requests: acc.total_requests + provider.requests.total,
+      successful_requests: acc.successful_requests + provider.requests.successful,
+      failed_requests: acc.failed_requests + (provider.requests.total - provider.requests.successful),
+      total_tokens: acc.total_tokens + provider.tokens.total,
+      total_cost_usd: acc.total_cost_usd + provider.cost.total_usd
+    }), {
+      total_requests: 0,
+      successful_requests: 0,
+      failed_requests: 0,
+      total_tokens: 0,
+      total_cost_usd: 0
+    });
+    
+    // Calculate derived metrics
+    const success_rate_percent = totals.total_requests > 0 
+      ? (totals.successful_requests / totals.total_requests) * 100 
+      : 0;
+    
+    const average_cost_per_request = totals.total_requests > 0
+      ? totals.total_cost_usd / totals.total_requests
+      : 0;
+    
+    const average_tokens_per_request = totals.total_requests > 0
+      ? totals.total_tokens / totals.total_requests
+      : 0;
+    
+    // For average response time, we can't recalculate accurately from provider stats
+    // so we'll keep the original value as an approximation
+    const average_response_time_ms = originalOverview.average_response_time_ms || 0;
+    
+    return {
+      total_requests: totals.total_requests,
+      successful_requests: totals.successful_requests,
+      failed_requests: totals.failed_requests,
+      success_rate_percent: Math.round(success_rate_percent * 10) / 10, // Round to 1 decimal
+      total_tokens: totals.total_tokens,
+      total_cost_usd: totals.total_cost_usd,
+      average_cost_per_request: average_cost_per_request,
+      average_response_time_ms: average_response_time_ms,
+      average_tokens_per_request: Math.round(average_tokens_per_request)
+    };
+  }
+
+  // =============================================================================
   // CONVENIENCE METHODS
   // =============================================================================
 
@@ -511,6 +843,8 @@ class UsageAnalyticsService {
    * - Usage patterns by model
    * - Cost breakdown by model
    * - Performance metrics per model
+   * 
+   * 🔧 ENHANCED: Now filters results to only include active models
    */
   async getMostUsedModels(
     days: number = 30,
@@ -560,13 +894,20 @@ class UsageAnalyticsService {
     
     const result = await this.handleResponse<MostUsedModelsResponse>(response);
     console.log('✅ Most used models loaded:', result);
-    return result;
+    
+    // Filter the results to only include models from active LLM configurations
+    const filteredResult = await this.filterMostUsedModelsResponse(result);
+    console.log(`📊 Filtered most used models from ${result.models.length} to ${filteredResult.models.length} active models`);
+    
+    return filteredResult;
   }
 
   /**
    * Get providers list for filtering dropdown
    * 
    * Returns list of providers that have been used in the system.
+   * 
+   * 🔧 ENHANCED: Now filters out providers with no active LLM configurations
    */
   async getProviders(): Promise<Provider[]> {
     console.log('🔧 Fetching providers for filter dropdown...');
@@ -580,8 +921,30 @@ class UsageAnalyticsService {
     );
     
     const result = await this.handleResponse<{ providers: Provider[] }>(response);
-    console.log('✅ Providers loaded:', result);
-    return result.providers;
+    console.log('✅ Raw providers loaded:', result);
+    
+    // Filter providers to only include those with active LLM configurations
+    const { activeProviders } = await this.getActiveProvidersAndModels();
+    
+    const filteredProviders = result.providers.filter(provider => {
+      const hasActiveProvider = activeProviders.has(provider.value) ||
+                              activeProviders.has(provider.value.toLowerCase()) ||
+                              activeProviders.has(provider.value.toUpperCase()) ||
+                              activeProviders.has(provider.label) ||
+                              activeProviders.has(provider.label.toLowerCase()) ||
+                              activeProviders.has(provider.label.toUpperCase());
+      
+      if (!hasActiveProvider) {
+        console.log(`❌ Filtering out deactivated provider from dropdown: ${provider.label} (${provider.value})`);
+      } else {
+        console.log(`✅ Keeping active provider in dropdown: ${provider.label} (${provider.value})`);
+      }
+      
+      return hasActiveProvider;
+    });
+    
+    console.log(`📊 Filtered providers from ${result.providers.length} to ${filteredProviders.length} active providers`);
+    return filteredProviders;
   }
 
   /**
@@ -589,6 +952,8 @@ class UsageAnalyticsService {
    * 
    * Returns list of models that have been used in the system,
    * with provider grouping and usage statistics.
+   * 
+   * 🔧 ENHANCED: Now filters out models from deactivated LLM configurations
    */
   async getModels(): Promise<Model[]> {
     console.log('🤖 Fetching models for filter dropdown...');
@@ -603,13 +968,20 @@ class UsageAnalyticsService {
     
     const result = await this.handleResponse<{ models: Model[], models_by_provider: Record<string, Model[]> }>(response);
     console.log('✅ Models loaded:', result);
-    return result.models;
+    
+    // Filter models to only include those from active LLM configurations
+    const filteredModels = await this.filterActiveModels(result.models);
+    console.log(`📊 Filtered to ${filteredModels.length} models from active configurations`);
+    
+    return filteredModels;
   }
 
   /**
    * Get models grouped by provider for filtering dropdown
    * 
    * Returns models organized by provider for better UI organization.
+   * 
+   * 🔧 ENHANCED: Now filters out models from deactivated LLM configurations
    */
   async getModelsByProvider(): Promise<Record<string, Model[]>> {
     console.log('🤖 Fetching models grouped by provider...');
@@ -624,7 +996,19 @@ class UsageAnalyticsService {
     
     const result = await this.handleResponse<{ models: Model[], models_by_provider: Record<string, Model[]> }>(response);
     console.log('✅ Models by provider loaded:', result);
-    return result.models_by_provider;
+    
+    // Filter models in each provider group to only include those from active LLM configurations
+    const filteredModelsByProvider: Record<string, Model[]> = {};
+    
+    for (const [provider, models] of Object.entries(result.models_by_provider)) {
+      const filteredModels = await this.filterActiveModels(models);
+      if (filteredModels.length > 0) {
+        filteredModelsByProvider[provider] = filteredModels;
+      }
+    }
+    
+    console.log(`📊 Filtered models by provider:`, filteredModelsByProvider);
+    return filteredModelsByProvider;
   }
 
   /**
@@ -952,7 +1336,7 @@ class UsageAnalyticsService {
         systemHealth.error = undefined;
       }
       
-      // Load most used models (with fallback)
+      // Load most used models (with fallback) - now with active filtering
       const mostUsedModels = await this.safeApiCall(
         () => this.getMostUsedModels(days, 10, departmentId, providerNames, modelNames, signal, startDate, endDate),
         {

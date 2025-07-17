@@ -13,7 +13,7 @@ import TopUsersTable from './TopUsersTable';
 import RecentActivity from './RecentActivity';
 import MostUsedModels from './MostUsedModels';
 import UnifiedFiltersButton from './UnifiedFiltersButton';
-import { DateRangePicker, DateRange } from '../ui';
+import { DateRangePicker, DateRange, LogoLoader } from '../ui';
 
 /**
  * Usage Dashboard Component
@@ -180,6 +180,7 @@ const UsageDashboard: React.FC = () => {
    * 
    * 🔧 FIXED: Added request cancellation to prevent race conditions
    * 🔧 ENHANCED: Added custom date range support
+   * 🔧 FIXED: Improved AbortController handling to prevent race conditions during page refresh
    */
   const loadDashboardData = useCallback(async (
     days: number = 30, 
@@ -197,15 +198,30 @@ const UsageDashboard: React.FC = () => {
     console.log(`🔄 [DASHBOARD DEBUG] - departmentId: ${departmentId}`);
     console.log(`🔄 [DASHBOARD DEBUG] - isRefresh: ${isRefresh}`);
     
-    // Cancel any previous request
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
-
     // Prevent duplicate requests
     if (loadingRef.current && !isRefresh) {
       console.log('⏭️ Skipping dashboard load - already in progress');
+      return;
+    }
+
+    // Check if component is still mounted before proceeding
+    if (!mountedRef.current) {
+      console.log('🔄 Skipping dashboard load - component unmounted');
+      return;
+    }
+
+    // Cancel any previous request and wait a moment for cleanup
+    if (abortControllerRef.current) {
+      console.log('🔄 Cancelling previous request');
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      // Small delay to ensure previous request cleanup completes
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+
+    // Double-check component is still mounted after cleanup delay
+    if (!mountedRef.current) {
+      console.log('🔄 Component unmounted during cleanup - aborting');
       return;
     }
 
@@ -217,6 +233,7 @@ const UsageDashboard: React.FC = () => {
     // Create new abort controller for this request
     abortControllerRef.current = new AbortController();
     const requestId = Date.now();
+    const requestAbortController = abortControllerRef.current; // Capture reference to avoid race conditions
     
     loadingRef.current = true;
 
@@ -236,13 +253,13 @@ const UsageDashboard: React.FC = () => {
         departmentId || undefined, 
         providerIds.length > 0 ? providerIds : undefined,
         modelIds.length > 0 ? modelIds : undefined,
-        abortControllerRef.current?.signal,
+        requestAbortController.signal, // Use captured reference instead of current ref
         startDate,
         endDate
       );
       
       // Only update state if component is still mounted and request wasn't cancelled
-      if (mountedRef.current && !abortControllerRef.current?.signal.aborted) {
+      if (mountedRef.current && !requestAbortController.signal.aborted) {
         console.log(`✅ Dashboard data loaded successfully (requestId: ${requestId})`);
         setDashboardState(prev => ({
           ...prev,
@@ -265,7 +282,7 @@ const UsageDashboard: React.FC = () => {
       
       console.error('❌ Failed to load dashboard data:', error);
       
-      if (mountedRef.current && !abortControllerRef.current?.signal.aborted) {
+      if (mountedRef.current && !requestAbortController.signal.aborted) {
         setDashboardState(prev => ({
           ...prev,
           isLoading: false,
@@ -276,8 +293,8 @@ const UsageDashboard: React.FC = () => {
 
     } finally {
       loadingRef.current = false;
-      // Clear abort controller if this request completed
-      if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
+      // Clear abort controller if this request completed successfully (wasn't cancelled)
+      if (abortControllerRef.current === requestAbortController && !requestAbortController.signal.aborted) {
         abortControllerRef.current = null;
       }
     }
@@ -547,6 +564,8 @@ const UsageDashboard: React.FC = () => {
    * 
    * Learning: useEffect with empty dependency array runs once on mount.
    * This is where we load initial data and set up the component.
+   * 
+   * 🔧 FIXED: Better AbortError handling during initialization
    */
   useEffect(() => {
     console.log('🚀 Usage Dashboard mounting - loading initial data');
@@ -554,12 +573,43 @@ const UsageDashboard: React.FC = () => {
 
     // Load departments, providers, models, and initial dashboard data
     const initializeDashboard = async () => {
-      await Promise.all([
-        loadDepartments(),
-        loadProviders(),
-        loadModels()
-      ]);
-      await loadDashboardData(30, null, [], [], false);
+      try {
+        // Check if component is still mounted before starting
+        if (!mountedRef.current) {
+          console.log('🔄 Component unmounted before initialization - aborting');
+          return;
+        }
+
+        await Promise.all([
+          loadDepartments(),
+          loadProviders(),
+          loadModels()
+        ]);
+        
+        // Double-check component is still mounted after loading metadata
+        if (mountedRef.current) {
+          console.log('🚀 Loading initial dashboard data...');
+          await loadDashboardData(30, null, [], [], false);
+        } else {
+          console.log('🔄 Component unmounted after metadata load - skipping dashboard data');
+        }
+      } catch (error) {
+        // Don't show errors for aborted requests during initialization
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.log('🔄 Dashboard initialization cancelled (component unmounted)');
+          return;
+        }
+        
+        // Only show real errors if component is still mounted
+        if (mountedRef.current) {
+          console.error('❌ Dashboard initialization failed:', error);
+          setDashboardState(prev => ({
+            ...prev,
+            isLoading: false,
+            error: error instanceof Error ? error.message : 'Failed to initialize dashboard'
+          }));
+        }
+      }
     };
     
     initializeDashboard();
@@ -734,7 +784,7 @@ const UsageDashboard: React.FC = () => {
             <span>📊</span>
             <span>Usage Analytics Dashboard</span>
             {dashboardState.isRefreshing && (
-              <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+              <LogoLoader size="sm" className="ml-2" />
             )}
           </h1>
           <p className="text-blue-100 mt-2">
@@ -822,54 +872,19 @@ const UsageDashboard: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {renderHeader()}
         
-        {/* Loading skeleton matching the actual layout */}
-        <div className="space-y-8">
-          
-          {/* Overview cards skeleton */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="bg-white/5 backdrop-blur-lg rounded-3xl shadow-2xl p-6 animate-pulse border border-white/10">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="h-4 bg-gray-200 rounded w-24"></div>
-                  <div className="h-6 w-6 bg-gray-200 rounded"></div>
-                </div>
-                <div className="h-8 bg-gray-200 rounded w-16 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-32"></div>
-              </div>
-            ))}
+        {/* Centered Logo Loading Animation */}
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <LogoLoader 
+              size="xl" 
+              showText={true} 
+              text="Loading usage analytics..." 
+              className="mb-8"
+            />
+            <div className="text-blue-200 text-sm animate-pulse">
+              Gathering your usage data and metrics
+            </div>
           </div>
-
-          {/* Charts skeleton */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="bg-white/5 backdrop-blur-lg rounded-3xl shadow-2xl p-6 animate-pulse border border-white/10">
-                <div className="h-4 bg-gray-200 rounded w-48 mb-4"></div>
-                <div className="h-64 bg-gray-200 rounded"></div>
-              </div>
-            ))}
-          </div>
-
-          {/* Tables skeleton */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {[...Array(2)].map((_, i) => (
-              <div key={i} className="bg-white/5 backdrop-blur-lg rounded-3xl shadow-2xl p-6 animate-pulse border border-white/10">
-                <div className="h-6 bg-gray-200 rounded w-48 mb-4"></div>
-                <div className="space-y-4">
-                  {[...Array(5)].map((_, j) => (
-                    <div key={j} className="flex items-center space-x-4">
-                      <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
-                      <div className="flex-1 space-y-2">
-                        <div className="h-4 bg-gray-200 rounded w-48"></div>
-                        <div className="h-3 bg-gray-200 rounded w-32"></div>
-                      </div>
-                      <div className="h-4 bg-gray-200 rounded w-20"></div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-
         </div>
       </div>
     </div>
