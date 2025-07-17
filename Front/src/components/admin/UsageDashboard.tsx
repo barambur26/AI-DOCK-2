@@ -13,6 +13,7 @@ import TopUsersTable from './TopUsersTable';
 import RecentActivity from './RecentActivity';
 import MostUsedModels from './MostUsedModels';
 import UnifiedFiltersButton from './UnifiedFiltersButton';
+import { DateRangePicker, DateRange } from '../ui';
 
 /**
  * Usage Dashboard Component
@@ -62,6 +63,13 @@ const UsageDashboard: React.FC = () => {
   const [selectedModels, setSelectedModels] = useState<string[]>([]);
   const [modelsByProvider, setModelsByProvider] = useState<Record<string, Model[]>>({});
   
+  // Custom date range state
+  const [customDateRange, setCustomDateRange] = useState<DateRange>({
+    startDate: null,
+    endDate: null
+  });
+  const [isUsingCustomRange, setIsUsingCustomRange] = useState(false);
+  
   // Filter UI state (showAdvancedFilters and advancedFilterTab now handled in AdvancedFilterPanel component)
   
 
@@ -77,7 +85,9 @@ const UsageDashboard: React.FC = () => {
     selectedDepartment,
     selectedProviders,
     selectedModels,
-    selectedPeriod: dashboardState.selectedPeriod
+    selectedPeriod: dashboardState.selectedPeriod,
+    customDateRange,
+    isUsingCustomRange
   });
   
   // Update state ref whenever state changes
@@ -86,9 +96,11 @@ const UsageDashboard: React.FC = () => {
       selectedDepartment,
       selectedProviders,
       selectedModels,
-      selectedPeriod: dashboardState.selectedPeriod
+      selectedPeriod: dashboardState.selectedPeriod,
+      customDateRange,
+      isUsingCustomRange
     };
-  }, [selectedDepartment, selectedProviders, selectedModels, dashboardState.selectedPeriod]);
+  }, [selectedDepartment, selectedProviders, selectedModels, dashboardState.selectedPeriod, customDateRange, isUsingCustomRange]);
 
   // =============================================================================
   // DATA LOADING FUNCTIONS
@@ -167,8 +179,24 @@ const UsageDashboard: React.FC = () => {
    * This provides better user experience with faster load times.
    * 
    * 🔧 FIXED: Added request cancellation to prevent race conditions
+   * 🔧 ENHANCED: Added custom date range support
    */
-  const loadDashboardData = useCallback(async (days: number = 30, departmentId: number | null = null, providerIds: string[] = [], modelIds: string[] = [], isRefresh: boolean = false) => {
+  const loadDashboardData = useCallback(async (
+    days: number = 30, 
+    departmentId: number | null = null, 
+    providerIds: string[] = [], 
+    modelIds: string[] = [], 
+    isRefresh: boolean = false, 
+    startDate?: string, 
+    endDate?: string
+  ) => {
+    console.log(`🔄 [DASHBOARD DEBUG] loadDashboardData called with:`);
+    console.log(`🔄 [DASHBOARD DEBUG] - days: ${days}`);
+    console.log(`🔄 [DASHBOARD DEBUG] - startDate: ${startDate}`);
+    console.log(`🔄 [DASHBOARD DEBUG] - endDate: ${endDate}`);
+    console.log(`🔄 [DASHBOARD DEBUG] - departmentId: ${departmentId}`);
+    console.log(`🔄 [DASHBOARD DEBUG] - isRefresh: ${isRefresh}`);
+    
     // Cancel any previous request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -181,7 +209,10 @@ const UsageDashboard: React.FC = () => {
       return;
     }
 
-    console.log(`📊 Loading dashboard data for ${days} days${departmentId ? ` (department: ${departmentId})` : ''}${providerIds.length ? ` (providers: ${providerIds.join(', ')})` : ''}${modelIds.length ? ` (models: ${modelIds.join(', ')})` : ''} (refresh: ${isRefresh})`);
+    const dateRangeText = startDate && endDate 
+      ? `from ${startDate} to ${endDate}`
+      : `${days} days`;
+    console.log(`📊 Loading dashboard data for ${dateRangeText}${departmentId ? ` (department: ${departmentId})` : ''}${providerIds.length ? ` (providers: ${providerIds.join(', ')})` : ''}${modelIds.length ? ` (models: ${modelIds.join(', ')})` : ''} (refresh: ${isRefresh})`);
     
     // Create new abort controller for this request
     abortControllerRef.current = new AbortController();
@@ -199,12 +230,15 @@ const UsageDashboard: React.FC = () => {
 
     try {
       // Load all dashboard data in parallel with abort signal
+      console.log(`🔄 [DASHBOARD DEBUG] About to call usageAnalyticsService.getDashboardData with startDate: ${startDate}, endDate: ${endDate}`);
       const dashboardData = await usageAnalyticsService.getDashboardData(
         days, 
         departmentId || undefined, 
         providerIds.length > 0 ? providerIds : undefined,
         modelIds.length > 0 ? modelIds : undefined,
-        abortControllerRef.current?.signal
+        abortControllerRef.current?.signal,
+        startDate,
+        endDate
       );
       
       // Only update state if component is still mounted and request wasn't cancelled
@@ -256,6 +290,7 @@ const UsageDashboard: React.FC = () => {
    * Different time periods reveal different usage patterns and trends.
    * 
    * 🔧 FIXED: Added debouncing to prevent rapid consecutive calls
+   * 🔧 ENHANCED: Clear custom date range when using preset periods
    */
   const handlePeriodChange = useCallback((days: number) => {
     console.log(`📅 Changing period to ${days} days`);
@@ -264,6 +299,10 @@ const UsageDashboard: React.FC = () => {
     if (filterTimeoutRef.current) {
       clearTimeout(filterTimeoutRef.current);
     }
+    
+    // Clear custom date range when using preset periods
+    setCustomDateRange({ startDate: null, endDate: null });
+    setIsUsingCustomRange(false);
     
     // Update period immediately for UI responsiveness (optimistic update)
     setDashboardState(prev => ({
@@ -279,6 +318,64 @@ const UsageDashboard: React.FC = () => {
       const currentState = stateRef.current;
       loadDashboardData(days, currentState.selectedDepartment, currentState.selectedProviders, currentState.selectedModels, false);
     }, 100); // 100ms debounce
+  }, [loadDashboardData]);
+
+  /**
+   * Handle custom date range change
+   * 
+   * Learning: Custom date ranges provide more granular control over analytics periods.
+   * Users can analyze specific time periods that matter to their business.
+   */
+  const handleCustomDateRangeChange = useCallback((dateRange: DateRange) => {
+    console.log('📅 [CUSTOM DATE DEBUG] Custom date range changed:', dateRange);
+    console.log('📅 [CUSTOM DATE DEBUG] - startDate:', dateRange.startDate);
+    console.log('📅 [CUSTOM DATE DEBUG] - endDate:', dateRange.endDate);
+    setCustomDateRange(dateRange);
+    
+    // Only load data if both dates are selected
+    if (dateRange.startDate && dateRange.endDate) {
+      console.log('📅 [CUSTOM DATE DEBUG] Both dates selected, loading data...');
+      
+      // Clear any pending filter changes
+      if (filterTimeoutRef.current) {
+        clearTimeout(filterTimeoutRef.current);
+      }
+      
+      // Clear preset period selection
+      setIsUsingCustomRange(true);
+      
+      // Show loading state immediately
+      setDashboardState(prev => ({
+        ...prev,
+        isLoading: true,
+        error: null
+      }));
+      
+      // Convert dates to ISO strings
+      const startDate = dateRange.startDate.toISOString().split('T')[0];
+      const endDate = dateRange.endDate.toISOString().split('T')[0];
+      
+      console.log('📅 [CUSTOM DATE DEBUG] Converted dates:');
+      console.log('📅 [CUSTOM DATE DEBUG] - startDate ISO:', startDate);
+      console.log('📅 [CUSTOM DATE DEBUG] - endDate ISO:', endDate);
+      
+      // Debounce the data loading
+      filterTimeoutRef.current = setTimeout(() => {
+        const currentState = stateRef.current;
+        console.log('📅 [CUSTOM DATE DEBUG] About to call loadDashboardData with custom range');
+        loadDashboardData(
+          30, // days parameter (not used when startDate/endDate provided)
+          currentState.selectedDepartment, 
+          currentState.selectedProviders, 
+          currentState.selectedModels, 
+          false, 
+          startDate, 
+          endDate
+        );
+      }, 150);
+    } else {
+      console.log('📅 [CUSTOM DATE DEBUG] Not both dates selected, not loading data yet');
+    }
   }, [loadDashboardData]);
 
   /**
@@ -309,7 +406,15 @@ const UsageDashboard: React.FC = () => {
     // Debounce the data loading
     filterTimeoutRef.current = setTimeout(() => {
       const currentState = stateRef.current;
-      loadDashboardData(currentState.selectedPeriod, departmentId, currentState.selectedProviders, currentState.selectedModels, false);
+      
+      // Use custom date range if active, otherwise use period
+      if (currentState.isUsingCustomRange && currentState.customDateRange.startDate && currentState.customDateRange.endDate) {
+        const startDate = currentState.customDateRange.startDate.toISOString().split('T')[0];
+        const endDate = currentState.customDateRange.endDate.toISOString().split('T')[0];
+        loadDashboardData(30, departmentId, currentState.selectedProviders, currentState.selectedModels, false, startDate, endDate);
+      } else {
+        loadDashboardData(currentState.selectedPeriod, departmentId, currentState.selectedProviders, currentState.selectedModels, false);
+      }
     }, 150); // 150ms debounce for filters
   }, [loadDashboardData]);
 
@@ -343,7 +448,15 @@ const UsageDashboard: React.FC = () => {
     filterTimeoutRef.current = setTimeout(() => {
       const currentState = stateRef.current;
       console.log(`🔧 DEBUG: Debounced API call with providers: ${providerIds.join(', ')}, state providers: ${currentState.selectedProviders.join(', ')}`);
-      loadDashboardData(currentState.selectedPeriod, currentState.selectedDepartment, providerIds, currentState.selectedModels, false);
+      
+      // Use custom date range if active, otherwise use period
+      if (currentState.isUsingCustomRange && currentState.customDateRange.startDate && currentState.customDateRange.endDate) {
+        const startDate = currentState.customDateRange.startDate.toISOString().split('T')[0];
+        const endDate = currentState.customDateRange.endDate.toISOString().split('T')[0];
+        loadDashboardData(30, currentState.selectedDepartment, providerIds, currentState.selectedModels, false, startDate, endDate);
+      } else {
+        loadDashboardData(currentState.selectedPeriod, currentState.selectedDepartment, providerIds, currentState.selectedModels, false);
+      }
     }, 150); // 150ms debounce for filters
   }, [loadDashboardData]);
 
@@ -377,7 +490,15 @@ const UsageDashboard: React.FC = () => {
     filterTimeoutRef.current = setTimeout(() => {
       const currentState = stateRef.current;
       console.log(`🤖 DEBUG: Debounced API call with models: ${modelIds.join(', ')}, state models: ${currentState.selectedModels.join(', ')}`);
-      loadDashboardData(currentState.selectedPeriod, currentState.selectedDepartment, currentState.selectedProviders, modelIds, false);
+      
+      // Use custom date range if active, otherwise use period
+      if (currentState.isUsingCustomRange && currentState.customDateRange.startDate && currentState.customDateRange.endDate) {
+        const startDate = currentState.customDateRange.startDate.toISOString().split('T')[0];
+        const endDate = currentState.customDateRange.endDate.toISOString().split('T')[0];
+        loadDashboardData(30, currentState.selectedDepartment, currentState.selectedProviders, modelIds, false, startDate, endDate);
+      } else {
+        loadDashboardData(currentState.selectedPeriod, currentState.selectedDepartment, currentState.selectedProviders, modelIds, false);
+      }
     }, 150); // 150ms debounce for filters
   }, [loadDashboardData]);
 
@@ -388,11 +509,21 @@ const UsageDashboard: React.FC = () => {
    * 
    * Learning: Refresh functionality is essential for operational dashboards.
    * Users need to see latest data without full page reload.
+   * 
+   * 🔧 ENHANCED: Support both period and custom date range refresh
    */
   const handleRefresh = useCallback(() => {
     console.log('🔄 Refreshing dashboard data');
-    loadDashboardData(dashboardState.selectedPeriod, selectedDepartment, selectedProviders, selectedModels, true);
-  }, [loadDashboardData, dashboardState.selectedPeriod, selectedDepartment, selectedProviders, selectedModels]);
+    
+    // Use custom date range if active, otherwise use period
+    if (isUsingCustomRange && customDateRange.startDate && customDateRange.endDate) {
+      const startDate = customDateRange.startDate.toISOString().split('T')[0];
+      const endDate = customDateRange.endDate.toISOString().split('T')[0];
+      loadDashboardData(30, selectedDepartment, selectedProviders, selectedModels, true, startDate, endDate);
+    } else {
+      loadDashboardData(dashboardState.selectedPeriod, selectedDepartment, selectedProviders, selectedModels, true);
+    }
+  }, [loadDashboardData, dashboardState.selectedPeriod, selectedDepartment, selectedProviders, selectedModels, isUsingCustomRange, customDateRange]);
 
   /**
    * Handle metric selection change
@@ -492,11 +623,21 @@ const UsageDashboard: React.FC = () => {
    * 
    * Learning: Error recovery is important for good UX.
    * Users should always have a way to retry failed operations.
+   * 
+   * 🔧 ENHANCED: Support both period and custom date range retry
    */
   const handleRetry = useCallback(() => {
     console.log('🔄 Retrying dashboard load after error');
-    loadDashboardData(dashboardState.selectedPeriod, selectedDepartment, selectedProviders, selectedModels, false);
-  }, [loadDashboardData, dashboardState.selectedPeriod, selectedDepartment, selectedProviders, selectedModels]);
+    
+    // Use custom date range if active, otherwise use period
+    if (isUsingCustomRange && customDateRange.startDate && customDateRange.endDate) {
+      const startDate = customDateRange.startDate.toISOString().split('T')[0];
+      const endDate = customDateRange.endDate.toISOString().split('T')[0];
+      loadDashboardData(30, selectedDepartment, selectedProviders, selectedModels, false, startDate, endDate);
+    } else {
+      loadDashboardData(dashboardState.selectedPeriod, selectedDepartment, selectedProviders, selectedModels, false);
+    }
+  }, [loadDashboardData, dashboardState.selectedPeriod, selectedDepartment, selectedProviders, selectedModels, isUsingCustomRange, customDateRange]);
 
   // =============================================================================
   // RENDER HELPERS
@@ -528,10 +669,12 @@ const UsageDashboard: React.FC = () => {
 
 
   /**
-   * Render period selector buttons
+   * Render period selector buttons and custom date range picker
    * 
    * Learning: Time period selection is a standard pattern in analytics.
-   * Common periods are 7, 30, 90 days, and sometimes custom ranges.
+   * Common periods are 7, 30, 90 days, and custom ranges for flexibility.
+   * 
+   * 🔧 ENHANCED: Added custom date range picker integration
    */
   const renderPeriodSelector = () => {
     const periods = [
@@ -541,21 +684,38 @@ const UsageDashboard: React.FC = () => {
     ];
 
     return (
-      <div className="flex space-x-2">
-        {periods.map(period => (
-          <button
-            key={period.days}
-            onClick={() => handlePeriodChange(period.days)}
-            disabled={dashboardState.isLoading || dashboardState.isRefreshing}
-            className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 transform ${
-              dashboardState.selectedPeriod === period.days
-                ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg ring-2 ring-blue-400/50'
-                : 'bg-white/10 text-blue-200 hover:bg-white/20 disabled:opacity-50 backdrop-blur-lg border border-white/10'
-            }`}
-          >
-            {period.label}
-          </button>
-        ))}
+      <div className="flex items-center space-x-3">
+        {/* Preset Period Buttons */}
+        <div className="flex space-x-2">
+          {periods.map(period => (
+            <button
+              key={period.days}
+              onClick={() => handlePeriodChange(period.days)}
+              disabled={dashboardState.isLoading || dashboardState.isRefreshing}
+              className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 hover:scale-105 transform ${
+                !isUsingCustomRange && dashboardState.selectedPeriod === period.days
+                  ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg ring-2 ring-blue-400/50'
+                  : 'bg-white/10 text-blue-200 hover:bg-white/20 disabled:opacity-50 backdrop-blur-lg border border-white/10'
+              }`}
+            >
+              {period.label}
+            </button>
+          ))}
+        </div>
+        
+        {/* Divider */}
+        <div className="h-6 w-px bg-white/20"></div>
+        
+        {/* Custom Date Range Picker */}
+        <DateRangePicker
+          value={customDateRange}
+          onChange={handleCustomDateRangeChange}
+          disabled={dashboardState.isLoading || dashboardState.isRefreshing}
+          placeholder="Custom range"
+          maxDate={new Date()}
+          minDate={new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)} // 1 year ago
+          className="min-w-[200px]"
+        />
       </div>
     );
   };
@@ -579,6 +739,11 @@ const UsageDashboard: React.FC = () => {
           </h1>
           <p className="text-blue-100 mt-2">
             Comprehensive overview of AI usage, costs, and performance metrics
+            {isUsingCustomRange && customDateRange.startDate && customDateRange.endDate && (
+              <span className="text-blue-300 ml-2">
+                • Custom range: {customDateRange.startDate.toLocaleDateString()} - {customDateRange.endDate.toLocaleDateString()}
+              </span>
+            )}
             {selectedDepartment && departments.length > 0 && (
               <span className="text-blue-300 ml-2">
                 • Filtered by {departments.find(d => d.value === selectedDepartment)?.label}

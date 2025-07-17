@@ -241,7 +241,9 @@ async def get_provider_usage_stats_fixed(
 
 @router.get("/summary")
 async def get_usage_summary(
-    days: int = Query(30, description="Number of days to analyze", ge=1, le=365),
+    days: Optional[int] = Query(None, description="Number of days to analyze (used when start_date/end_date not provided)", ge=1, le=365),
+    start_date: Optional[str] = Query(None, description="Start date for custom range (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date for custom range (YYYY-MM-DD)"),
     department_id: Optional[int] = Query(None, description="Filter by department ID"),
     provider_names: Optional[List[str]] = Query(None, description="Filter by provider names"),
     model_names: Optional[List[str]] = Query(None, description="Filter by model names"),
@@ -268,17 +270,40 @@ async def get_usage_summary(
         Comprehensive usage summary with metrics and breakdowns
     """
     try:
-        # 🔧 FIX: Use timezone-naive datetimes for PostgreSQL compatibility
-        end_date = datetime.utcnow().replace(microsecond=0)
-        start_date = (end_date - timedelta(days=days)).replace(microsecond=0)
-        
         import logging
         logger = logging.getLogger(__name__)
-        logger.info(f"🔍 Getting usage summary for {days} days: {start_date} to {end_date}")
+        logger.info(f"🔍 [DEBUG] Received parameters: days={days}, start_date='{start_date}', end_date='{end_date}'")
+        
+        # 🔧 FIX: Handle both custom date ranges and days parameter
+        if start_date and end_date and start_date.strip() and end_date.strip():
+            # Parse custom date range
+            try:
+                start_dt = datetime.fromisoformat(start_date.strip()).replace(hour=0, minute=0, second=0, microsecond=0)
+                end_dt = datetime.fromisoformat(end_date.strip()).replace(hour=23, minute=59, second=59, microsecond=999999)
+                calculated_days = (end_dt - start_dt).days + 1
+                logger.info(f"🔍 [DEBUG] Using custom date range: {start_dt} to {end_dt} ({calculated_days} days)")
+            except ValueError as date_error:
+                logger.error(f"❌ [DEBUG] Date parsing error: {str(date_error)}")
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Invalid date format. Use YYYY-MM-DD format. Error: {str(date_error)}"
+                )
+        else:
+            # Use days parameter (default to 30 if not provided)
+            days = days or 30
+            end_dt = datetime.utcnow().replace(microsecond=0)
+            start_dt = (end_dt - timedelta(days=days)).replace(microsecond=0)
+            calculated_days = days
+            logger.info(f"🔍 [DEBUG] Using days parameter: {calculated_days} days from {start_dt} to {end_dt}")
+        
+        if start_date and end_date:
+            logger.info(f"🔍 Getting usage summary for custom range: {start_date} to {end_date} ({calculated_days} days)")
+        else:
+            logger.info(f"🔍 Getting usage summary for {calculated_days} days: {start_dt} to {end_dt}")
         
         # 🔧 FIX: Use improved provider statistics with NULL cost handling  
         try:
-            provider_stats = await get_provider_usage_stats_fixed(start_date, end_date, department_id, provider_names, model_names)
+            provider_stats = await get_provider_usage_stats_fixed(start_dt, end_dt, department_id, provider_names, model_names)
             logger.info(f"✅ Successfully retrieved {len(provider_stats) if provider_stats else 0} provider statistics")
         except Exception as provider_error:
             logger.error(f"❌ Provider stats failed: {str(provider_error)}")
@@ -320,9 +345,9 @@ async def get_usage_summary(
         
         return {
             "period": {
-                "start_date": start_date.isoformat(),
-                "end_date": end_date.isoformat(),
-                "days": days
+                "start_date": start_dt.isoformat(),
+                "end_date": end_dt.isoformat(),
+                "days": calculated_days
             },
             "overview": {
                 "total_requests": total_requests,
@@ -644,7 +669,9 @@ async def get_recent_usage_logs(
 
 @router.get("/top-users")
 async def get_top_users_by_usage(
-    days: int = Query(30, description="Number of days to analyze", ge=1, le=365),
+    days: Optional[int] = Query(None, description="Number of days to analyze (used when start_date/end_date not provided)", ge=1, le=365),
+    start_date: Optional[str] = Query(None, description="Start date for custom range (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date for custom range (YYYY-MM-DD)"),
     limit: int = Query(10, description="Number of top users to return", ge=1, le=50),
     metric: str = Query("total_cost", description="Metric to sort by: total_cost, total_tokens, or request_count"),
     department_id: Optional[int] = Query(None, description="Filter by department ID"),
@@ -674,9 +701,31 @@ async def get_top_users_by_usage(
         from sqlalchemy import select, func, and_, desc
         from ...models.usage_log import UsageLog
         
-        # Calculate date range
-        end_date = datetime.utcnow()
-        start_date = end_date - timedelta(days=days)
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"🔍 [DEBUG] TOP-USERS: Received parameters: days={days}, start_date='{start_date}', end_date='{end_date}'")
+        
+        # 🔧 FIX: Handle both custom date ranges and days parameter
+        if start_date and end_date and start_date.strip() and end_date.strip():
+            # Parse custom date range
+            try:
+                start_dt = datetime.fromisoformat(start_date.strip()).replace(hour=0, minute=0, second=0, microsecond=0)
+                end_dt = datetime.fromisoformat(end_date.strip()).replace(hour=23, minute=59, second=59, microsecond=999999)
+                calculated_days = (end_dt - start_dt).days + 1
+                logger.info(f"🔍 [DEBUG] TOP-USERS: Using custom date range: {start_dt} to {end_dt} ({calculated_days} days)")
+            except ValueError as date_error:
+                logger.error(f"❌ [DEBUG] TOP-USERS: Date parsing error: {str(date_error)}")
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Invalid date format. Use YYYY-MM-DD format. Error: {str(date_error)}"
+                )
+        else:
+            # Use days parameter (default to 30 if not provided)
+            days = days or 30
+            end_dt = datetime.utcnow()
+            start_dt = end_dt - timedelta(days=days)
+            calculated_days = days
+            logger.info(f"🔍 [DEBUG] TOP-USERS: Using days parameter: {calculated_days} days from {start_dt} to {end_dt}")
         
         # 🔧 FIX: Add cache-busting parameter to prevent query caching
         # This ensures fresh data by making each query unique
@@ -708,8 +757,8 @@ async def get_top_users_by_usage(
             func.count(UsageLog.id).filter(UsageLog.success == True).label('successful_requests')
         ).where(
             and_(
-                UsageLog.created_at >= start_date,
-                UsageLog.created_at <= end_date,
+                UsageLog.created_at >= start_dt,
+                UsageLog.created_at <= end_dt,
                 # Add cache-busting condition that's always true
                 UsageLog.id >= 0,
                 # Add department filter if specified
@@ -758,9 +807,9 @@ async def get_top_users_by_usage(
         
         return {
             "period": {
-                "start_date": start_date.isoformat(),
-                "end_date": end_date.isoformat(),
-                "days": days
+                "start_date": start_dt.isoformat(),
+                "end_date": end_dt.isoformat(),
+                "days": calculated_days
             },
             "top_users": users_data,
             "sort_metric": metric,
@@ -904,7 +953,9 @@ async def get_pricing_cache_stats(
 
 @router.get("/most-used-models")
 async def get_most_used_models(
-    days: int = Query(30, description="Number of days to analyze", ge=1, le=365),
+    days: Optional[int] = Query(None, description="Number of days to analyze (used when start_date/end_date not provided)", ge=1, le=365),
+    start_date: Optional[str] = Query(None, description="Start date for custom range (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date for custom range (YYYY-MM-DD)"),
     limit: int = Query(20, description="Number of top models to return", ge=1, le=100),
     department_id: Optional[int] = Query(None, description="Filter by department ID"),
     provider_names: Optional[List[str]] = Query(None, description="Filter by provider names"),
@@ -936,9 +987,31 @@ async def get_most_used_models(
         from sqlalchemy import select, func, and_, desc
         from ...models.usage_log import UsageLog
         
-        # Calculate date range
-        end_date = datetime.utcnow()
-        start_date = end_date - timedelta(days=days)
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"🔍 [DEBUG] MODELS: Received parameters: days={days}, start_date='{start_date}', end_date='{end_date}'")
+        
+        # 🔧 FIX: Handle both custom date ranges and days parameter
+        if start_date and end_date and start_date.strip() and end_date.strip():
+            # Parse custom date range
+            try:
+                start_dt = datetime.fromisoformat(start_date.strip()).replace(hour=0, minute=0, second=0, microsecond=0)
+                end_dt = datetime.fromisoformat(end_date.strip()).replace(hour=23, minute=59, second=59, microsecond=999999)
+                calculated_days = (end_dt - start_dt).days + 1
+                logger.info(f"🔍 [DEBUG] MODELS: Using custom date range: {start_dt} to {end_dt} ({calculated_days} days)")
+            except ValueError as date_error:
+                logger.error(f"❌ [DEBUG] MODELS: Date parsing error: {str(date_error)}")
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Invalid date format. Use YYYY-MM-DD format. Error: {str(date_error)}"
+                )
+        else:
+            # Use days parameter (default to 30 if not provided)
+            days = days or 30
+            end_dt = datetime.utcnow()
+            start_dt = end_dt - timedelta(days=days)
+            calculated_days = days
+            logger.info(f"🔍 [DEBUG] MODELS: Using days parameter: {calculated_days} days from {start_dt} to {end_dt}")
         
         # Add cache-busting parameter to prevent query caching
         cache_buster = datetime.utcnow().microsecond
@@ -957,8 +1030,8 @@ async def get_most_used_models(
             func.max(UsageLog.response_time_ms).label('max_response_time')
         ).where(
             and_(
-                UsageLog.created_at >= start_date,
-                UsageLog.created_at <= end_date,
+                UsageLog.created_at >= start_dt,
+                UsageLog.created_at <= end_dt,
                 # Add cache-busting condition that's always true
                 UsageLog.id >= 0,
                 # Add department filter if specified
@@ -1013,9 +1086,9 @@ async def get_most_used_models(
         
         return {
             "period": {
-                "start_date": start_date.isoformat(),
-                "end_date": end_date.isoformat(),
-                "days": days
+                "start_date": start_dt.isoformat(),
+                "end_date": end_dt.isoformat(),
+                "days": calculated_days
             },
             "models": models_data,
             "limit": limit,

@@ -139,18 +139,39 @@ class UsageAnalyticsService {
    * - Provider breakdown
    * 
    * Args:
-   *   days: Number of days to analyze (default: 30)
+   *   days: Number of days to analyze (default: 30) - used when startDate/endDate not provided
    *   departmentId: Optional department ID to filter by
    *   providerNames: Optional list of provider names to filter by
    *   modelNames: Optional list of model names to filter by
+   *   startDate: Optional start date for custom range (ISO string)
+   *   endDate: Optional end date for custom range (ISO string)
    * 
    * Returns:
    *   Comprehensive usage summary
    */
-  async getUsageSummary(days: number = 30, departmentId?: number, providerNames?: string[], modelNames?: string[], signal?: AbortSignal): Promise<UsageSummary> {
-    console.log(`📊 Fetching usage summary for ${days} days${departmentId ? ` (department: ${departmentId})` : ''}${providerNames?.length ? ` (providers: ${providerNames.join(', ')})` : ''}${modelNames?.length ? ` (models: ${modelNames.join(', ')})` : ''}...`);
+  async getUsageSummary(days: number = 30, departmentId?: number, providerNames?: string[], modelNames?: string[], signal?: AbortSignal, startDate?: string, endDate?: string): Promise<UsageSummary> {
+    const dateRangeText = startDate && endDate 
+      ? `from ${startDate} to ${endDate}`
+      : `${days} days`;
+    console.log(`📊 [FRONTEND DEBUG] getUsageSummary called with:`);
+    console.log(`📊 [FRONTEND DEBUG] - days: ${days}`);
+    console.log(`📊 [FRONTEND DEBUG] - startDate: ${startDate}`);
+    console.log(`📊 [FRONTEND DEBUG] - endDate: ${endDate}`);
+    console.log(`📊 [FRONTEND DEBUG] - departmentId: ${departmentId}`);
+    console.log(`📊 Fetching usage summary for ${dateRangeText}${departmentId ? ` (department: ${departmentId})` : ''}${providerNames?.length ? ` (providers: ${providerNames.join(', ')})` : ''}${modelNames?.length ? ` (models: ${modelNames.join(', ')})` : ''}...`);
     
-    const params = new URLSearchParams({ days: days.toString() });
+    const params = new URLSearchParams();
+    
+    // Use custom date range if provided, otherwise use days
+    if (startDate && endDate) {
+      console.log(`📊 [FRONTEND DEBUG] Using custom date range: ${startDate} to ${endDate}`);
+      params.append('start_date', startDate);
+      params.append('end_date', endDate);
+    } else {
+      console.log(`📊 [FRONTEND DEBUG] Using days parameter: ${days}`);
+      params.append('days', days.toString());
+    }
+    
     if (departmentId) {
       params.append('department_id', departmentId.toString());
     }
@@ -161,8 +182,11 @@ class UsageAnalyticsService {
       modelNames.forEach(model => params.append('model_names', model));
     }
     
+    const finalUrl = `${API_BASE_URL}/admin/usage/summary?${params}`;
+    console.log(`📊 [FRONTEND DEBUG] Final API URL: ${finalUrl}`);
+    
     const response = await fetch(
-      `${API_BASE_URL}/admin/usage/summary?${params}`,
+      finalUrl,
       {
         method: 'GET',
         headers: this.getAuthHeaders(),
@@ -276,12 +300,14 @@ class UsageAnalyticsService {
    * - Department champions
    * 
    * Args:
-   *   days: Number of days to analyze
+   *   days: Number of days to analyze - used when startDate/endDate not provided
    *   limit: Number of top users to return
    *   metric: What to sort by ('total_cost', 'total_tokens', 'request_count')
    *   departmentId: Optional department ID to filter by
    *   providerNames: Optional list of provider names to filter by
    *   modelNames: Optional list of model names to filter by
+   *   startDate: Optional start date for custom range (ISO string)
+   *   endDate: Optional end date for custom range (ISO string)
    */
   async getTopUsers(
     days: number = 30, 
@@ -290,15 +316,28 @@ class UsageAnalyticsService {
     departmentId?: number,
     providerNames?: string[],
     modelNames?: string[],
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    startDate?: string,
+    endDate?: string
   ): Promise<TopUsersResponse> {
-    console.log(`🏆 Fetching top ${limit} users by ${metric} (${days} days)${departmentId ? ` (department: ${departmentId})` : ''}${providerNames?.length ? ` (providers: ${providerNames.join(', ')})` : ''}${modelNames?.length ? ` (models: ${modelNames.join(', ')})` : ''}...`);
+    const dateRangeText = startDate && endDate 
+      ? `from ${startDate} to ${endDate}`
+      : `${days} days`;
+    console.log(`🏆 Fetching top ${limit} users by ${metric} (${dateRangeText})${departmentId ? ` (department: ${departmentId})` : ''}${providerNames?.length ? ` (providers: ${providerNames.join(', ')})` : ''}${modelNames?.length ? ` (models: ${modelNames.join(', ')})` : ''}...`);
     
     const params = new URLSearchParams({
-      days: days.toString(),
       limit: limit.toString(),
       metric: metric
     });
+    
+    // Use custom date range if provided, otherwise use days
+    if (startDate && endDate) {
+      params.append('start_date', startDate);
+      params.append('end_date', endDate);
+    } else {
+      params.append('days', days.toString());
+    }
+    
     if (departmentId) {
       params.append('department_id', departmentId.toString());
     }
@@ -479,14 +518,27 @@ class UsageAnalyticsService {
     departmentId?: number,
     providerNames?: string[],
     modelNames?: string[],
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    startDate?: string,
+    endDate?: string
   ): Promise<MostUsedModelsResponse> {
-    console.log(`🤖 Fetching most used models (${days} days, limit: ${limit})${departmentId ? ` (department: ${departmentId})` : ''}${providerNames?.length ? ` (providers: ${providerNames.join(', ')})` : ''}${modelNames?.length ? ` (models: ${modelNames.join(', ')})` : ''}...`);
+    const dateRangeText = startDate && endDate 
+      ? `from ${startDate} to ${endDate}`
+      : `${days} days`;
+    console.log(`🤖 Fetching most used models (${dateRangeText}, limit: ${limit})${departmentId ? ` (department: ${departmentId})` : ''}${providerNames?.length ? ` (providers: ${providerNames.join(', ')})` : ''}${modelNames?.length ? ` (models: ${modelNames.join(', ')})` : ''}...`);
     
     const params = new URLSearchParams({
-      days: days.toString(),
       limit: limit.toString()
     });
+    
+    // Use custom date range if provided, otherwise use days
+    if (startDate && endDate) {
+      params.append('start_date', startDate);
+      params.append('end_date', endDate);
+    } else {
+      params.append('days', days.toString());
+    }
+    
     if (departmentId) {
       params.append('department_id', departmentId.toString());
     }
@@ -585,9 +637,21 @@ class UsageAnalyticsService {
    * Now includes fallback data for when authentication fails or system is not set up.
    * 
    * 🔧 FIXED: Added AbortSignal support for request cancellation
+   * 🔧 ENHANCED: Added custom date range support
    */
-  async getDashboardData(days: number = 30, departmentId?: number, providerNames?: string[], modelNames?: string[], signal?: AbortSignal): Promise<DashboardData> {
-    console.log(`🎯 Loading complete dashboard data for ${days} days${departmentId ? ` (department: ${departmentId})` : ''}${providerNames?.length ? ` (providers: ${providerNames.join(', ')})` : ''}${modelNames?.length ? ` (models: ${modelNames.join(', ')})` : ''}...`);
+  async getDashboardData(
+    days: number = 30, 
+    departmentId?: number, 
+    providerNames?: string[], 
+    modelNames?: string[], 
+    signal?: AbortSignal,
+    startDate?: string,
+    endDate?: string
+  ): Promise<DashboardData> {
+    const dateRangeText = startDate && endDate 
+      ? `from ${startDate} to ${endDate}`
+      : `${days} days`;
+    console.log(`🎯 Loading complete dashboard data for ${dateRangeText}${departmentId ? ` (department: ${departmentId})` : ''}${providerNames?.length ? ` (providers: ${providerNames.join(', ')})` : ''}${modelNames?.length ? ` (models: ${modelNames.join(', ')})` : ''}...`);
     
     try {
       console.log('📊 Loading dashboard data with fallback support...');
@@ -821,22 +885,22 @@ class UsageAnalyticsService {
       
       // Load data with fallbacks and abort signal support
       const usageSummary = await this.safeApiCall(
-        () => this.getUsageSummary(days, departmentId, providerNames, modelNames, signal),
+        () => this.getUsageSummary(days, departmentId, providerNames, modelNames, signal, startDate, endDate),
         fallbackSummary
       );
       
       const topUsersByCost = await this.safeApiCall(
-        () => this.getTopUsers(days, 5, 'total_cost', departmentId, providerNames, modelNames, signal),
+        () => this.getTopUsers(days, 5, 'total_cost', departmentId, providerNames, modelNames, signal, startDate, endDate),
         { ...fallbackTopUsers, sort_metric: 'total_cost' }
       );
       
       const topUsersByTokens = await this.safeApiCall(
-        () => this.getTopUsers(days, 5, 'total_tokens', departmentId, providerNames, modelNames, signal),
+        () => this.getTopUsers(days, 5, 'total_tokens', departmentId, providerNames, modelNames, signal, startDate, endDate),
         { ...fallbackTopUsers, sort_metric: 'total_tokens' }
       );
       
       const topUsersByRequests = await this.safeApiCall(
-        () => this.getTopUsers(days, 5, 'request_count', departmentId, providerNames, modelNames, signal),
+        () => this.getTopUsers(days, 5, 'request_count', departmentId, providerNames, modelNames, signal, startDate, endDate),
         { ...fallbackTopUsers, sort_metric: 'request_count' }
       );
       
@@ -890,7 +954,7 @@ class UsageAnalyticsService {
       
       // Load most used models (with fallback)
       const mostUsedModels = await this.safeApiCall(
-        () => this.getMostUsedModels(days, 10, departmentId, providerNames, modelNames, signal),
+        () => this.getMostUsedModels(days, 10, departmentId, providerNames, modelNames, signal, startDate, endDate),
         {
           period: fallbackSummary.period,
           models: [],
