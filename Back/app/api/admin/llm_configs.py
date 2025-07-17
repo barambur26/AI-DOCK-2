@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
 import logging
+import time
 
 from ...core.database import get_db
 from ...core.security import get_current_admin_user
@@ -662,6 +663,49 @@ async def toggle_llm_configuration(
 # HELPER ENDPOINTS
 # =============================================================================
 
+# 🔥 EMERGENCY FIX: Database pool monitoring endpoint
+@router.get("/debug/pool-status")
+async def get_database_pool_status(
+    current_user = Depends(get_current_admin_user)
+):
+    """
+    🔥 EMERGENCY DEBUG: Get database connection pool status.
+    
+    This endpoint helps monitor database connection pool health
+    to diagnose connection timeout issues.
+    """
+    logger.info(f"Admin {current_user.username} requesting database pool status")
+    
+    from ...core.database import get_connection_pool_status
+    
+    try:
+        pool_status = get_connection_pool_status()
+        
+        # Log the status for debugging
+        logger.info(f"🔥 Pool status requested: {pool_status.get('health', 'unknown')}")
+        
+        return {
+            "status": "success",
+            "pool_health": pool_status.get('health', 'unknown'),
+            "sync_pool": pool_status.get('sync_pool', {}),
+            "async_pool": pool_status.get('async_pool', {}),
+            "timestamp": pool_status.get('timestamp'),
+            "recommendations": [
+                "Monitor utilization - >90% indicates pool pressure",
+                "Check for connection leaks if checked_out stays high",
+                "Review slow queries if pool pressure persists",
+                "Consider increasing pool_size if utilization consistently >80%"
+            ]
+        }
+        
+    except Exception as e:
+        logger.error(f"🔥 Failed to get pool status: {e}")
+        return {
+            "status": "error",
+            "error": str(e),
+            "timestamp": time.time()
+        }
+
 @router.get("/{config_id}/usage-stats")
 async def get_configuration_usage_stats(
     config_id: int,
@@ -680,6 +724,10 @@ async def get_configuration_usage_stats(
     NOTE: This is a placeholder - will be implemented when usage tracking is added
     """
     logger.info(f"Admin {current_user.username} requesting usage stats for config {config_id}")
+    
+    # 🔥 EMERGENCY FIX: Log pool status when getting usage stats
+    from ...core.database import log_connection_pool_status
+    log_connection_pool_status()
     
     # Find configuration
     config = db.query(LLMConfiguration).filter(

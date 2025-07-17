@@ -7,3 +7,4 @@ export type { DateRange } from './date-picker';
 
 // Loading Component Exports
 export { default as LogoLoader } from './LogoLoader';
+export { default as SkeletonLoader } from './SkeletonLoader';

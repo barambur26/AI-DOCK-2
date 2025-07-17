@@ -11,6 +11,7 @@ import logging
 import asyncio
 import time
 import os
+from datetime import datetime
 
 from .config import settings
 
@@ -46,29 +47,46 @@ def create_async_engine_instance():
     """Create the async database engine when needed."""
     global async_engine
     if async_engine is None:
+        # 🔥 EMERGENCY FIX: Aggressive connection pool settings for Railway
+        is_production = os.getenv("RAILWAY_ENVIRONMENT") or "postgresql" in settings.database_url
+        
         async_engine = create_async_engine(
             settings.async_database_url,
             
             # Echo SQL queries in development (helpful for learning!)
             echo=settings.debug,
             
-            # Connection pool settings - these control how many database connections we keep open
-            pool_size=10,                    # Keep 10 connections ready
-            max_overflow=20,                 # Allow 20 more if needed
+            # 🔥 EMERGENCY FIX: Much larger connection pool for Railway production
+            pool_size=30,                    # Increased from 20 to 30 for better concurrency
+            max_overflow=70,                 # Increased from 40 to 70 for peak loads
             pool_pre_ping=True,             # Test connections before using them
-            pool_recycle=3600,              # Refresh connections every hour
+            pool_recycle=900,               # Faster recycle (15 min instead of 30)
+            pool_timeout=60,                # Longer timeout (60s instead of 30s)
+            pool_reset_on_return='commit',  # Reset connections on return
             
-            # For SQLite only - allows multiple threads to access the database
+            # 🔥 EMERGENCY FIX: Production-optimized connection args
             connect_args=(
                 {
                     "check_same_thread": False,
-                    "timeout": 30,  # 30 second timeout for lock waits
-                    "isolation_level": None  # Use autocommit for better concurrency
+                    "timeout": 30,
+                    "isolation_level": None
                 } 
                 if settings.database_url.startswith("sqlite") 
-                else {}
+                else {
+                    # PostgreSQL/Railway specific optimizations
+                    "connect_timeout": 60,
+                    "command_timeout": 60,
+                    "server_settings": {
+                        "jit": "off",  # Disable JIT for faster connection startup
+                        "application_name": "aidock_async"
+                    }
+                } if is_production else {}
             )
         )
+        
+        # 🔥 EMERGENCY FIX: Log async connection pool status
+        logger.info(f"🔥 EMERGENCY ASYNC POOL: size={async_engine.pool.size()}, max_overflow={async_engine.pool._max_overflow}, total_capacity={async_engine.pool.size() + async_engine.pool._max_overflow}")
+        
     return async_engine
 
 # =============================================================================
@@ -87,29 +105,46 @@ def create_sync_engine_instance():
         if sync_db_url.startswith("postgres://"):
             sync_db_url = sync_db_url.replace("postgres://", "postgresql://")
         
+        # 🔥 EMERGENCY FIX: Aggressive connection pool settings for Railway
+        is_production = os.getenv("RAILWAY_ENVIRONMENT") or "postgresql" in sync_db_url
+        
         sync_engine = create_engine(
             sync_db_url,  # Note: using the converted sync URL
             
             # Echo SQL queries in development
             echo=settings.debug,
             
-            # Connection pool settings
-            pool_size=10,
-            max_overflow=20,
-            pool_pre_ping=True,
-            pool_recycle=3600,
+            # 🔥 EMERGENCY FIX: Much larger connection pool for Railway production
+            pool_size=30,                    # Increased from 20 to 30 for better concurrency
+            max_overflow=70,                 # Increased from 40 to 70 for peak loads
+            pool_pre_ping=True,             # Test connections before using them
+            pool_recycle=900,               # Faster recycle (15 min instead of 30)
+            pool_timeout=60,                # Longer timeout (60s instead of 30s)
+            pool_reset_on_return='commit',  # Reset connections on return
             
-            # For SQLite only
+            # 🔥 EMERGENCY FIX: Production-optimized connection args
             connect_args=(
                 {
                     "check_same_thread": False,
-                    "timeout": 30,  # 30 second timeout for lock waits
-                    "isolation_level": None  # Use autocommit for better concurrency
+                    "timeout": 30,
+                    "isolation_level": None
                 } 
                 if settings.database_url.startswith("sqlite") 
-                else {}
+                else {
+                    # PostgreSQL/Railway specific optimizations
+                    "connect_timeout": 60,
+                    "command_timeout": 60,
+                    "server_settings": {
+                        "jit": "off",  # Disable JIT for faster connection startup
+                        "application_name": "aidock_backend"
+                    }
+                } if is_production else {}
             )
         )
+        
+        # 🔥 EMERGENCY FIX: Log connection pool status
+        logger.info(f"🔥 EMERGENCY DB POOL: size={sync_engine.pool.size()}, max_overflow={sync_engine.pool._max_overflow}, total_capacity={sync_engine.pool.size() + sync_engine.pool._max_overflow}")
+        
     return sync_engine
 
 # =============================================================================
@@ -183,18 +218,46 @@ def get_sync_db() -> Generator[Session, None, None]:
     """
     FastAPI dependency that provides a synchronous database session.
     
-    Use this for sync route handlers and services like AdminService.
+    🔥 EMERGENCY FIX: Enhanced connection management and timeout handling
     """
     session_factory = get_sync_session_factory()
-    session = session_factory()
+    session = None
+    start_time = time.time()
+    
     try:
+        # 🔥 EMERGENCY FIX: Add timeout for session creation
+        session = session_factory()
+        logger.debug(f"🔥 DB Session created in {(time.time() - start_time)*1000:.1f}ms")
+        
         yield session
+        
+        # 🔥 EMERGENCY FIX: Explicit commit on success to release locks faster
+        if session.in_transaction():
+            session.commit()
+            
     except Exception as e:
-        session.rollback()
+        if session:
+            try:
+                session.rollback()
+                logger.debug(f"🔥 DB Session rolled back after error: {e}")
+            except Exception as rollback_error:
+                logger.error(f"🔥 DB Session rollback failed: {rollback_error}")
+        
         logger.error(f"Sync database session error: {e}")
         raise
     finally:
-        session.close()
+        if session:
+            try:
+                session.close()
+                elapsed = (time.time() - start_time) * 1000
+                logger.debug(f"🔥 DB Session closed after {elapsed:.1f}ms")
+                
+                # 🔥 EMERGENCY FIX: Log slow queries
+                if elapsed > 5000:  # 5 seconds
+                    logger.warning(f"🔥 SLOW DB SESSION: {elapsed:.1f}ms - investigate connection pool pressure")
+                    
+            except Exception as close_error:
+                logger.error(f"🔥 DB Session close failed: {close_error}")
 
 # Default to sync for backward compatibility with existing code
 get_db = get_sync_db
@@ -553,6 +616,80 @@ def is_sqlite() -> bool:
 def is_postgresql() -> bool:
     """Check if we're using PostgreSQL database."""
     return settings.database_url.startswith(("postgresql", "postgres"))
+
+# 🔥 EMERGENCY FIX: Connection pool monitoring
+def get_connection_pool_status() -> dict:
+    """
+    Get current connection pool status for monitoring and debugging.
+    
+    Returns detailed pool statistics to help diagnose connection issues.
+    """
+    try:
+        status = {
+            "timestamp": time.time(),
+            "sync_pool": {},
+            "async_pool": {},
+            "health": "unknown"
+        }
+        
+        # Sync pool status
+        if sync_engine and hasattr(sync_engine, 'pool'):
+            pool = sync_engine.pool
+            status["sync_pool"] = {
+                "size": pool.size(),
+                "checked_in": pool.checkedin(),
+                "checked_out": pool.checkedout(),
+                "overflow": pool.overflow(),
+                "invalid": pool.invalid(),
+                "capacity": pool.size() + pool._max_overflow,
+                "utilization_pct": round((pool.checkedout() / (pool.size() + pool._max_overflow)) * 100, 1)
+            }
+        
+        # Async pool status
+        if async_engine and hasattr(async_engine, 'pool'):
+            pool = async_engine.pool
+            status["async_pool"] = {
+                "size": pool.size(),
+                "checked_in": pool.checkedin(),
+                "checked_out": pool.checkedout(),
+                "overflow": pool.overflow(),
+                "invalid": pool.invalid(),
+                "capacity": pool.size() + pool._max_overflow,
+                "utilization_pct": round((pool.checkedout() / (pool.size() + pool._max_overflow)) * 100, 1)
+            }
+        
+        # Determine health status
+        max_utilization = max(
+            status["sync_pool"].get("utilization_pct", 0),
+            status["async_pool"].get("utilization_pct", 0)
+        )
+        
+        if max_utilization < 70:
+            status["health"] = "healthy"
+        elif max_utilization < 90:
+            status["health"] = "warning"
+        else:
+            status["health"] = "critical"
+            
+        return status
+        
+    except Exception as e:
+        logger.error(f"🔥 Failed to get pool status: {e}")
+        return {"error": str(e), "timestamp": time.time()}
+
+def log_connection_pool_status():
+    """
+    Log current connection pool status for monitoring.
+    """
+    status = get_connection_pool_status()
+    if "error" not in status:
+        logger.info(f"🔥 POOL STATUS [{status['health'].upper()}]: "
+                   f"Sync: {status['sync_pool'].get('utilization_pct', 0)}% "
+                   f"({status['sync_pool'].get('checked_out', 0)}/{status['sync_pool'].get('capacity', 0)}) | "
+                   f"Async: {status['async_pool'].get('utilization_pct', 0)}% "
+                   f"({status['async_pool'].get('checked_out', 0)}/{status['async_pool'].get('capacity', 0)})")
+    else:
+        logger.error(f"🔥 POOL STATUS ERROR: {status['error']}")
 
 # =============================================================================
 # TESTING AND DEVELOPMENT HELPERS

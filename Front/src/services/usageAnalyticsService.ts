@@ -32,6 +32,74 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://idyllic-moxie-aedb
 class UsageAnalyticsService {
 
   // =============================================================================
+  // CACHING FOR LLM CONFIGURATIONS (FIX FOR CONNECTION POOL EXHAUSTION)
+  // =============================================================================
+  
+  private configsCache: any = null;
+  private configsCacheTimestamp: number = 0;
+  private readonly CACHE_DURATION_MS = 30000; // 30 seconds cache
+  
+  /**
+   * Get LLM configurations with caching to prevent N+1 query issues
+   * 
+   * 🔧 CRITICAL FIX: This prevents the frontend from making dozens of concurrent
+   * API calls to /admin/llm-configs/ which was exhausting the database connection pool.
+   */
+  private async getCachedLLMConfigs(): Promise<any> {
+    const now = Date.now();
+    
+    // Return cached data if it's still fresh
+    if (this.configsCache && (now - this.configsCacheTimestamp) < this.CACHE_DURATION_MS) {
+      console.log('🔧 Using cached LLM configurations');
+      return this.configsCache;
+    }
+    
+    console.log('🔧 Fetching fresh LLM configurations (cache miss or expired)');
+    
+    // Fetch fresh data
+    try {
+      const activeConfigs = await llmConfigService.getConfigurations(false);
+      const configsWithDetails = await Promise.all(
+        activeConfigs.map(async (config) => {
+          try {
+            const fullConfig = await llmConfigService.getConfiguration(config.id);
+            return fullConfig;
+          } catch (error) {
+            console.warn(`⚠️ Failed to fetch details for config ${config.id}:`, error);
+            return config; // Fallback to summary data
+          }
+        })
+      );
+      
+      // Cache the results
+      this.configsCache = {
+        summary: activeConfigs,
+        detailed: configsWithDetails
+      };
+      this.configsCacheTimestamp = now;
+      
+      console.log(`🔧 Cached ${activeConfigs.length} LLM configurations`);
+      return this.configsCache;
+      
+    } catch (error) {
+      console.error('❌ Failed to fetch LLM configurations:', error);
+      // Return stale cache if available, otherwise empty
+      return this.configsCache || { summary: [], detailed: [] };
+    }
+  }
+
+  /**
+   * Clear the LLM configurations cache
+   * 
+   * 🔧 Call this when LLM configurations are updated to force fresh data
+   */
+  public clearConfigsCache(): void {
+    console.log('🔧 Clearing LLM configurations cache');
+    this.configsCache = null;
+    this.configsCacheTimestamp = 0;
+  }
+
+  // =============================================================================
   // AUTHENTICATION HELPER
   // =============================================================================
 
@@ -536,46 +604,38 @@ class UsageAnalyticsService {
     try {
       console.log('🔍 Filtering models by active LLM configurations...');
       
-      // Get active LLM configurations (summary)
-      const activeConfigs = await llmConfigService.getConfigurations(false); // false = only active
-      console.log(`🔧 Found ${activeConfigs.length} active LLM configurations`);
+      // 🔧 CRITICAL FIX: Use cached data instead of making N+1 API calls
+      const cachedConfigs = await this.getCachedLLMConfigs();
+      const activeConfigs = cachedConfigs.summary;
+      const configsWithDetails = cachedConfigs.detailed;
+      
+      console.log(`🔧 Found ${activeConfigs.length} active LLM configurations (from cache)`);
       
       // Extract active providers and their models
       const activeProviders = new Set<string>();
       const explicitlyActiveModels = new Set<string>();
       
-      // For each active config, get full details to access available_models
-      for (const config of activeConfigs) {
+      // For each active config, use cached details
+      for (const fullConfig of configsWithDetails) {
         // Add both lowercase and capitalized versions to handle API inconsistencies
-        activeProviders.add(config.provider.toLowerCase());
-        activeProviders.add(config.provider_name.toLowerCase());
-        activeProviders.add(config.provider);
-        activeProviders.add(config.provider_name);
+        activeProviders.add(fullConfig.provider.toLowerCase());
+        activeProviders.add(fullConfig.provider_name?.toLowerCase() || fullConfig.provider.toLowerCase());
+        activeProviders.add(fullConfig.provider);
+        activeProviders.add(fullConfig.provider_name || fullConfig.provider);
         
-        try {
-          const fullConfig = await llmConfigService.getConfiguration(config.id);
-          
-          // Add default model
-          if (fullConfig.default_model) {
-            explicitlyActiveModels.add(fullConfig.default_model);
-          }
-          
-          // Add all available models
-          if (fullConfig.available_models && Array.isArray(fullConfig.available_models)) {
-            fullConfig.available_models.forEach(model => {
-              explicitlyActiveModels.add(model);
-            });
-          }
-          
-          console.log(`🔧 Config "${fullConfig.name}": ${fullConfig.default_model} + ${fullConfig.available_models?.length || 0} available models`);
-          
-        } catch (error) {
-          console.warn(`⚠️ Failed to fetch details for config ${config.id}, using default model only:`, error);
-          // Fallback: use just the default model from summary
-          if (config.default_model) {
-            explicitlyActiveModels.add(config.default_model);
-          }
+        // Add default model
+        if (fullConfig.default_model) {
+          explicitlyActiveModels.add(fullConfig.default_model);
         }
+        
+        // Add all available models
+        if (fullConfig.available_models && Array.isArray(fullConfig.available_models)) {
+          fullConfig.available_models.forEach(model => {
+            explicitlyActiveModels.add(model);
+          });
+        }
+        
+        console.log(`🔧 Config "${fullConfig.name}": ${fullConfig.default_model} + ${fullConfig.available_models?.length || 0} available models`);
       }
       
       console.log(`🔍 Active providers (${activeProviders.size} total):`, Array.from(activeProviders).sort());
@@ -628,34 +688,28 @@ class UsageAnalyticsService {
    */
   private async getActiveProvidersAndModels(): Promise<{ activeProviders: Set<string>, explicitModels: Set<string> }> {
     try {
-      const activeConfigs = await llmConfigService.getConfigurations(false); // false = only active
+      // 🔧 CRITICAL FIX: Use cached data instead of making N+1 API calls
+      const cachedConfigs = await this.getCachedLLMConfigs();
+      const configsWithDetails = cachedConfigs.detailed;
+      
       const activeProviders = new Set<string>();
       const explicitModels = new Set<string>();
       
-      for (const config of activeConfigs) {
+      for (const fullConfig of configsWithDetails) {
         // Add both lowercase and capitalized versions to handle API inconsistencies
-        activeProviders.add(config.provider.toLowerCase());
-        activeProviders.add(config.provider_name.toLowerCase());
-        activeProviders.add(config.provider);
-        activeProviders.add(config.provider_name);
+        activeProviders.add(fullConfig.provider.toLowerCase());
+        activeProviders.add(fullConfig.provider_name?.toLowerCase() || fullConfig.provider.toLowerCase());
+        activeProviders.add(fullConfig.provider);
+        activeProviders.add(fullConfig.provider_name || fullConfig.provider);
         
-        try {
-          const fullConfig = await llmConfigService.getConfiguration(config.id);
-          
-          if (fullConfig.default_model) {
-            explicitModels.add(fullConfig.default_model);
-          }
-          
-          if (fullConfig.available_models && Array.isArray(fullConfig.available_models)) {
-            fullConfig.available_models.forEach(model => {
-              explicitModels.add(model);
-            });
-          }
-        } catch (error) {
-          console.warn(`⚠️ Failed to fetch config ${config.id}, using default model only:`, error);
-          if (config.default_model) {
-            explicitModels.add(config.default_model);
-          }
+        if (fullConfig.default_model) {
+          explicitModels.add(fullConfig.default_model);
+        }
+        
+        if (fullConfig.available_models && Array.isArray(fullConfig.available_models)) {
+          fullConfig.available_models.forEach(model => {
+            explicitModels.add(model);
+          });
         }
       }
       

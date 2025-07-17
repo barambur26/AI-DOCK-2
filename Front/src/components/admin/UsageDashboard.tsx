@@ -13,7 +13,7 @@ import TopUsersTable from './TopUsersTable';
 import RecentActivity from './RecentActivity';
 import MostUsedModels from './MostUsedModels';
 import UnifiedFiltersButton from './UnifiedFiltersButton';
-import { DateRangePicker, DateRange, LogoLoader } from '../ui';
+import { DateRangePicker, DateRange, LogoLoader, SkeletonLoader } from '../ui';
 
 /**
  * Usage Dashboard Component
@@ -872,20 +872,11 @@ const UsageDashboard: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {renderHeader()}
         
-        {/* Centered Logo Loading Animation */}
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <LogoLoader 
-              size="xl" 
-              showText={true} 
-              text="Loading usage analytics..." 
-              className="mb-8"
-            />
-            <div className="text-blue-200 text-sm animate-pulse">
-              Gathering your usage data and metrics
-            </div>
-          </div>
-        </div>
+        {/* Skeleton Loading Animation */}
+        <SkeletonLoader 
+          variant="dashboard" 
+          className="mb-8"
+        />
       </div>
     </div>
   );

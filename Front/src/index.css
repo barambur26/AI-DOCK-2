@@ -222,3 +222,39 @@
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;     /* Firefox */
 }
+
+/* Logo Loader Animation Styles */
+@layer components {
+  .logo-loader {
+    animation: logoSpin 2s linear infinite;
+  }
+  
+  .logo-image {
+    transition: all 0.3s ease;
+  }
+  
+  .logo-glow-ring {
+    animation: logoGlow 2s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes logoSpin {
+  from {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.05);
+  }
+  to {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+@keyframes logoGlow {
+  from {
+    box-shadow: 0 0 5px rgba(59, 130, 246, 0.3);
+  }
+  to {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.6), 0 0 30px rgba(59, 130, 246, 0.4);
+  }
+}

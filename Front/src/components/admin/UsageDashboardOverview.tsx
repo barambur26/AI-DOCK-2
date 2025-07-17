@@ -5,7 +5,7 @@
 import React from 'react';
 import { UsageSummary, HealthStatus } from '../../types/usage';
 import { formatCurrency, formatNumber, formatResponseTime, formatPercentage } from '../../utils/formatUtils';
-import { LogoLoader } from '../ui';
+import { LogoLoader, SkeletonLoader } from '../ui';
 
 /**
  * Usage Dashboard Overview Component
@@ -71,13 +71,8 @@ const UsageDashboardOverview: React.FC<UsageDashboardOverviewProps> = ({
 
   if (isLoading && !summary) {
     return (
-      <div className="flex items-center justify-center py-16 mb-8">
-        <LogoLoader 
-          size="lg" 
-          showText={true} 
-          text="Loading overview metrics..." 
-          className=""
-        />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <SkeletonLoader variant="card" count={4} />
       </div>
     );
   }
