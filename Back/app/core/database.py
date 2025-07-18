@@ -64,19 +64,15 @@ def create_async_engine_instance():
             pool_timeout=60,                # Longer timeout (60s instead of 30s)
             pool_reset_on_return='commit',  # Reset connections on return
             
-            # 🔥 EMERGENCY FIX: Production-optimized connection args
+            # 🔥 EMERGENCY FIX: AsyncPG-compatible connection args only
             connect_args=(
                 {
                     "check_same_thread": False,
                     "timeout": 30,
                     "isolation_level": None
                 } 
-                if settings.database_url.startswith("sqlite") 
-                else {
-                    # PostgreSQL/Railway optimizations (FIXED: removed invalid args)
-                    "sslmode": "prefer",  # Valid PostgreSQL connection arg
-                    "application_name": "aidock_async"
-                } if is_production else {}
+                if settings.database_url.startswith("sqlite")
+                else {}  # ✅ FIXED: No connection args for asyncpg (sslmode/application_name are psycopg2-only)
             )
         )
         
