@@ -73,13 +73,9 @@ def create_async_engine_instance():
                 } 
                 if settings.database_url.startswith("sqlite") 
                 else {
-                    # PostgreSQL/Railway specific optimizations
-                    "connect_timeout": 60,
-                    "command_timeout": 60,
-                    "server_settings": {
-                        "jit": "off",  # Disable JIT for faster connection startup
-                        "application_name": "aidock_async"
-                    }
+                    # PostgreSQL/Railway optimizations (FIXED: removed invalid args)
+                    "sslmode": "prefer",  # Valid PostgreSQL connection arg
+                    "application_name": "aidock_async"
                 } if is_production else {}
             )
         )
@@ -131,13 +127,9 @@ def create_sync_engine_instance():
                 } 
                 if settings.database_url.startswith("sqlite") 
                 else {
-                    # PostgreSQL/Railway specific optimizations
-                    "connect_timeout": 60,
-                    "command_timeout": 60,
-                    "server_settings": {
-                        "jit": "off",  # Disable JIT for faster connection startup
-                        "application_name": "aidock_backend"
-                    }
+                    # PostgreSQL/Railway optimizations (FIXED: removed invalid args)
+                    "sslmode": "prefer",  # Valid PostgreSQL connection arg
+                    "application_name": "aidock_backend"
                 } if is_production else {}
             )
         )

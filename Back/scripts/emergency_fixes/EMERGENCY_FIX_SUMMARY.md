@@ -1,9 +1,38 @@
-# 🔥 EMERGENCY DATABASE CONNECTION POOL FIX
+# 🔥 EMERGENCY DATABASE CONNECTION POOL FIX - UPDATED
 
 **Issue ID**: AI-DOCK-4, AI-DOCK-3, AI-DOCK-6, AI-DOCK-7  
 **Date**: July 17, 2025  
 **Severity**: HIGH PRIORITY - Production Impact  
-**Status**: FIXED ✅  
+**Status**: FIXED ✅ (Connection args corrected)  
+
+## 🚑 URGENT UPDATE: Fixed Connection Arguments
+
+**Issue**: Initial fix introduced invalid PostgreSQL connection arguments causing deployment failures:
+- `connect() got an unexpected keyword argument 'connect_timeout'`
+- `invalid connection option "command_timeout"`
+
+**Resolution**: Removed invalid connection arguments while preserving all beneficial changes:
+- ✅ Kept pool expansion (30 → 100 connections)
+- ✅ Kept timeout improvements (30s → 60s)
+- ✅ Kept monitoring and session management
+- ✅ Fixed connection args to use only valid PostgreSQL options
+
+## 🚑 CORRECTED CONNECTION ARGUMENTS
+
+```python
+# INVALID (caused deployment failure)
+connect_args = {
+    "connect_timeout": 60,      # ❌ Invalid for asyncpg/psycopg2
+    "command_timeout": 60,      # ❌ Invalid for psycopg2 DSN
+    "server_settings": {...}    # ❌ Invalid for psycopg2 DSN
+}
+
+# FIXED (valid PostgreSQL connection args)
+connect_args = {
+    "sslmode": "prefer",         # ✅ Valid PostgreSQL option
+    "application_name": "aidock" # ✅ Valid PostgreSQL option
+}
+```
 
 ## 🚨 Problem Summary
 
