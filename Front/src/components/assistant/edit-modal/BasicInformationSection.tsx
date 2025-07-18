@@ -1,6 +1,6 @@
-// 📝 Basic Information Form Section
-// Component for assistant name and description fields
-// Demonstrates form section pattern with atomic field components
+// 📝 Redesigned Basic Information Form Section
+// Dark theme form section with improved layout and styling
+// Matches the app's glassmorphism aesthetic
 
 import React from 'react';
 import { Wand2 } from 'lucide-react';
@@ -21,12 +21,12 @@ interface BasicInformationSectionProps {
 /**
  * BasicInformationSection Component
  * 
- * 🎓 LEARNING: Form Section Pattern
- * ================================
- * - Groups related form fields together
- * - Encapsulates section-specific logic
- * - Uses atomic FormField components
- * - Self-contained validation and styling
+ * 🎨 REDESIGNED: Dark Theme Form Section
+ * ====================================
+ * - Dark glassmorphism styling
+ * - Better grid layout for larger modal
+ * - Improved spacing and typography
+ * - Consistent with app's aesthetic
  */
 export const BasicInformationSection: React.FC<BasicInformationSectionProps> = ({
   formData,
@@ -60,41 +60,55 @@ export const BasicInformationSection: React.FC<BasicInformationSectionProps> = (
   };
 
   return (
-    <div className="space-y-4">
+    <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-5">
       {/* Section Header */}
-      <h4 className="text-md font-medium text-gray-900 flex items-center">
-        <Wand2 className="h-4 w-4 mr-2 text-green-600" />
-        Basic Information
-      </h4>
+      <div className="flex items-center space-x-2 mb-5">
+        <Wand2 className="h-5 w-5 text-blue-400" />
+        <h3 className="text-lg font-medium text-white/90">Basic Information</h3>
+      </div>
       
-      {/* Form Fields Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Form Fields Grid - Updated for better layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         
-        {/* Assistant Name Field */}
-        <FormField
-          name="name"
-          label="Assistant Name"
-          type="text"
-          value={formData.name || ''}
-          placeholder='e.g., "Research Assistant"'
-          required={true}
-          maxLength={ASSISTANT_VALIDATION.NAME.MAX_LENGTH}
-          currentLength={nameLength}
-          hasError={hasFieldError('name')}
-          hasChanged={hasFieldChanged('name')}
-          validationErrors={getFieldErrors('name')}
-          onChange={(value) => onInputChange('name', value)}
-          onBlur={() => onFieldBlur('name')}
-        />
+        {/* Assistant Name Field - Takes 2 columns on large screens */}
+        <div className="lg:col-span-2">
+          <FormField
+            name="name"
+            label="Assistant Name"
+            type="text"
+            value={formData.name || ''}
+            placeholder='e.g., "Research Assistant"'
+            required={true}
+            maxLength={ASSISTANT_VALIDATION.NAME.MAX_LENGTH}
+            currentLength={nameLength}
+            hasError={hasFieldError('name')}
+            hasChanged={hasFieldChanged('name')}
+            validationErrors={getFieldErrors('name')}
+            onChange={(value) => onInputChange('name', value)}
+            onBlur={() => onFieldBlur('name')}
+          />
+        </div>
         
-        {/* Description Field */}
-        <div className="md:col-span-1">
+        {/* Color Picker Field - Takes 1 column */}
+        <div className="lg:col-span-1">
+          <ColorPickerField
+            value={formData.color || ''}
+            hasError={hasFieldError('color')}
+            hasChanged={hasFieldChanged('color')}
+            validationErrors={getFieldErrors('color')}
+            onChange={(value) => onInputChange('color', value)}
+            onBlur={() => onFieldBlur('color')}
+          />
+        </div>
+        
+        {/* Description Field - Takes all 3 columns */}
+        <div className="lg:col-span-3">
           <FormField
             name="description"
             label="Description"
             type="text"
             value={formData.description || ''}
-            placeholder="Brief description of your assistant"
+            placeholder="Brief description of your assistant's purpose"
             required={false}
             maxLength={ASSISTANT_VALIDATION.DESCRIPTION.MAX_LENGTH}
             currentLength={descriptionLength}
@@ -105,19 +119,26 @@ export const BasicInformationSection: React.FC<BasicInformationSectionProps> = (
             onBlur={() => onFieldBlur('description')}
           />
         </div>
-        
-        {/* Color Picker Field */}
-        <div className="md:col-span-1">
-          <ColorPickerField
-            value={formData.color || ''}
-            hasError={hasFieldError('color')}
-            hasChanged={hasFieldChanged('color')}
-            validationErrors={getFieldErrors('color')}
-            onChange={(value) => onInputChange('color', value)}
-            onBlur={() => onFieldBlur('color')}
-          />
-        </div>
       </div>
     </div>
   );
 };
+
+/**
+ * 🎨 Redesigned Features:
+ * ======================
+ * 
+ * ✨ **Dark Theme**: Glassmorphism background matching app style
+ * 📏 **Better Layout**: 3-column grid for optimal space usage
+ * 🎯 **Improved Spacing**: Better padding and margins
+ * 🌟 **Visual Hierarchy**: Clear section header with icon
+ * 📱 **Responsive**: Adapts to different screen sizes
+ * ♿ **Accessibility**: Proper contrast and focus states
+ * 🔄 **Consistent**: Matches the overall modal design
+ * 
+ * **Layout Improvements**:
+ * - Name field takes 2 columns (more space for longer names)
+ * - Color picker takes 1 column (perfect for dropdown)
+ * - Description spans full width (more space for text)
+ * - Better visual grouping with background panel
+ */
