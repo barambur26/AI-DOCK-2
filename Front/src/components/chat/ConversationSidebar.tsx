@@ -68,6 +68,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   const [loadingFolders, setLoadingFolders] = useState(false);
   const [showFolderDropdown, setShowFolderDropdown] = useState<number | null>(null);
   const [assigningToFolder, setAssigningToFolder] = useState<number | null>(null);
+  const [dropdownPosition, setDropdownPosition] = useState<{top: number, left: number} | null>(null);
   
   // Fix for dropdown timing issue - delay click-outside handler setup
   useEffect(() => {
@@ -370,18 +371,26 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     if (showFolderDropdown !== conversation.id) return null;
 
     return (
-      <div className="fixed w-56 bg-white/10 backdrop-blur-lg rounded-xl shadow-2xl border border-white/20"
-           onClick={(e) => e.stopPropagation()}
-           style={{ 
-             zIndex: 9999,
-             top: '50%',
-             left: '50%',
-             transform: 'translate(-50%, -50%)'
-           }}> {/* Center it on screen for now to test clicks */}
-        <div className="py-2">
-          <div className="px-3 py-2 text-xs font-semibold text-blue-300 uppercase tracking-wide border-b border-white/10">
-            Move to Folder
-          </div>
+      <>
+        {/* Backdrop to catch clicks */}
+        <div 
+          className="fixed inset-0 z-[9998]" 
+          onClick={() => setShowFolderDropdown(null)}
+        />
+        {/* Dropdown menu */}
+        <div className="fixed w-56 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-200 z-[9999]"
+             onClick={(e) => e.stopPropagation()}
+             style={{
+               top: dropdownPosition?.top || '20%',
+               left: dropdownPosition?.left || '1rem',
+               maxHeight: '70vh',
+               overflowY: 'auto',
+               transform: 'translateY(-50%)' // Center vertically relative to click point
+             }}>
+          <div className="py-2">
+            <div className="px-3 py-2 text-xs font-semibold text-gray-600 uppercase tracking-wide border-b border-gray-200">
+              Move to Folder
+            </div>
           
           {/* No folder option */}
           <button
@@ -391,8 +400,8 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
               console.log('Clicked No Folder!');
               handleAssignToFolder(conversation.id, null);
             }}
-            className={`flex items-center w-full px-3 py-2 text-sm hover:bg-white/10 transition-colors cursor-pointer ${
-              !conversation.project ? 'text-blue-200 font-medium' : 'text-blue-100'
+            className={`flex items-center w-full px-3 py-2 text-sm hover:bg-gray-100 transition-colors cursor-pointer ${
+              !conversation.project ? 'text-gray-900 font-medium' : 'text-gray-700'
             }`}
             disabled={assigningToFolder === conversation.id}
           >
@@ -401,7 +410,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
             {!conversation.project && <span className="ml-auto text-xs">✓</span>}
           </button>
           
-          <div className="border-t border-white/10 my-1"></div>
+          <div className="border-t border-gray-200 my-1"></div>
           
           {/* Folder options */}
           {folders.map((folder) => (
@@ -413,8 +422,8 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                 console.log(`Clicked folder: ${folder.name}`);
                 handleAssignToFolder(conversation.id, folder.id);
               }}
-              className={`flex items-center w-full px-3 py-2 text-sm hover:bg-white/10 transition-colors cursor-pointer ${
-                conversation.project?.id === folder.id ? 'text-blue-200 font-medium' : 'text-blue-100'
+              className={`flex items-center w-full px-3 py-2 text-sm hover:bg-gray-100 transition-colors cursor-pointer ${
+                conversation.project?.id === folder.id ? 'text-gray-900 font-medium' : 'text-gray-700'
               }`}
               disabled={assigningToFolder === conversation.id}
             >
@@ -425,25 +434,26 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
           ))}
           
           {folders.length === 0 && (
-            <div className="px-3 py-4 text-center text-xs text-blue-300">
+            <div className="px-3 py-4 text-center text-xs text-gray-500">
               No folders available
             </div>
           )}
           
           {/* Close button for testing */}
-          <div className="border-t border-white/10 mt-2">
+          <div className="border-t border-gray-200 mt-2">
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 setShowFolderDropdown(null);
               }}
-              className="w-full px-3 py-2 text-xs text-blue-300 hover:bg-white/10 transition-colors"
+              className="w-full px-3 py-2 text-xs text-gray-500 hover:bg-gray-100 transition-colors"
             >
               Close
             </button>
           </div>
+          </div>
         </div>
-      </div>
+      </>
     );
   };
 
@@ -537,6 +547,36 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
             <button
               onClick={(e) => {
                 e.stopPropagation();
+                
+                // Calculate position near the clicked button
+                const rect = e.currentTarget.getBoundingClientRect();
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+                const dropdownWidth = 224; // 56 * 4 (w-56 in Tailwind)
+                const dropdownHeight = 300; // Approximate max height
+                
+                // Position to the left of the button, but keep on screen
+                let left = rect.left - dropdownWidth - 8; // 8px gap
+                let top = rect.top + (rect.height / 2); // Center on button
+                
+                // Keep dropdown on screen horizontally
+                if (left < 16) {
+                  left = rect.right + 8; // Show to the right instead
+                }
+                if (left + dropdownWidth > viewportWidth - 16) {
+                  left = viewportWidth - dropdownWidth - 16;
+                }
+                
+                // Keep dropdown on screen vertically
+                if (top - dropdownHeight/2 < 16) {
+                  top = 16 + dropdownHeight/2;
+                }
+                if (top + dropdownHeight/2 > viewportHeight - 16) {
+                  top = viewportHeight - dropdownHeight/2 - 16;
+                }
+                
+                setDropdownPosition({ top, left });
+                
                 if (showFolderDropdown === conversation.id) {
                   setShowFolderDropdown(null);
                 } else {
@@ -555,8 +595,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                 <FolderPlus className="w-3 h-3" />
               )}
             </button>
-            
-            {renderFolderDropdown(conversation)}
           </div>
           
           <button
@@ -779,6 +817,15 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
             </button>
           )}
         </div>
+      )}
+      
+      {/* Render folder dropdown outside scroll container */}
+      {showFolderDropdown && (
+        <>
+          {conversations.concat(searchResults).map(conv => 
+            conv.id === showFolderDropdown ? renderFolderDropdown(conv) : null
+          )}
+        </>
       )}
 
     </>

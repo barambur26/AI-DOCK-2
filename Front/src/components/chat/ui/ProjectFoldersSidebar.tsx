@@ -284,14 +284,14 @@ export const ProjectFoldersSidebar: React.FC<ProjectFoldersSidebarProps> = ({
 
             {/* Dropdown menu */}
             {dropdownOpen === folder.id && (
-              <div className="absolute right-0 top-full mt-1 w-48 bg-white/10 backdrop-blur-lg rounded-xl shadow-2xl border border-white/20 z-10">
+              <div className="absolute right-0 top-full mt-1 w-48 bg-white/90 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-200 z-50">
                 <div className="py-2">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleNewConversationInFolder(folder.id);
                     }}
-                    className="flex items-center w-full px-3 py-2 text-sm text-blue-100 hover:text-white hover:bg-white/10 transition-colors"
+                    className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 transition-colors"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     New Chat in Folder
@@ -302,7 +302,7 @@ export const ProjectFoldersSidebar: React.FC<ProjectFoldersSidebarProps> = ({
                       e.stopPropagation();
                       handleEditFolder(folder);
                     }}
-                    className="flex items-center w-full px-3 py-2 text-sm text-blue-100 hover:text-white hover:bg-white/10 transition-colors"
+                    className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 transition-colors"
                   >
                     <Settings className="w-4 h-4 mr-2" />
                     Edit Folder
@@ -313,9 +313,9 @@ export const ProjectFoldersSidebar: React.FC<ProjectFoldersSidebarProps> = ({
                       e.stopPropagation();
                       handleToggleFavorite(folder.id);
                     }}
-                    className="flex items-center w-full px-3 py-2 text-sm text-blue-100 hover:text-white hover:bg-white/10 transition-colors"
+                    className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 transition-colors"
                   >
-                    <Star className={`w-4 h-4 mr-2 ${folder.is_favorited ? 'fill-current text-yellow-400' : ''}`} />
+                    <Star className={`w-4 h-4 mr-2 ${folder.is_favorited ? 'fill-current text-yellow-500' : ''}`} />
                     {folder.is_favorited ? 'Remove from Favorites' : 'Add to Favorites'}
                   </button>
                   
@@ -324,20 +324,20 @@ export const ProjectFoldersSidebar: React.FC<ProjectFoldersSidebarProps> = ({
                       e.stopPropagation();
                       handleArchiveFolder(folder.id);
                     }}
-                    className="flex items-center w-full px-3 py-2 text-sm text-blue-100 hover:text-white hover:bg-white/10 transition-colors"
+                    className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 transition-colors"
                   >
                     <Archive className="w-4 h-4 mr-2" />
                     {folder.is_archived ? 'Unarchive' : 'Archive'}
                   </button>
                   
-                  <div className="border-t border-white/20 my-1"></div>
+                  <div className="border-t border-gray-200 my-1"></div>
                   
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDeleteFolder(folder.id);
                     }}
-                    className="flex items-center w-full px-3 py-2 text-sm text-red-300 hover:text-red-200 hover:bg-red-500/20 transition-colors"
+                    className="flex items-center w-full px-3 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors"
                   >
                     <Trash2 className="w-4 h-4 mr-2" />
                     Delete Folder
