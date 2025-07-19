@@ -8,8 +8,8 @@ import { MessageList } from '../MessageList';
 import { MessageInput } from '../MessageInput';
 import { UnifiedSidebar } from './UnifiedSidebar';
 
-import { AssistantSelectorCard } from '../AssistantSelectorCard';
 import { AssistantSuggestions } from '../AssistantSuggestions';
+import { AssistantEditPopup } from '../../assistant/AssistantEditPopup';
 import { ChatHeader } from './ChatHeader';
 import { ErrorDisplay } from './ErrorDisplay';
 import { useChatState } from '../../../hooks/chat/useChatState';
@@ -25,9 +25,16 @@ import { DEFAULT_AUTO_SAVE_CONFIG, shouldAutoSave } from '../../../types/convers
 import type { FileAttachment } from '../../../types/file';
 import { assistantService } from '../../../services/assistantService';
 import { ChatMessage } from '../../../types/chat';
+import { useSearchParams } from 'react-router-dom';
 
 export const ChatContainer: React.FC = () => {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // 🎯 Assistant Edit Popup State
+  const [showAssistantEditPopup, setShowAssistantEditPopup] = useState(false);
+  const [editingAssistantId, setEditingAssistantId] = useState<number | null>(null);
+  const [sidebarRefreshTrigger, setSidebarRefreshTrigger] = useState(0);
   
   // 📱 Responsive layout state
   const { isMobile } = useResponsiveLayout();
@@ -195,18 +202,7 @@ export const ChatContainer: React.FC = () => {
     handleAssistantSelect(assistantId);
   }, [handleAssistantSelect, isStreaming]);
 
-  const handleChangeAssistantClickWithStreamingCheck = useCallback(() => {
-    // 🚫 Prevent opening assistant manager while streaming
-    if (isStreaming) {
-      console.log('🚫 Cannot switch assistants while streaming is active');
-      return;
-    }
-    
-    // Open unified sidebar in assistants mode
-    setSidebarMode('assistants');
-    setShowUnifiedSidebar(true);
-    console.log('🎯 Opening unified sidebar in assistants mode from selector card');
-  }, [setSidebarMode, setShowUnifiedSidebar, isStreaming]);
+
 
   // 🔧 FIXED: Folder navigation handler (organizational only)
   const handleFolderNavigate = useCallback((folderId: number | null, folderData: any) => {
@@ -250,6 +246,64 @@ export const ChatContainer: React.FC = () => {
       }
     }
   }, [accumulatedContent, isStreaming, messages.length, updateLastMessage]);
+
+  // 🎯 Handle URL parameter for assistant editing popup
+  // DISABLED: Now triggered by edit button instead of URL
+  // useEffect(() => {
+  //   const assistantParam = searchParams.get('assistant');
+  //   if (assistantParam) {
+  //     const assistantId = parseInt(assistantParam, 10);
+  //     if (!isNaN(assistantId)) {
+  //       setEditingAssistantId(assistantId);
+  //       setShowAssistantEditPopup(true);
+  //       console.log('🎯 Opening assistant edit popup for ID:', assistantId);
+  //     }
+  //   } else {
+  //     setShowAssistantEditPopup(false);
+  //     setEditingAssistantId(null);
+  //   }
+  // }, [searchParams]);
+
+  // 🎯 Handle popup close
+  const handleCloseAssistantEditPopup = useCallback(() => {
+    setShowAssistantEditPopup(false);
+    setEditingAssistantId(null);
+    
+    // Remove assistant parameter from URL
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.delete('assistant');
+    setSearchParams(newSearchParams, { replace: true });
+    
+    console.log('🎯 Closed assistant edit popup');
+  }, [searchParams, setSearchParams]);
+
+  // 🎯 Handle opening edit popup (called from edit button)
+  const handleOpenAssistantEditPopup = useCallback((assistantId: number) => {
+    if (isStreaming) {
+      console.log('🚫 Cannot edit assistant while streaming is active');
+      return;
+    }
+    
+    setEditingAssistantId(assistantId);
+    setShowAssistantEditPopup(true);
+    console.log('🎯 Opening assistant edit popup for ID:', assistantId);
+  }, [isStreaming]);
+
+  // 🎯 Handle popup save
+  const handleAssistantEditSaved = useCallback(() => {
+    // Refresh assistants list
+    loadAvailableAssistants();
+    
+    // Trigger a refresh trigger to notify the sidebar to refresh
+    // This will cause the sidebar to reload its assistant data
+    if (editingAssistantId) {
+      // Force a refresh by updating the sidebar refresh trigger
+      setSidebarRefreshTrigger(prev => prev + 1);
+      console.log('🔄 Triggering sidebar refresh for assistant update');
+    }
+    
+    console.log('✅ Assistant saved successfully');
+  }, [loadAvailableAssistants, editingAssistantId]);
 
   // 🌊 Note: Post-streaming autosave is now handled directly in useChatState completion callbacks
   
@@ -389,7 +443,10 @@ export const ChatContainer: React.FC = () => {
         is_active: updatedAssistant.is_active,
         conversation_count: updatedAssistant.conversation_count,
         created_at: updatedAssistant.created_at,
-        is_new: updatedAssistant.is_new
+        is_new: updatedAssistant.is_new,
+        color: updatedAssistant.color,
+        file_count: updatedAssistant.file_count,
+        has_files: updatedAssistant.has_files
       };
       
       // Generate a new introduction message for the updated assistant
@@ -521,7 +578,7 @@ export const ChatContainer: React.FC = () => {
         onSelectConversation={handleLoadSelectedConversation}
         onCreateNewConversation={handleNewConversationClick}
         currentConversationId={currentConversationId || undefined}
-        refreshTrigger={conversationRefreshTrigger}
+        refreshTrigger={conversationRefreshTrigger + sidebarRefreshTrigger}
         onSidebarReady={(updateFn, addFn) => {
           setSidebarFunctions(updateFn, addFn);
         }}
@@ -541,6 +598,7 @@ export const ChatContainer: React.FC = () => {
         currentAssistantId={selectedAssistantId || undefined}
         onAssistantChange={handleAssistantManagerChange}
         onAssistantUpdated={handleAssistantUpdated}
+        onEditAssistant={handleOpenAssistantEditPopup}
       />
 
 
@@ -619,13 +677,6 @@ export const ChatContainer: React.FC = () => {
               className="flex-1"
             />
             
-            {/* 🤖 Assistant selector */}
-            <AssistantSelectorCard
-              selectedAssistant={selectedAssistant}
-              onChangeClick={handleChangeAssistantClickWithStreamingCheck}
-              isStreaming={isStreaming}
-            />
-            
             {/* ✍️ Message input */}
             <MessageInput
               onSendMessage={handleSendMessage}
@@ -672,6 +723,14 @@ export const ChatContainer: React.FC = () => {
           </div>
         )}
       </div>
+      
+      {/* 🎯 Assistant Edit Popup */}
+      <AssistantEditPopup
+        isOpen={showAssistantEditPopup}
+        assistantId={editingAssistantId}
+        onClose={handleCloseAssistantEditPopup}
+        onSaved={handleAssistantEditSaved}
+      />
     </div>
   );
 };

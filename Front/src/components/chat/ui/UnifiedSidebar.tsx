@@ -39,6 +39,7 @@ interface UnifiedSidebarProps {
   currentAssistantId?: number;
   onAssistantChange?: () => void;
   onAssistantUpdated?: (assistantId: number) => void;
+  onEditAssistant?: (assistantId: number) => void;
 }
 
 export const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
@@ -62,7 +63,8 @@ export const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
   onCreateNewAssistant,
   currentAssistantId,
   onAssistantChange,
-  onAssistantUpdated
+  onAssistantUpdated,
+  onEditAssistant
 }) => {
   if (!isOpen) return null;
 
@@ -180,6 +182,7 @@ export const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
               embedded={true}
               onAssistantChange={onAssistantChange}
               onAssistantUpdated={onAssistantUpdated}
+              onEditAssistant={onEditAssistant}
             />
           )}
         </div>

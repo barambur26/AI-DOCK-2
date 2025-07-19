@@ -14,16 +14,72 @@ interface ColorPickerFieldProps {
   onBlur: () => void;
 }
 
-// Comprehensive color palette organized by theme
+// Comprehensive color palette with unique names for each color
 const COLOR_PALETTE = {
-  'Blues': ['#3B82F6', '#1E40AF', '#1D4ED8', '#2563EB', '#60A5FA', '#93C5FD'],
-  'Greens': ['#10B981', '#059669', '#047857', '#065F46', '#34D399', '#6EE7B7'],
-  'Purples': ['#8B5CF6', '#7C3AED', '#6D28D9', '#5B21B6', '#A78BFA', '#C4B5FD'],
-  'Reds': ['#EF4444', '#DC2626', '#B91C1C', '#991B1B', '#F87171', '#FCA5A5'],
-  'Oranges': ['#F97316', '#EA580C', '#C2410C', '#9A3412', '#FB923C', '#FDBA74'],
-  'Yellows': ['#EAB308', '#CA8A04', '#A16207', '#854D0E', '#FACC15', '#FDE047'],
-  'Grays': ['#6B7280', '#4B5563', '#374151', '#1F2937', '#9CA3AF', '#D1D5DB'],
-  'Teals': ['#14B8A6', '#0D9488', '#0F766E', '#115E59', '#5EEAD4', '#99F6E4']
+  'Blues': [
+    { color: '#3B82F6', name: 'Ocean Blue' },
+    { color: '#1E40AF', name: 'Deep Blue' },
+    { color: '#1D4ED8', name: 'Royal Blue' },
+    { color: '#2563EB', name: 'Classic Blue' },
+    { color: '#60A5FA', name: 'Sky Blue' },
+    { color: '#93C5FD', name: 'Light Blue' }
+  ],
+  'Greens': [
+    { color: '#10B981', name: 'Emerald' },
+    { color: '#059669', name: 'Forest Green' },
+    { color: '#047857', name: 'Pine Green' },
+    { color: '#065F46', name: 'Dark Green' },
+    { color: '#34D399', name: 'Mint Green' },
+    { color: '#6EE7B7', name: 'Light Green' }
+  ],
+  'Purples': [
+    { color: '#8B5CF6', name: 'Violet' },
+    { color: '#7C3AED', name: 'Purple' },
+    { color: '#6D28D9', name: 'Deep Purple' },
+    { color: '#5B21B6', name: 'Royal Purple' },
+    { color: '#A78BFA', name: 'Lavender' },
+    { color: '#C4B5FD', name: 'Light Purple' }
+  ],
+  'Reds': [
+    { color: '#EF4444', name: 'Red' },
+    { color: '#DC2626', name: 'Crimson' },
+    { color: '#B91C1C', name: 'Dark Red' },
+    { color: '#991B1B', name: 'Burgundy' },
+    { color: '#F87171', name: 'Coral' },
+    { color: '#FCA5A5', name: 'Rose' }
+  ],
+  'Oranges': [
+    { color: '#F97316', name: 'Orange' },
+    { color: '#EA580C', name: 'Dark Orange' },
+    { color: '#C2410C', name: 'Burnt Orange' },
+    { color: '#9A3412', name: 'Copper' },
+    { color: '#FB923C', name: 'Peach' },
+    { color: '#FDBA74', name: 'Light Orange' }
+  ],
+  'Yellows': [
+    { color: '#EAB308', name: 'Golden' },
+    { color: '#CA8A04', name: 'Amber' },
+    { color: '#A16207', name: 'Dark Gold' },
+    { color: '#854D0E', name: 'Bronze' },
+    { color: '#FACC15', name: 'Yellow' },
+    { color: '#FDE047', name: 'Light Yellow' }
+  ],
+  'Grays': [
+    { color: '#6B7280', name: 'Gray' },
+    { color: '#4B5563', name: 'Dark Gray' },
+    { color: '#374151', name: 'Charcoal' },
+    { color: '#1F2937', name: 'Slate' },
+    { color: '#9CA3AF', name: 'Light Gray' },
+    { color: '#D1D5DB', name: 'Silver' }
+  ],
+  'Teals': [
+    { color: '#14B8A6', name: 'Teal' },
+    { color: '#0D9488', name: 'Dark Teal' },
+    { color: '#0F766E', name: 'Deep Teal' },
+    { color: '#115E59', name: 'Forest Teal' },
+    { color: '#5EEAD4', name: 'Aqua' },
+    { color: '#99F6E4', name: 'Light Teal' }
+  ]
 };
 
 /**
@@ -70,8 +126,8 @@ export const ColorPickerField: React.FC<ColorPickerFieldProps> = ({
     setIsOpen(false);
   };
 
-  const selectedColorName = Object.entries(COLOR_PALETTE)
-    .flatMap(([theme, colors]) => colors.map(color => ({ color, theme })))
+  const selectedColorInfo = Object.entries(COLOR_PALETTE)
+    .flatMap(([theme, colors]) => colors.map(colorObj => ({ ...colorObj, theme })))
     .find(item => item.color === value);
 
   return (
@@ -90,7 +146,7 @@ export const ColorPickerField: React.FC<ColorPickerFieldProps> = ({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={`
-          w-full flex items-center justify-between px-4 py-3 
+          w-full flex items-center justify-between px-5 py-4 
           bg-white/10 backdrop-blur-md border border-white/20 rounded-xl
           hover:bg-white/15 transition-all duration-200
           focus:outline-none focus:ring-2 focus:ring-blue-500/50
@@ -103,7 +159,7 @@ export const ColorPickerField: React.FC<ColorPickerFieldProps> = ({
             style={{ backgroundColor: value || '#6B7280' }}
           />
           <span className="text-white/90 font-medium">
-            {selectedColorName ? selectedColorName.theme : 'Select Color'}
+            {selectedColorInfo ? selectedColorInfo.name : 'Select Color'}
           </span>
         </div>
         <ChevronDown 
@@ -115,7 +171,7 @@ export const ColorPickerField: React.FC<ColorPickerFieldProps> = ({
 
       {/* Color Palette Dropdown */}
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-2 z-50 bg-gray-900/95 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl overflow-hidden">
+        <div className="absolute top-full left-0 right-0 mt-2 z-[9999] bg-gray-900/95 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl overflow-hidden">
           <div className="p-4 max-h-80 overflow-y-auto custom-scrollbar">
             {Object.entries(COLOR_PALETTE).map(([themeName, colors]) => (
               <div key={themeName} className="mb-4 last:mb-0">
@@ -123,23 +179,23 @@ export const ColorPickerField: React.FC<ColorPickerFieldProps> = ({
                   {themeName}
                 </h4>
                 <div className="grid grid-cols-6 gap-2">
-                  {colors.map((color) => (
+                  {colors.map((colorObj) => (
                     <button
-                      key={color}
+                      key={colorObj.color}
                       type="button"
-                      onClick={() => handleColorSelect(color)}
+                      onClick={() => handleColorSelect(colorObj.color)}
                       className={`
                         relative w-8 h-8 rounded-lg border-2 transition-all duration-200 
                         hover:scale-110 focus:outline-none focus:ring-2 focus:ring-white/30
-                        ${value === color 
+                        ${value === colorObj.color 
                           ? 'border-white shadow-lg scale-110' 
                           : 'border-white/20 hover:border-white/40'
                         }
                       `}
-                      style={{ backgroundColor: color }}
-                      title={`Select ${color}`}
+                      style={{ backgroundColor: colorObj.color }}
+                      title={`Select ${colorObj.name} (${colorObj.color})`}
                     >
-                      {value === color && (
+                      {value === colorObj.color && (
                         <Check className="w-3 h-3 text-white absolute inset-0 m-auto drop-shadow-lg" />
                       )}
                     </button>
@@ -189,13 +245,14 @@ export const ColorPickerField: React.FC<ColorPickerFieldProps> = ({
  * =====================
  * 
  * ✨ **Single Button Interface**: Clean, minimal design with one action
- * 🎨 **Organized Palette**: Colors grouped by themes for better UX
+ * 🎨 **Organized Palette**: Colors grouped by themes with unique names
  * 🌙 **Dark Theme**: Matches app's glassmorphism and dark aesthetic
  * 📱 **Responsive Design**: Works on all screen sizes
  * ♿ **Accessibility**: Proper focus states and keyboard navigation
  * 🔄 **Smooth Animations**: Subtle transitions for better feel
- * ✅ **Visual Feedback**: Selected color clearly indicated
+ * ✅ **Visual Feedback**: Selected color clearly indicated with unique names
  * 🎯 **Click Outside**: Dropdown closes when clicking elsewhere
+ * 🚀 **High Z-Index**: Dropdown appears above all modal content (z-9999)
  * 
  * **Removed Features** (as requested):
  * ❌ Hex input field

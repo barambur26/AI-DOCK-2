@@ -57,7 +57,7 @@ export const SystemPromptSection: React.FC<SystemPromptSectionProps> = ({
   };
 
   return (
-    <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-5">
+    <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-6">
       {/* Section Header */}
       <div className="flex items-center space-x-2 mb-5">
         <Settings className="h-5 w-5 text-green-400" />
@@ -77,7 +77,7 @@ export const SystemPromptSection: React.FC<SystemPromptSectionProps> = ({
         hasError={hasFieldError()}
         hasChanged={hasFieldChanged()}
         validationErrors={getFieldErrors()}
-        rows={8}
+        rows={10}
         onChange={(value) => onInputChange('system_prompt', value)}
         onBlur={() => onFieldBlur('system_prompt')}
       />

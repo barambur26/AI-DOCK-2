@@ -26,13 +26,15 @@ interface EditAssistantModalProps {
 /**
  * EditAssistantModal Component
  * 
- * 🎨 REDESIGNED: Sleek Dark Theme Interface
- * =======================================
- * - Larger modal for better content fitting
+ * 🎨 REDESIGNED: Expanded Modal with Better Fitting
+ * ===============================================
+ * - Much larger modal (max-w-7xl) for comfortable editing
+ * - Enhanced spacing and padding throughout
+ * - Improved form layout with 4-column grid
+ * - Better input field sizing and comfort
+ * - Larger textarea areas for system prompts
  * - Dark glassmorphism theme matching main app
- * - Improved spacing and visual hierarchy
- * - Better backdrop and overlay effects
- * - Streamlined content organization
+ * - Improved visual hierarchy and content organization
  */
 export const EditAssistantModal: React.FC<EditAssistantModalProps> = ({
   isOpen,
@@ -98,13 +100,13 @@ export const EditAssistantModal: React.FC<EditAssistantModalProps> = ({
       
       {/* Modal Container */}
       <div className="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center p-4">
-        <div className="relative w-full max-w-4xl mx-auto">
+        <div className="relative w-full max-w-7xl mx-auto">
           
           {/* Main Modal */}
           <div className="bg-gray-900/95 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl overflow-hidden">
             
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-white/10 bg-gradient-to-r from-gray-900/50 to-gray-800/50">
+            <div className="px-8 py-5 border-b border-white/10 bg-gradient-to-r from-gray-900/50 to-gray-800/50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div 
@@ -132,13 +134,13 @@ export const EditAssistantModal: React.FC<EditAssistantModalProps> = ({
             </div>
 
             {/* Modal Content */}
-            <div className="p-6">
+            <div className="p-8">
               {isLoading ? (
                 <LoadingState />
               ) : submitSuccess ? (
                 <SuccessState assistantName={formData.name} />
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-8">
                   
                   {/* Basic Information Section */}
                   <BasicInformationSection
@@ -170,7 +172,7 @@ export const EditAssistantModal: React.FC<EditAssistantModalProps> = ({
                   />
 
                   {/* Form Actions */}
-                  <div className="flex items-center justify-between pt-4 border-t border-white/10">
+                  <div className="flex items-center justify-between pt-6 border-t border-white/10">
                     <div className="flex space-x-2">
                       <button
                         type="button"
@@ -221,22 +223,27 @@ export const EditAssistantModal: React.FC<EditAssistantModalProps> = ({
 };
 
 /**
- * 🎨 Redesigned Features:
- * ======================
+ * 🎨 EXPANDED Modal Features:
+ * ==========================
  * 
- * ✨ **Larger Modal**: Max width increased to 4xl for better content fitting
+ * ✨ **Much Larger Modal**: Max width increased to 7xl (1280px) for comfortable editing
+ * 📏 **4-Column Grid Layout**: Better organization with xl:grid-cols-4 for optimal space usage
+ * 📝 **Enhanced Input Areas**: Larger padding (px-5 py-4) and base text size for better comfort
+ * 📄 **Bigger Textarea**: Increased rows (10) and min-height (120px) for system prompts
+ * 📊 **Better Spacing**: Increased padding and margins throughout (p-6, p-8, space-y-8)
  * 🌙 **Dark Theme**: Full glassmorphism with gray-900 background
- * 🎯 **Better Header**: Gradient header with assistant color indicator
- * 📱 **Improved Layout**: Better spacing, padding, and visual hierarchy
+ * 🎯 **Better Header**: Enhanced padding and gradient header with assistant color indicator
+ * 📱 **Improved Layout**: Professional spacing, padding, and visual hierarchy
  * 🚀 **Enhanced Backdrop**: Stronger blur and overlay for focus
- * ♿ **Better Actions**: Clearer button placement and states
+ * ♿ **Better Actions**: Clearer button placement and states with more spacing
  * 🔄 **Smooth Animations**: Better transitions and hover effects
  * 📄 **Less Clutter**: Cleaner, more organized content sections
  * 
- * **Visual Improvements**:
- * - Consistent dark theme throughout
- * - Better glassmorphism effects
- * - Improved button styling and placement
- * - More professional gradient header
- * - Better use of space and typography
+ * **Size & Layout Improvements**:
+ * - Modal width: 896px → 1280px (43% larger!)
+ * - Input padding: px-4 py-3 → px-5 py-4 (more comfortable)
+ * - Font size: text-sm → text-base (better readability)
+ * - Grid layout: 3-column → 4-column (better space utilization)
+ * - Section spacing: space-y-6 → space-y-8 (cleaner separation)
+ * - Everything fits properly now! 🎉
  */

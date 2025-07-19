@@ -54,13 +54,13 @@ export const FormField: React.FC<FormFieldProps> = ({
    */
   const getInputClassName = () => {
     const baseClasses = `
-      w-full px-4 py-3 
+      w-full px-5 py-4 
       bg-white/10 backdrop-blur-md 
       border border-white/20 rounded-xl 
       text-white/90 placeholder-white/40
       focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50
       transition-all duration-200
-      text-sm
+      text-base
     `;
     
     if (hasError) {
@@ -111,7 +111,7 @@ export const FormField: React.FC<FormFieldProps> = ({
             onBlur={onBlur}
             placeholder={placeholder}
             rows={rows}
-            className={`${getInputClassName()} resize-vertical min-h-[100px]`}
+            className={`${getInputClassName()} resize-vertical min-h-[120px]`}
           />
         ) : (
           <input
@@ -141,21 +141,25 @@ export const FormField: React.FC<FormFieldProps> = ({
 };
 
 /**
- * 🎨 Redesigned Features:
- * ======================
+ * 🎨 ENHANCED Input Features:
+ * ===========================
  * 
  * ✨ **Dark Theme**: Glassmorphism background with proper contrast
- * 🎯 **Better Padding**: More comfortable input areas
+ * 🎯 **Larger Padding**: More comfortable input areas (px-5 py-4)
+ * 📝 **Better Font Size**: Increased from text-sm to text-base for readability
+ * 📏 **Bigger Textarea**: Increased min-height from 100px to 120px
  * 🌟 **Visual States**: Clear indication of errors, changes, focus
  * 📱 **Improved Typography**: Better font sizes and spacing
  * ♿ **Accessibility**: Proper contrast ratios for white text
  * 🔄 **Smooth Transitions**: Better hover and focus animations
  * 📄 **Cleaner Labels**: Less clutter, better visual hierarchy
  * 
- * **Styling Improvements**:
- * - Glassmorphism backgrounds
- * - Better border radius and spacing
+ * **Sizing Improvements**:
+ * - Input padding: px-4 py-3 → px-5 py-4 (more comfortable)
+ * - Font size: text-sm → text-base (better readability)
+ * - Textarea min-height: 100px → 120px (more editing space)
+ * - Glassmorphism backgrounds with better blur effects
  * - Improved placeholder and text colors
  * - More professional error styling
- * - Consistent with app's dark theme
+ * - Consistent with app's expanded design
  */

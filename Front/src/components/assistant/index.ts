@@ -6,6 +6,7 @@ export { AssistantBadge } from './AssistantBadge';
 export { AssistantCard } from './AssistantCard';
 export { CreateAssistantModal } from './CreateAssistantModal';
 export { EditAssistantModal } from './EditAssistantModal';
+export { AssistantEditPopup } from './AssistantEditPopup';
 export { AssistantDiagnostic } from './AssistantDiagnostic';
 
 /**
@@ -19,6 +20,11 @@ export { AssistantDiagnostic } from './AssistantDiagnostic';
  * 
  * Usage:
  * ```tsx
- * import { AssistantDivider, AssistantBadge, AssistantDiagnostic } from '../components/assistant';
+ * import { AssistantDivider, AssistantBadge, AssistantDiagnostic, AssistantEditPopup } from '../components/assistant';
  * ```
+ * 
+ * **AssistantEditPopup**: Large popup modal for comfortable assistant editing
+ * - Replaces embedded sidebar editing with spacious modal interface
+ * - Triggered via URL parameter `?assistant=ID`
+ * - Features: Dark theme, 4-column layout, all elements fit properly
  */

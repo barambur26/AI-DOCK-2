@@ -60,18 +60,18 @@ export const BasicInformationSection: React.FC<BasicInformationSectionProps> = (
   };
 
   return (
-    <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-5">
+    <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-6">
       {/* Section Header */}
       <div className="flex items-center space-x-2 mb-5">
         <Wand2 className="h-5 w-5 text-blue-400" />
         <h3 className="text-lg font-medium text-white/90">Basic Information</h3>
       </div>
       
-      {/* Form Fields Grid - Updated for better layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      {/* Form Fields Grid - Improved layout for larger modal */}
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
         
-        {/* Assistant Name Field - Takes 2 columns on large screens */}
-        <div className="lg:col-span-2">
+        {/* Assistant Name Field - Takes 3 columns on extra large screens */}
+        <div className="xl:col-span-3">
           <FormField
             name="name"
             label="Assistant Name"
@@ -90,7 +90,7 @@ export const BasicInformationSection: React.FC<BasicInformationSectionProps> = (
         </div>
         
         {/* Color Picker Field - Takes 1 column */}
-        <div className="lg:col-span-1">
+        <div className="xl:col-span-1">
           <ColorPickerField
             value={formData.color || ''}
             hasError={hasFieldError('color')}
@@ -101,8 +101,8 @@ export const BasicInformationSection: React.FC<BasicInformationSectionProps> = (
           />
         </div>
         
-        {/* Description Field - Takes all 3 columns */}
-        <div className="lg:col-span-3">
+        {/* Description Field - Takes all 4 columns */}
+        <div className="xl:col-span-4">
           <FormField
             name="description"
             label="Description"
@@ -125,20 +125,21 @@ export const BasicInformationSection: React.FC<BasicInformationSectionProps> = (
 };
 
 /**
- * 🎨 Redesigned Features:
- * ======================
+ * 🎨 EXPANDED Layout Features:
+ * ===========================
  * 
  * ✨ **Dark Theme**: Glassmorphism background matching app style
- * 📏 **Better Layout**: 3-column grid for optimal space usage
- * 🎯 **Improved Spacing**: Better padding and margins
+ * 📏 **4-Column Grid**: Expanded from 3 to 4 columns for better space usage
+ * 🎯 **Enhanced Spacing**: Increased padding (p-6) and gaps (gap-6)
  * 🌟 **Visual Hierarchy**: Clear section header with icon
- * 📱 **Responsive**: Adapts to different screen sizes
+ * 📱 **Responsive**: Adapts to different screen sizes (xl: breakpoint)
  * ♿ **Accessibility**: Proper contrast and focus states
  * 🔄 **Consistent**: Matches the overall modal design
  * 
  * **Layout Improvements**:
- * - Name field takes 2 columns (more space for longer names)
+ * - Name field takes 3 columns (even more space for longer names)
  * - Color picker takes 1 column (perfect for dropdown)
- * - Description spans full width (more space for text)
+ * - Description spans full 4 columns (maximum space for text)
  * - Better visual grouping with background panel
+ * - Larger gaps and padding for comfortable editing
  */

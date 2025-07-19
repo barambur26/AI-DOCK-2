@@ -41,6 +41,7 @@ interface AssistantSidebarProps {
   embedded?: boolean;
   onAssistantChange?: () => void;
   onAssistantUpdated?: (assistantId: number) => void;
+  onEditAssistant?: (assistantId: number) => void;
 }
 
 export const AssistantSidebar: React.FC<AssistantSidebarProps> = ({
@@ -53,7 +54,8 @@ export const AssistantSidebar: React.FC<AssistantSidebarProps> = ({
   isStreaming = false,
   embedded = false,
   onAssistantChange,
-  onAssistantUpdated
+  onAssistantUpdated,
+  onEditAssistant
 }) => {
   // State management
   const [assistants, setAssistants] = useState<AssistantSummary[]>([]);
@@ -219,6 +221,15 @@ export const AssistantSidebar: React.FC<AssistantSidebarProps> = ({
       return;
     }
     
+    // Use popup instead of modal if available
+    if (onEditAssistant) {
+      onEditAssistant(assistant.id);
+      setDropdownOpen(null);
+      setDropdownPosition(null);
+      return;
+    }
+    
+    // Fallback to modal if no popup handler
     try {
       setIsLoading(true);
       

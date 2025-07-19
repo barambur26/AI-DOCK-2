@@ -154,15 +154,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           
           {/* 📂 Project indicator - REMOVED per requirements: folder context only in sidebar */}
           
-          {/* 🤖 Assistant indicator */}
-          {selectedAssistant && (
-            <div className="flex items-center px-2 md:px-3 py-1.5 md:py-1 bg-purple-500/20 backdrop-blur-sm border border-purple-300/30 rounded-md text-xs md:text-sm text-purple-100 min-w-0">
-              <Bot className="w-3 h-3 md:w-4 md:h-4 mr-1 flex-shrink-0" />
-              <span className="whitespace-nowrap">
-                {selectedAssistant.name}
-              </span>
-            </div>
-          )}
+
           
           {/* Integrated Navigation Buttons */}
           <div className="ml-2 md:ml-4">
@@ -181,16 +173,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           <div className="flex flex-wrap items-center gap-1 md:gap-2">
             {/* 📂 Project info - REMOVED per requirements: folder context only in sidebar */}
             
-            {/* 🤖 Assistant info */}
-            {selectedAssistant && (
-              <div className="flex items-center">
-                <Bot className="w-3 h-3 md:w-4 md:h-4 mr-1 text-purple-300 flex-shrink-0" />
-                <span className="whitespace-nowrap">
-                  Assistant: <strong className="text-purple-200">{selectedAssistant.name}</strong>
-                </span>
-                <span className="mx-1 text-blue-300">•</span>
-              </div>
-            )}
+
             
             <div className="flex items-center">
               <Zap className="w-3 h-3 md:w-4 md:h-4 mr-1 text-yellow-300 flex-shrink-0" />
