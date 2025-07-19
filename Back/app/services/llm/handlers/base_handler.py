@@ -143,18 +143,23 @@ class BaseRequestHandler:
         Returns:
             Dictionary with request and performance data
         """
-        # This could be moved to usage_logger if it becomes more complex
-        request_data = {
-            "messages": messages,
-            "parameters": {
+        # 🔧 BUGFIX: Use usage logger's method to properly calculate message counts
+        # This fixes the issue where admin dashboard shows "0 messages" for all requests
+        from ..usage_logger import get_usage_logger
+        usage_logger = get_usage_logger()
+        
+        # Use the logger's create_request_data method which calculates counts correctly
+        request_data = usage_logger.create_request_data(
+            messages=messages,
+            parameters={
                 "temperature": temperature,
                 "max_tokens": max_tokens,
                 "model_override": model,
                 "bypass_quota": bypass_quota,
                 **kwargs
             },
-            "streaming": streaming
-        }
+            streaming=streaming
+        )
         
         performance_data = {
             "request_started_at": datetime.utcnow().isoformat(),

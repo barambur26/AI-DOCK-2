@@ -1,6 +1,6 @@
-// 📋 Recent Activity Component - MODERNIZED
-// Real-time monitoring of LLM usage logs with modern glassmorphism design
-// Provides live visibility into individual AI requests and responses
+// 📋 Recent Activity Component - FIXED MESSAGE DISPLAY
+// Real-time monitoring of LLM usage logs with improved data handling
+// BUGFIX: Handles missing/zero message count gracefully
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { RecentLogsResponse, UsageLogEntry, LogFilters } from '../../types/usage';
@@ -51,6 +51,80 @@ const RecentActivity: React.FC<RecentActivityProps> = ({
   }, [autoRefresh, onRefresh]);
 
   // =============================================================================
+  // 🔧 BUGFIX: MESSAGE COUNT UTILITIES
+  // =============================================================================
+
+  // Helper function to get meaningful message info even when backend data is incomplete
+  const getMessageInfo = (log: UsageLogEntry) => {
+    const messageCount = log.request_info?.messages_count || 0;
+    const totalChars = log.request_info?.total_chars || 0;
+    const tokenCount = log.usage?.total_tokens || 0;
+    
+    // If we have message count from backend, use it
+    if (messageCount > 0) {
+      return {
+        display: `${messageCount} messages`,
+        count: messageCount,
+        hasData: true
+      };
+    }
+    
+    // If we have character count, estimate messages (rough estimate: 100 chars per message)
+    if (totalChars > 0) {
+      const estimatedMessages = Math.max(1, Math.round(totalChars / 100));
+      return {
+        display: `~${estimatedMessages} messages`,
+        count: estimatedMessages,
+        hasData: true
+      };
+    }
+    
+    // If we have tokens, estimate messages (rough estimate: 75 tokens per message)
+    if (tokenCount > 0) {
+      const estimatedMessages = Math.max(1, Math.round(tokenCount / 75));
+      return {
+        display: `~${estimatedMessages} messages`,
+        count: estimatedMessages,
+        hasData: false
+      };
+    }
+    
+    // Last resort - show that there was activity
+    return {
+      display: 'chat request',
+      count: 1,
+      hasData: false
+    };
+  };
+
+  const getCharacterInfo = (log: UsageLogEntry) => {
+    const totalChars = log.request_info?.total_chars || 0;
+    const tokenCount = log.usage?.total_tokens || 0;
+    
+    // If we have character count from backend, use it
+    if (totalChars > 0) {
+      return {
+        display: totalChars.toLocaleString(),
+        hasData: true
+      };
+    }
+    
+    // If we have tokens, estimate characters (rough estimate: 4 chars per token)
+    if (tokenCount > 0) {
+      const estimatedChars = tokenCount * 4;
+      return {
+        display: `~${estimatedChars.toLocaleString()}`,
+        hasData: false
+      };
+    }
+    
+    return {
+      display: '—',
+      hasData: false
+    };
+  };
+
+  // =============================================================================
   // DATA FILTERING AND PROCESSING
   // =============================================================================
 
@@ -76,7 +150,8 @@ const RecentActivity: React.FC<RecentActivityProps> = ({
           timestamp: log.timestamp,
           parsedDate: log.timestamp ? new Date(log.timestamp).toISOString() : 'invalid',
           timeDiffMinutes: log.timestamp ? Math.round((new Date().getTime() - new Date(log.timestamp).getTime()) / (1000 * 60)) : 'N/A',
-          userEmail: log.user.email
+          userEmail: log.user.email,
+          messageInfo: getMessageInfo(log)
         }))
       });
 
@@ -377,117 +452,147 @@ const RecentActivity: React.FC<RecentActivityProps> = ({
           </div>
         ) : (
           <div className="divide-y divide-white/10">
-            {filteredLogs.map((log) => (
-              <div key={log.id} className="p-4 hover:bg-white/5 transition-all duration-300">
-                
-                {/* Main log entry */}
-                <div className="flex items-center justify-between">
+            {filteredLogs.map((log) => {
+              const messageInfo = getMessageInfo(log);
+              const charInfo = getCharacterInfo(log);
+              
+              return (
+                <div key={log.id} className="p-4 hover:bg-white/5 transition-all duration-300">
                   
-                  <div className="flex items-center space-x-4 flex-1">
+                  {/* Main log entry */}
+                  <div className="flex items-center justify-between">
                     
-                    {/* Status indicator */}
-                    <div className={`w-3 h-3 rounded-full ${log.performance.success ? 'bg-green-400' : 'bg-red-400'}`}></div>
-                    
-                    {/* Request details */}
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-1">
-                        <span className="font-medium text-white">{log.user.email}</span>
-                        <span className={`px-2 py-1 rounded-lg text-xs border backdrop-blur-lg ${getProviderStyling(log.llm.provider)}`}>
-                          {log.llm.provider} / {log.llm.model}
-                        </span>
-                        <span className={`px-2 py-1 rounded-lg text-xs border backdrop-blur-lg ${getStatusStyling(log.performance.success)}`}>
-                          {log.performance.success ? 'Success' : 'Failed'}
-                        </span>
-                      </div>
+                    <div className="flex items-center space-x-4 flex-1">
                       
-                      <div className="flex items-center space-x-4 text-sm text-blue-200">
-                        <span>{log.usage.total_tokens.toLocaleString()} tokens</span>
-                        <span>{formatCurrency(log.usage.estimated_cost)}</span>
-                        {log.performance.response_time_ms && (
-                          <span>{log.performance.response_time_ms}ms</span>
-                        )}
-                        <span>{log.request_info.messages_count} messages</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Timestamp and expand button */}
-                  <div className="flex items-center space-x-3">
-                    <span 
-                      className="text-sm text-blue-300"
-                      title={`Full timestamp: ${log.timestamp} | Parsed: ${log.timestamp ? new Date(log.timestamp).toLocaleString() : 'Invalid'}`}
-                    >
-                      {formatConversationTimestamp(log.timestamp)}
-                    </span>
-                    <button
-                      onClick={() => toggleLogExpansion(log.id)}
-                      className="text-blue-300 hover:text-blue-200 transition-colors p-2 rounded-lg hover:bg-white/10"
-                    >
-                      <svg 
-                        className={`w-4 h-4 transition-transform ${expandedLogs.has(log.id) ? 'rotate-180' : ''}`}
-                        fill="none" 
-                        stroke="currentColor" 
-                        viewBox="0 0 24 24"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Expanded details */}
-                {expandedLogs.has(log.id) && (
-                  <div className="mt-4 pt-4 border-t border-white/10">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                      {/* Status indicator */}
+                      <div className={`w-3 h-3 rounded-full ${log.performance.success ? 'bg-green-400' : 'bg-red-400'}`}></div>
                       
-                      <div className="bg-blue-500/20 backdrop-blur-lg rounded-xl p-3 border border-blue-400/30">
-                        <h5 className="font-medium text-blue-200 mb-2">Request Info</h5>
-                        <div className="space-y-1 text-blue-100">
-                          <div>Messages: {log.request_info.messages_count}</div>
-                          <div>Characters: {log.request_info.total_chars.toLocaleString()}</div>
-                          {log.request_info.session_id && (
-                            <div>Session: {log.request_info.session_id.slice(0, 8)}...</div>
-                          )}
+                      {/* Request details */}
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-1">
+                          <span className="font-medium text-white">{log.user.email}</span>
+                          <span className={`px-2 py-1 rounded-lg text-xs border backdrop-blur-lg ${getProviderStyling(log.llm.provider)}`}>
+                            {log.llm.provider} / {log.llm.model}
+                          </span>
+                          <span className={`px-2 py-1 rounded-lg text-xs border backdrop-blur-lg ${getStatusStyling(log.performance.success)}`}>
+                            {log.performance.success ? 'Success' : 'Failed'}
+                          </span>
                         </div>
-                      </div>
-
-                      <div className="bg-purple-500/20 backdrop-blur-lg rounded-xl p-3 border border-purple-400/30">
-                        <h5 className="font-medium text-purple-200 mb-2">Token Usage</h5>
-                        <div className="space-y-1 text-purple-100">
-                          <div>Input: {log.usage.input_tokens.toLocaleString()}</div>
-                          <div>Output: {log.usage.output_tokens.toLocaleString()}</div>
-                          <div>Total: {log.usage.total_tokens.toLocaleString()}</div>
-                        </div>
-                      </div>
-
-                      <div className="bg-orange-500/20 backdrop-blur-lg rounded-xl p-3 border border-orange-400/30">
-                        <h5 className="font-medium text-orange-200 mb-2">Performance</h5>
-                        <div className="space-y-1 text-orange-100">
+                        
+                        <div className="flex items-center space-x-4 text-sm text-blue-200">
+                          <span>{log.usage.total_tokens.toLocaleString()} tokens</span>
+                          <span>{formatCurrency(log.usage.estimated_cost)}</span>
                           {log.performance.response_time_ms && (
-                            <div>Response: {log.performance.response_time_ms}ms</div>
+                            <span>{log.performance.response_time_ms}ms</span>
                           )}
-                          <div>Status: {log.performance.success ? 'Success' : 'Failed'}</div>
-                          <div>Cost: {formatCurrency(log.usage.estimated_cost)}</div>
+                          <span className={`${!messageInfo.hasData ? 'text-blue-300 opacity-75' : ''}`}>
+                            {messageInfo.display}
+                          </span>
                         </div>
                       </div>
-
                     </div>
 
-                    {/* Error details if failed */}
-                    {log.error && (
-                      <div className="mt-4 p-3 bg-red-500/20 border border-red-400/30 rounded-xl backdrop-blur-lg">
-                        <h5 className="font-medium text-red-200 mb-1">Error Details</h5>
-                        <div className="text-sm text-red-300">
-                          <div>Type: {log.error.error_type}</div>
-                          <div>Message: {log.error.error_message}</div>
-                        </div>
-                      </div>
-                    )}
+                    {/* Timestamp and expand button */}
+                    <div className="flex items-center space-x-3">
+                      <span 
+                        className="text-sm text-blue-300"
+                        title={`Full timestamp: ${log.timestamp} | Parsed: ${log.timestamp ? new Date(log.timestamp).toLocaleString() : 'Invalid'}`}
+                      >
+                        {formatConversationTimestamp(log.timestamp)}
+                      </span>
+                      <button
+                        onClick={() => toggleLogExpansion(log.id)}
+                        className="text-blue-300 hover:text-blue-200 transition-colors p-2 rounded-lg hover:bg-white/10"
+                      >
+                        <svg 
+                          className={`w-4 h-4 transition-transform ${expandedLogs.has(log.id) ? 'rotate-180' : ''}`}
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
-                )}
 
-              </div>
-            ))}
+                  {/* Expanded details */}
+                  {expandedLogs.has(log.id) && (
+                    <div className="mt-4 pt-4 border-t border-white/10">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        
+                        <div className="bg-blue-500/20 backdrop-blur-lg rounded-xl p-3 border border-blue-400/30">
+                          <h5 className="font-medium text-blue-200 mb-2 flex items-center">
+                            Request Info
+                            {!messageInfo.hasData && !charInfo.hasData && (
+                              <span className="ml-2 text-xs text-blue-300 opacity-75" title="Estimated values based on tokens">
+                                📊
+                              </span>
+                            )}
+                          </h5>
+                          <div className="space-y-1 text-blue-100">
+                            <div className={`${!messageInfo.hasData ? 'opacity-75' : ''}`}>
+                              Messages: {messageInfo.display}
+                            </div>
+                            <div className={`${!charInfo.hasData ? 'opacity-75' : ''}`}>
+                              Characters: {charInfo.display}
+                            </div>
+                            {log.request_info?.session_id && (
+                              <div>Session: {log.request_info.session_id.slice(0, 8)}...</div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="bg-purple-500/20 backdrop-blur-lg rounded-xl p-3 border border-purple-400/30">
+                          <h5 className="font-medium text-purple-200 mb-2">Token Usage</h5>
+                          <div className="space-y-1 text-purple-100">
+                            <div>Input: {log.usage.input_tokens.toLocaleString()}</div>
+                            <div>Output: {log.usage.output_tokens.toLocaleString()}</div>
+                            <div>Total: {log.usage.total_tokens.toLocaleString()}</div>
+                          </div>
+                        </div>
+
+                        <div className="bg-orange-500/20 backdrop-blur-lg rounded-xl p-3 border border-orange-400/30">
+                          <h5 className="font-medium text-orange-200 mb-2">Performance</h5>
+                          <div className="space-y-1 text-orange-100">
+                            {log.performance.response_time_ms && (
+                              <div>Response: {log.performance.response_time_ms}ms</div>
+                            )}
+                            <div>Status: {log.performance.success ? 'Success' : 'Failed'}</div>
+                            <div>Cost: {formatCurrency(log.usage.estimated_cost)}</div>
+                          </div>
+                        </div>
+
+                      </div>
+
+                      {/* Error details if failed */}
+                      {log.error && (
+                        <div className="mt-4 p-3 bg-red-500/20 border border-red-400/30 rounded-xl backdrop-blur-lg">
+                          <h5 className="font-medium text-red-200 mb-1">Error Details</h5>
+                          <div className="text-sm text-red-300">
+                            <div>Type: {log.error.error_type}</div>
+                            <div>Message: {log.error.error_message}</div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Data quality indicator */}
+                      {(!messageInfo.hasData || !charInfo.hasData) && (
+                        <div className="mt-3 p-2 bg-yellow-500/10 border border-yellow-400/20 rounded-lg backdrop-blur-lg">
+                          <div className="text-xs text-yellow-300 flex items-center">
+                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Some values are estimated from token usage due to incomplete logging data
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
