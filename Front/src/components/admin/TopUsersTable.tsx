@@ -248,11 +248,6 @@ const TopUsersTable: React.FC<TopUsersTableProps> = ({
                         <span className="text-xs bg-blue-400/20 text-blue-300 px-2 py-1 rounded-full border border-blue-400/30">
                           {userStats.user.role}
                         </span>
-                        {userStats.user.department_id && (
-                          <span className="text-xs text-blue-200">
-                            Dept: {userStats.user.department_id}
-                          </span>
-                        )}
                       </div>
                       
                       <div className="flex items-center space-x-4 mt-1 text-sm text-blue-200">
@@ -260,6 +255,11 @@ const TopUsersTable: React.FC<TopUsersTableProps> = ({
                         <span className={`px-2 py-1 rounded-full text-xs border ${getSuccessRateColor(userStats.metrics.success_rate_percent)}`}>
                           {userStats.metrics.success_rate_percent.toFixed(1)}% success
                         </span>
+                        {userStats.user.department_id && (
+                          <span className="text-xs bg-slate-500/20 text-slate-300 px-2 py-1 rounded-full border border-slate-400/30">
+                            Dept: {userStats.user.department_id}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
