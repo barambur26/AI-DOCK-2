@@ -887,7 +887,7 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
 
       </div>
 
-      {/* Quota Fulfillment Chart - Only visible in departments view */}
+      {/* Quota Fulfillment by Department - Merged with Budget vs Spending */}
       {viewMode === 'departments' && (
         <div className="bg-white/5 backdrop-blur-lg rounded-3xl shadow-2xl p-6 border border-white/10 hover:shadow-3xl transition-all duration-300">
           <div className="flex items-center space-x-3 mb-6">
@@ -902,54 +902,23 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
             </div>
           </div>
           <ResponsiveContainer width="100%" height={400}>
-            <BarChart data={quotaFulfillmentData} layout="horizontal">
+            <BarChart data={departmentChartData} barCategoryGap={32} layout="horizontal">
               <CartesianGrid strokeDasharray="3 3" stroke={DARK_THEME.grid} />
-              <XAxis 
-                type="number"
-                tick={{ fontSize: 12, fill: DARK_THEME.text }}
-                axisLine={{ stroke: DARK_THEME.axis }}
-                tickLine={{ stroke: DARK_THEME.axis }}
-                domain={[0, 'dataMax']}
-              />
-              <YAxis 
-                type="category"
-                dataKey="displayName"
-                tick={{ fontSize: 11, fill: DARK_THEME.text }}
-                axisLine={{ stroke: DARK_THEME.axis }}
-                tickLine={{ stroke: DARK_THEME.axis }}
-                width={100}
-              />
+              <XAxis type="number" tick={{ fontSize: 12, fill: DARK_THEME.text }} axisLine={{ stroke: DARK_THEME.axis }} tickLine={{ stroke: DARK_THEME.axis }} domain={[0, 'dataMax']} label={{ value: 'Dollars ($)', angle: 0, position: 'insideBottom', style: { textAnchor: 'middle', fill: DARK_THEME.text } }} />
+              <YAxis type="category" dataKey="displayName" tick={{ fontSize: 11, fill: DARK_THEME.text }} axisLine={{ stroke: DARK_THEME.axis }} tickLine={{ stroke: DARK_THEME.axis }} width={100} />
               <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: 'rgba(17, 24, 39, 0.9)',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  borderRadius: '12px',
-                  color: '#E5E7EB'
-                }}
-                formatter={(value: number, name: string) => {
-                  if (name === 'budget') return [`${value.toFixed(2)}`, 'Budget'];
-                  if (name === 'used') return [`${value.toFixed(2)}`, 'Used'];
-                  if (name === 'remaining') return [`${value.toFixed(2)}`, 'Remaining'];
-                  return [`${value.toFixed(2)}`, name];
-                }}
+                contentStyle={{ backgroundColor: 'rgba(17, 24, 39, 0.9)', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: '12px', color: '#E5E7EB' }}
+                formatter={(value: number, name: string) => [`$${value.toFixed(2)}`, name === 'budget' ? 'Budget' : 'Used']} 
               />
               <Legend wrapperStyle={{ color: DARK_THEME.text }} />
               {/* Background bar showing total budget */}
-              <Bar 
-                dataKey="budget" 
-                name="Total Budget" 
-                fill="#374151"
-              />
+              <Bar dataKey="budget" name="Total Budget ($)" fill="#374151" />
               {/* Foreground bar showing usage (overlaid on same axis) */}
-              <Bar 
-                dataKey="used" 
-                name="Used" 
-                fill="#10B981"
-              />
+              <Bar dataKey="cost" name="Used ($)" fill="#10B981" />
             </BarChart>
           </ResponsiveContainer>
           <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-            {quotaFulfillmentData.map((item) => (
+            {departmentChartData.map((item) => (
               <div key={item.name} className="bg-white/5 backdrop-blur-lg rounded-xl p-4 border border-white/10 hover:bg-white/10 transition-colors">
                 <div className="font-semibold text-white mb-3 text-center">{item.fullName}</div>
                 <div className="space-y-2 text-sm">
@@ -959,25 +928,15 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
                   </div>
                   <div className="flex justify-between text-blue-200">
                     <span>Used:</span>
-                    <span className={`font-medium ${item.isOverBudget ? 'text-red-400' : 'text-green-400'}`}>
-                      ${item.used.toFixed(2)}
-                    </span>
+                    <span className={`font-medium ${item.isOverBudget ? 'text-red-400' : 'text-green-400'}`}>${item.cost.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-blue-200">
                     <span>Remaining:</span>
-                    <span className={`font-medium ${item.remaining < 0 ? 'text-red-400' : 'text-green-400'}`}>
-                      ${Math.max(0, item.remaining).toFixed(2)}
-                    </span>
+                    <span className={`font-medium ${item.budget - item.cost < 0 ? 'text-red-400' : 'text-green-400'}`}>${Math.max(0, item.budget - item.cost).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-blue-200">
                     <span>Utilization:</span>
-                    <span className={`font-medium ${
-                      item.utilization > 100 ? 'text-red-400' : 
-                      item.utilization > 80 ? 'text-yellow-400' : 
-                      'text-green-400'
-                    }`}>
-                      {item.utilization.toFixed(1)}%
-                    </span>
+                    <span className={`font-medium ${item.cost / item.budget > 1 ? 'text-red-400' : item.cost / item.budget > 0.8 ? 'text-yellow-400' : 'text-green-400'}`}>{item.budget > 0 ? ((item.cost / item.budget) * 100).toFixed(1) : '0.0'}%</span>
                   </div>
                   {item.isOverBudget && (
                     <div className="mt-2 p-2 bg-red-500/20 border border-red-400/30 rounded-lg text-red-300 text-xs text-center">
@@ -990,92 +949,6 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
           </div>
         </div>
       )}
-
-      {/* Token Usage Analysis */}
-      <div className="bg-white/5 backdrop-blur-lg rounded-3xl shadow-2xl p-6 border border-white/10 hover:shadow-3xl transition-all duration-300">
-        <div className="flex items-center space-x-3 mb-6">
-          <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-            </svg>
-          </div>
-          <div>
-          <h3 className="text-lg font-semibold text-white">Token Usage and Cost Efficiency</h3>
-          <p className="text-sm text-blue-200">Volume and cost analysis by {viewMode === 'models' ? 'model' : viewMode === 'providers' ? 'provider' : 'department'}</p>
-          </div>
-        </div>
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={currentChartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke={DARK_THEME.grid} />
-            <XAxis 
-              dataKey="displayName" 
-              tick={{ fontSize: 11, fill: DARK_THEME.text }}
-              interval={0}
-              angle={-35}
-              textAnchor="end"
-              height={80}
-              axisLine={{ stroke: DARK_THEME.axis }}
-              tickLine={{ stroke: DARK_THEME.axis }}
-              tickMargin={8}
-            />
-            <YAxis 
-              yAxisId="tokens"
-              orientation="left"
-              tick={{ fontSize: 12, fill: DARK_THEME.text }}
-              label={{ value: 'Tokens', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: DARK_THEME.text } }}
-              axisLine={{ stroke: DARK_THEME.axis }}
-              tickLine={{ stroke: DARK_THEME.axis }}
-            />
-            <YAxis 
-              yAxisId="cost"
-              orientation="right"
-              tick={{ fontSize: 12, fill: DARK_THEME.text }}
-              label={{ value: 'Cost ($)', angle: 90, position: 'insideRight', style: { textAnchor: 'middle', fill: DARK_THEME.text } }}
-              axisLine={{ stroke: DARK_THEME.axis }}
-              tickLine={{ stroke: DARK_THEME.axis }}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Legend wrapperStyle={{ color: DARK_THEME.text }} />
-            <Bar 
-              yAxisId="tokens"
-              dataKey="tokens" 
-              name="Total Tokens" 
-              fill="#8B5CF6"
-            />
-            <Line 
-              yAxisId="cost"
-              type="monotone" 
-              dataKey="cost" 
-              name="Total Cost ($)" 
-              stroke="#F59E0B"
-              strokeWidth={3}
-            />
-          </BarChart>
-        </ResponsiveContainer>
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-          {currentChartData.map((item) => (
-            <div key={item.name} className="bg-white/5 backdrop-blur-lg rounded-xl p-4 border border-white/10 hover:bg-white/10 transition-colors">
-              <div className="font-semibold text-white mb-3 text-center">{item.fullName}</div>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between text-blue-200">
-                  <span>Tokens:</span>
-                  <span className="font-medium text-white">{item.tokens.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-blue-200">
-                  <span>Cost:</span>
-                  <span className="font-medium text-white">{formatCurrency(item.cost)}</span>
-                </div>
-                <div className="flex justify-between text-blue-200">
-                  <span>Efficiency:</span>
-                  <span className="font-medium text-white">
-                  {item.tokens > 0 ? `$${(item.cost / item.tokens * 1000).toFixed(4)}` : '$0.0000'} /1K
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
 
     </div>
   );
