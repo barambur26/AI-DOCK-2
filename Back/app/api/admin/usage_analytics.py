@@ -603,7 +603,10 @@ async def get_recent_usage_logs(
                 conv = await session.execute(
                     select(Conversation)
                     .options(selectinload(Conversation.messages))  # <-- ensure messages are loaded
-                    .where(Conversation.user_id == log.user_id)
+                    .where(
+                        Conversation.user_id == log.user_id,
+                        Conversation.session_id == log.session_id  # <-- match session_id too
+                    )
                     .order_by(Conversation.updated_at.desc())
                 )
                 conv = conv.scalars().first()

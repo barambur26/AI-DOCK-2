@@ -18,6 +18,7 @@ from pathlib import Path
 from .core.config import settings, validate_config
 from .core.database import startup_database, shutdown_database, check_database_connection
 
+
 # Initialize Sentry error monitoring
 if os.getenv('SENTRY_DSN'):
     sentry_sdk.init(

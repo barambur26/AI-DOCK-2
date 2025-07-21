@@ -38,9 +38,6 @@ const RecentActivity: React.FC<RecentActivityProps> = ({
   const [expandedLogs, setExpandedLogs] = useState<Set<number>>(new Set());
   const [autoRefresh, setAutoRefresh] = useState(false);
 
-  // Test Message Preview Modal State
-  const [showTestPreview, setShowTestPreview] = useState(false);
-
   // =============================================================================
   // AUTO REFRESH FUNCTIONALITY
   // =============================================================================
@@ -319,16 +316,6 @@ const RecentActivity: React.FC<RecentActivityProps> = ({
   return (
     <div className="bg-white/5 backdrop-blur-lg rounded-3xl shadow-2xl border border-white/10 hover:shadow-3xl transition-all duration-300">
       
-      {/* Test Message Preview Button */}
-      <div className="p-4 border-b border-white/10 flex justify-end">
-        <button
-          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl font-medium transition-all duration-300 shadow-lg hover:scale-105 transform"
-          onClick={() => setShowTestPreview(true)}
-        >
-          Test Message Preview
-        </button>
-      </div>
-
       {/* Header */}
       <div className="p-6 border-b border-white/10">
         <div className="flex items-center justify-between mb-6">
@@ -532,7 +519,9 @@ const RecentActivity: React.FC<RecentActivityProps> = ({
                   </div>
 
                   {/* 🆕 NEW: Message Dropdown Component */}
+                  {(() => { console.log('Rendering log', log.id, (log.message_data as any)?.messages ?? []); return null; })()}
                   <MessageDropdown 
+                    key={log.id}
                     messageData={log.message_data} 
                     isSuccess={log.performance.success}
                     className="mt-2"
@@ -642,57 +631,6 @@ const RecentActivity: React.FC<RecentActivityProps> = ({
           </div>
         </div>
       )}
-
-      {/* Test Message Preview Modal */}
-      <Dialog open={showTestPreview} onClose={() => setShowTestPreview(false)} className="fixed z-50 inset-0 overflow-y-auto">
-        {/* Overlay */}
-        <div className="fixed inset-0 bg-black bg-opacity-40" aria-hidden="true" />
-        {/* Modal content */}
-        <div className="flex items-center justify-center min-h-screen px-4">
-          <div className="relative bg-white rounded-2xl shadow-xl max-w-lg w-full mx-auto p-6 z-10">
-            <Dialog.Title className="text-lg font-bold mb-2">Test Message Preview</Dialog.Title>
-            {recentLogs && recentLogs.logs && recentLogs.logs.length > 0 ? (
-              (() => {
-                const msgData = recentLogs.logs[0].message_data as any;
-                return msgData && Array.isArray(msgData.messages) && msgData.messages.length > 0 ? (
-                  <MessageDropdown
-                    isSuccess={recentLogs.logs[0].performance.success}
-                    messageData={msgData}
-                  />
-                ) : (
-                  <div className="text-blue-500 text-center my-4">No message details available for the most recent log.</div>
-                );
-              })()
-            ) : (
-              <MessageDropdown
-                isSuccess={true}
-                messageData={{
-                  request_messages_count: 3,
-                  request_total_chars: 120,
-                  response_content_length: 80,
-                  request_parameters: { temperature: 0.7, max_tokens: 256 },
-                  session_id: 'test_session_123',
-                  request_id: 'req_abc_456',
-                  response_preview: 'This is a preview of the AI response. It is truncated for display.',
-                  messages: [
-                    { role: 'user', content: 'Hello, can you summarize this document?' },
-                    { role: 'assistant', content: 'Of course! Please upload the document.' },
-                    { role: 'user', content: 'Here it is: [file.pdf]' }
-                  ]
-                }}
-              />
-            )}
-            <div className="mt-4 flex justify-end">
-              <button
-                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl font-medium transition-all duration-300"
-                onClick={() => setShowTestPreview(false)}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      </Dialog>
 
     </div>
   );

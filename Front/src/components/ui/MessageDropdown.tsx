@@ -52,7 +52,7 @@ const MessageDropdown: React.FC<MessageDropdownProps> = ({
       {/* Dropdown Toggle Button */}
       <button
         onClick={toggleExpanded}
-        className="flex items-center text-sm text-gray-600 hover:text-gray-800 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded px-2 py-1"
+        className={`flex items-center px-4 py-2 rounded-xl font-medium border border-white/10 bg-white/10 text-blue-200 hover:bg-white/20 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 ${isExpanded ? 'shadow-lg' : ''}`}
         aria-expanded={isExpanded}
         aria-label={isExpanded ? 'Hide message details' : 'Show message details'}
       >
