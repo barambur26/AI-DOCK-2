@@ -83,7 +83,8 @@ class LLMUsageLogger:
                 session_id=session_id,
                 request_id=request_id,
                 ip_address=ip_address,
-                user_agent=user_agent
+                user_agent=user_agent,
+                request_prompt=request_data.get("request_prompt")
             )
             
             cost_display = f"${final_response.cost:.4f}" if final_response and final_response.cost else "$0.0000"
@@ -206,11 +207,19 @@ class LLMUsageLogger:
         """
         total_chars = sum(len(msg.get("content", "")) for msg in messages)
         
+        # Find the most recent user message for request_prompt
+        request_prompt = None
+        for msg in reversed(messages):
+            if msg.get("role") == "user":
+                request_prompt = msg.get("content")
+                break
+        
         return {
             "messages_count": len(messages),
             "total_chars": total_chars,
             "streaming": streaming,
-            "parameters": parameters
+            "parameters": parameters,
+            "request_prompt": request_prompt
         }
     
     def create_performance_data(

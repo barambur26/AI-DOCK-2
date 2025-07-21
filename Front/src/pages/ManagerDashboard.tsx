@@ -24,6 +24,7 @@ import { DepartmentDashboardData } from '../types/manager';
 import { useAuth } from '../contexts/AuthContext';
 import { authService } from '../services/authService';
 import { UnifiedTraversalButtons } from '../components/ui/UnifiedTraversalButtons';
+import MessageDropdown from '../components/ui/MessageDropdown';
 
 interface ManagerDashboardProps {
   className?: string;
@@ -243,6 +244,9 @@ const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ className = '' }) =
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-8">
 
+          {/* 🔍 DEBUG INFO - REMOVE AFTER FIXING */}
+          <ApiDebugInfo className="mb-6" />
+
           {/* Key Metrics Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* Users Card */}
@@ -430,13 +434,34 @@ const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ className = '' }) =
             </div>
           </div>
 
-          {/* Recent Activity Section */}
+          {/* Recent Activity Section */
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl hover:shadow-3xl transition-all duration-300">
             <div className="px-8 py-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-gray-900">Recent Activity</h3>
-                <div className="bg-gradient-to-r from-indigo-500 to-purple-500 p-2 rounded-lg">
-                  <Clock className="h-5 w-5 text-white" />
+                <div className="flex items-center space-x-3">
+                  <h3 className="text-xl font-semibold text-gray-900">Recent Activity</h3>
+                  <p className="text-sm text-gray-600">Live monitoring of LLM requests and responses</p>
+                </div>
+                <div className="flex items-center space-x-3">
+                  {/* Manual Refresh Button */}
+                  <button
+                    onClick={handleRefresh}
+                    disabled={refreshing}
+                    className={`inline-flex items-center px-3 py-1 text-sm font-medium rounded-lg transition-all duration-200 ${
+                      refreshing
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-white/50 hover:bg-white/80 text-gray-700 hover:text-gray-900 border border-gray-200 hover:border-gray-300 shadow-sm hover:shadow-md'
+                    }`}
+                    title="Refresh dashboard data"
+                  >
+                    <RefreshCw className={`h-4 w-4 mr-1 ${refreshing ? 'animate-spin' : ''}`} />
+                    Refresh
+                  </button>
+                  
+                  {/* Activity Icon */}
+                  <div className="bg-gradient-to-r from-indigo-500 to-purple-500 p-2 rounded-lg">
+                    <Clock className="h-5 w-5 text-white" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -450,9 +475,9 @@ const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ className = '' }) =
                         <div className="flex items-center space-x-2">
                           <span className="font-medium text-gray-900">{activity.user_name}</span>
                           <span className="text-gray-500">•</span>
-                          <span className="text-sm text-gray-600">{activity.llm_provider}</span>
+                          <span className="text-sm text-gray-600">{activity.llm_provider || activity.provider}</span>
                           <span className="text-gray-500">•</span>
-                          <span className="text-sm text-gray-600">{activity.request_type}</span>
+                          <span className="text-sm text-gray-600">{activity.model || activity.request_type}</span>
                         </div>
                         <div className="flex items-center space-x-4 mt-1">
                           <span className="text-xs text-gray-500">
@@ -471,6 +496,13 @@ const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ className = '' }) =
                             {activity.status}
                           </span>
                         </div>
+                        
+                        {/* Message Dropdown Component */}
+                        <MessageDropdown 
+                          messageData={activity.message_data} 
+                          isSuccess={activity.success !== false}
+                          className="mt-2"
+                        />
                       </div>
                       <div className="text-xs text-gray-500 font-medium">
                         {formatTimeAgo(activity.created_at)}
@@ -485,7 +517,22 @@ const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ className = '' }) =
                 </div>
               )}
             </div>
+            
+            {/* Recent Activity Footer */}
+            {recent_activity && recent_activity.length > 0 && (
+              <div className="px-8 py-4 bg-gray-50/50 border-t border-gray-200">
+                <div className="flex items-center justify-between text-sm text-gray-600">
+                  <span>
+                    Showing {Math.min(recent_activity.length, 8)} of {recent_activity.length} recent requests
+                  </span>
+                  <span>
+                    Updated: {new Date().toLocaleTimeString()}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
+          }
 
           {/* Footer with Intercorp Retail Branding */}
           <div className="text-center mt-8">
@@ -498,7 +545,7 @@ const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ className = '' }) =
               </p>
             </div>
           </div>
-        </div>
+        </div> {/* closes <div className="space-y-8"> */}
       </main>
     </div>
   );

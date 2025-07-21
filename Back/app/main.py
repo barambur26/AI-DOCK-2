@@ -482,6 +482,7 @@ def read_root():
                 "health": "/assistants/health"
             },
             "manager": {
+                "dashboard": "/manager/dashboard",
                 "user_management": {
                     "list_users": "/manager/users/",
                     "create_user": "/manager/users/",

@@ -1648,6 +1648,17 @@ export interface UsageLogEntry {
     error_type: string;
     error_message: string;
   };
+  // 🆕 NEW: Message data for MessageDropdown component
+  message_data?: {
+    response_preview?: string;
+    request_messages_count?: number;
+    request_total_chars?: number;
+    response_content_length?: number;
+    request_parameters?: any;
+    session_id?: string;
+    request_id?: string;
+    error_message?: string;
+  };
 }
 
 export interface UsageSystemHealth {

@@ -54,7 +54,8 @@ class UsageService:
         session_id: Optional[str] = None,
         request_id: Optional[str] = None,
         ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None
+        user_agent: Optional[str] = None,
+        request_prompt: Optional[str] = None
     ) -> UsageLog:
         """
         Create a usage log entry for an LLM request.
@@ -208,6 +209,7 @@ class UsageService:
                     # Response details
                     response_content_length=content_length,
                     response_preview=response_preview,
+                    request_prompt=request_prompt,  # NEW: Store the user's prompt
                     
                     # Metadata
                     session_id=session_id,
@@ -268,6 +270,7 @@ class UsageService:
                                 success=response_data.get("success", False),
                                 error_type="logging_error",
                                 error_message=f"Emergency log due to: {str(main_error)}",
+                                request_prompt=request_prompt,  # NEW: Include request prompt in emergency log
                                 request_id=request_id,
                                 session_id=session_id
                             )
@@ -727,7 +730,8 @@ class UsageService:
         session_id: Optional[str] = None,
         request_id: Optional[str] = None,
         ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None
+        user_agent: Optional[str] = None,
+        request_prompt: Optional[str] = None
     ) -> None:
         """
         🔧 ISOLATED usage logging method that uses its OWN database session.
@@ -745,6 +749,9 @@ class UsageService:
         - Does not depend on external session parameter
         - Cannot be rolled back by calling code
         - Includes comprehensive error handling
+        
+        Args:
+            request_prompt: Content of the most recent user message for this usage log
         """
         try:
             self.logger.info(f"🔧 [ISOLATED LOG] Starting isolated usage logging for user {user_id}, request {request_id}")
@@ -874,6 +881,7 @@ class UsageService:
                         http_status_code=http_status_code,
                         response_content_length=content_length,
                         response_preview=response_preview,
+                        request_prompt=request_prompt,  # NEW: Store the user's prompt
                         session_id=session_id,
                         request_id=request_id,
                         ip_address=ip_address,
@@ -920,7 +928,8 @@ class UsageService:
         session_id: Optional[str] = None,
         request_id: Optional[str] = None,
         ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None
+        user_agent: Optional[str] = None,
+        request_prompt: Optional[str] = None
     ) -> None:
         """
         🗑️ DEPRECATED: Synchronous usage log method.
@@ -1032,6 +1041,7 @@ class UsageService:
                 http_status_code=http_status_code,
                 response_content_length=content_length,
                 response_preview=response_preview,
+                request_prompt=request_prompt,  # NEW: Store the user's prompt
                 session_id=session_id,
                 request_id=request_id,
                 ip_address=ip_address,

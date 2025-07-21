@@ -179,11 +179,24 @@ export interface DepartmentDashboardData {
     user_name: string;
     user_email: string;
     llm_provider: string;
+    provider: string;
+    model: string;
     request_type: string;
     total_tokens: number;
     estimated_cost: number;
     status: string;
+    success: boolean;
     created_at: string;
+    message_data?: {
+      response_preview?: string;
+      request_messages_count?: number;
+      request_total_chars?: number;
+      response_content_length?: number;
+      request_parameters?: any;
+      session_id?: string;
+      request_id?: string;
+      error_message?: string;
+    };
   }>;
   last_updated: string;
 }

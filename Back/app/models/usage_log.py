@@ -154,10 +154,16 @@ class UsageLog(Base):
     """Length of AI response in characters"""
     
     response_preview = Column(String(500), nullable=True)
-    
     """
     First 500 chars of response for debugging/preview
     Note: Be careful with sensitive data - consider truncating or hashing
+    """
+    
+    request_prompt = Column(Text, nullable=True)
+    """
+    Content of the most recent user message for this usage log.
+    This provides context for what the user was asking before the AI response.
+    Useful for admin dashboard to show request/response pairs.
     """
     
     # =============================================================================
@@ -262,6 +268,8 @@ class UsageLog(Base):
             "success": self.success,
             "error_type": self.error_type,
             "response_content_length": self.response_content_length,
+            "response_preview": self.response_preview,
+            "request_prompt": self.request_prompt,
             "session_id": self.session_id,
             "request_id": self.request_id
         }

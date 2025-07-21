@@ -591,11 +591,33 @@ async def get_recent_usage_logs(
         result = await session.execute(query.params(cache_buster=cache_buster))
         logs = result.scalars().all()
         
-        # Convert to summary format (don't include full response content for privacy)
+        # Convert to summary format (with message data for dropdown display)
         log_data = []
+        from ...models.conversation import Conversation, ConversationMessage
+        from sqlalchemy.orm import selectinload
         for log in logs:
+            # --- Minimal modular fix: fetch messages for this log ---
+            messages = []
+            if log.session_id and log.user_id:
+                # Try to find a conversation for this user/session
+                conv = await session.execute(
+                    select(Conversation)
+                    .options(selectinload(Conversation.messages))  # <-- ensure messages are loaded
+                    .where(Conversation.user_id == log.user_id)
+                    .order_by(Conversation.updated_at.desc())
+                )
+                conv = conv.scalars().first()
+                if conv and conv.messages:
+                    # Get last 10 messages (or fewer)
+                    msg_objs = conv.messages[-10:] if len(conv.messages) > 10 else conv.messages
+                    messages = [
+                        {"role": m.role, "content": m.content}
+                        for m in msg_objs
+                    ]
+            # --- End fix ---
             log_data.append({
                 "id": log.id,
+                "DEBUG_THIS_IS_A_TEST_FIELD": 12345,
                 "timestamp": log.created_at.isoformat() if log.created_at else None,
                 "user": {
                     "id": log.user_id,
@@ -626,7 +648,23 @@ async def get_recent_usage_logs(
                 "error": {
                     "error_type": log.error_type,
                     "error_message": log.error_message
-                } if not log.success else None
+                } if not log.success else None,
+                # Add these two fields for direct access in frontend
+                "request_prompt": log.request_prompt,
+                "response_preview": log.response_preview,
+                # 🆕 NEW: Message data for dropdown display
+                "message_data": {
+                    "request_prompt": log.request_prompt,
+                    "response_preview": log.response_preview,
+                    "request_messages_count": log.request_messages_count or 0,
+                    "request_total_chars": log.request_total_chars or 0,
+                    "response_content_length": log.response_content_length or 0,
+                    "request_parameters": log.request_parameters,
+                    "session_id": log.session_id,
+                    "request_id": log.request_id,
+                    "error_message": log.error_message if not log.success else None,
+                    "messages": messages
+                }
             })
         
         # Get total count for pagination info

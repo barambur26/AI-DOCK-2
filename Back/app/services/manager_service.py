@@ -918,10 +918,23 @@ class ManagerService:
                 "llm_provider": log.llm_config.name if log.llm_config else "Unknown Provider",
                 "provider": log.provider,
                 "model": log.model,
+                "request_type": "chat",  # Default request type
+                "status": "success" if log.success else "error",
                 "total_tokens": log.total_tokens,
                 "estimated_cost": float(log.estimated_cost or 0),
                 "success": log.success,
-                "created_at": log.created_at.isoformat() if hasattr(log.created_at, 'isoformat') else str(log.created_at)
+                "created_at": log.created_at.isoformat() if hasattr(log.created_at, 'isoformat') else str(log.created_at),
+                # Message content data for dropdown display
+                "message_data": {
+                    "response_preview": log.response_preview,
+                    "request_messages_count": log.request_messages_count or 0,
+                    "request_total_chars": log.request_total_chars or 0,
+                    "response_content_length": log.response_content_length or 0,
+                    "request_parameters": log.request_parameters,
+                    "session_id": log.session_id,
+                    "request_id": log.request_id,
+                    "error_message": log.error_message if not log.success else None
+                }
             }
             for log in recent_logs
         ]

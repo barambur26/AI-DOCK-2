@@ -219,6 +219,17 @@ export interface UsageLogEntry {
   performance: LogPerformanceInfo;
   request_info: RequestInfo;
   error?: ErrorInfo;
+  // 🆕 NEW: Message data for dropdown display
+  message_data?: {
+    response_preview?: string;
+    request_messages_count?: number;
+    request_total_chars?: number;
+    response_content_length?: number;
+    request_parameters?: any;
+    session_id?: string;
+    request_id?: string;
+    error_message?: string;
+  };
 }
 
 export interface LogUserInfo {
