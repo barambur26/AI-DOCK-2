@@ -604,8 +604,8 @@ async def get_recent_usage_logs(
                     select(Conversation)
                     .options(selectinload(Conversation.messages))  # <-- ensure messages are loaded
                     .where(
-                        Conversation.user_id == log.user_id,
-                        Conversation.session_id == log.session_id  # <-- match session_id too
+                        Conversation.user_id == log.user_id
+                        # Conversation.session_id == log.session_id  # <-- Uncomment if/when you add session_id
                     )
                     .order_by(Conversation.updated_at.desc())
                 )
