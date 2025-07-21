@@ -453,76 +453,6 @@ async def get_user_usage(
             detail=f"Failed to get user usage: {str(e)}"
         )
 
-@router.get("/departments/{department_id}")
-async def get_department_usage(
-    department_id: int,
-    days: int = Query(30, description="Number of days to analyze", ge=1, le=365),
-    current_admin: User = Depends(get_current_admin_user),
-    session: AsyncSession = Depends(get_async_db)
-) -> Dict[str, Any]:
-    """
-    Get usage statistics for a specific department.
-    
-    This is crucial for:
-    - Department budget tracking
-    - Quota management (AID-005-B)
-    - Cost allocation across teams
-    - Department-level usage trends
-    
-    Args:
-        department_id: ID of the department to analyze  
-        days: Number of days to include in analysis
-        
-    Returns:
-        Department usage statistics with budget context
-    """
-    try:
-        # Verify department exists
-        from ...models.department import Department
-        department = await session.get(Department, department_id)
-        if not department:
-            raise HTTPException(status_code=404, detail="Department not found")
-        
-        # Calculate date range with timezone-naive datetimes for PostgreSQL compatibility
-        end_date = datetime.utcnow()
-        start_date = end_date - timedelta(days=days)
-        
-        # Get department usage summary with null safety check
-        # 🔧 FIX: Add null safety check to prevent 'NoneType' object is not callable
-        if usage_service is None:
-            raise HTTPException(
-                status_code=500,
-                detail="Usage service is not available"
-            )
-        dept_summary = await usage_service.get_department_usage_summary(department_id, start_date, end_date)
-        
-        # Add department information and budget context
-        dept_summary.update({
-            "department_info": {
-                "id": department.id,
-                "name": department.name,
-                "code": department.code,
-                "monthly_budget": float(department.monthly_budget),
-                "is_active": department.is_active
-            },
-            "budget_analysis": {
-                "monthly_budget": float(department.monthly_budget),
-                "current_spending": dept_summary["cost"]["total_usd"],
-                "projected_monthly_cost": dept_summary["cost"]["total_usd"] * (30 / days) if days > 0 else 0,
-                "budget_utilization_percent": (dept_summary["cost"]["total_usd"] / float(department.monthly_budget) * 100) if department.monthly_budget > 0 else 0
-            }
-        })
-        
-        return dept_summary
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to get department usage: {str(e)}"
-        )
-
 # =============================================================================
 # DETAILED LOGS AND RECENT ACTIVITY
 # =============================================================================
@@ -1021,6 +951,209 @@ async def get_pricing_cache_stats(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to get cache stats: {str(e)}"
+        )
+
+# =============================================================================
+# DEPARTMENT ANALYTICS
+# =============================================================================
+
+@router.get("/departments/test")
+async def test_departments_endpoint(
+    current_admin: User = Depends(get_current_admin_user)
+) -> Dict[str, Any]:
+    """
+    Simple test endpoint to verify route registration.
+    """
+    return {
+        "message": "Department analytics endpoint is working!",
+        "timestamp": datetime.utcnow().isoformat(),
+        "user": current_admin.email
+    }
+
+@router.get("/departments/analytics")
+async def get_departments_analytics(
+    days: Optional[int] = Query(None, description="Number of days to analyze (used when start_date/end_date not provided)", ge=1, le=365),
+    start_date: Optional[str] = Query(None, description="Start date for custom range (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date for custom range (YYYY-MM-DD)"),
+    current_admin: User = Depends(get_current_admin_user),
+    session: AsyncSession = Depends(get_async_db)
+) -> Dict[str, Any]:
+    """
+    Get usage analytics aggregated by department.
+    
+    This provides insights into:
+    - Department usage patterns and costs
+    - Budget vs actual spending analysis
+    - Department-level performance metrics
+    - Quota fulfillment tracking
+    
+    Perfect for department budget tracking and cost allocation.
+    
+    Args:
+        days: Number of days to analyze
+        start_date: Optional start date for custom range
+        end_date: Optional end date for custom range
+        
+    Returns:
+        Department analytics with budget analysis
+    """
+    try:
+        from sqlalchemy import select, func, and_
+        from ...models.usage_log import UsageLog
+        from ...models.department import Department
+        
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"🏢 [DEBUG] DEPT-ANALYTICS: Received parameters: days={days}, start_date='{start_date}', end_date='{end_date}'")
+        
+        # Handle both custom date ranges and days parameter
+        if start_date and end_date and start_date.strip() and end_date.strip():
+            try:
+                start_dt = datetime.fromisoformat(start_date.strip()).replace(hour=0, minute=0, second=0, microsecond=0)
+                end_dt = datetime.fromisoformat(end_date.strip()).replace(hour=23, minute=59, second=59, microsecond=999999)
+                calculated_days = (end_dt - start_dt).days + 1
+                logger.info(f"🏢 [DEBUG] DEPT-ANALYTICS: Using custom date range: {start_dt} to {end_dt} ({calculated_days} days)")
+            except ValueError as date_error:
+                logger.error(f"❌ [DEBUG] DEPT-ANALYTICS: Date parsing error: {str(date_error)}")
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Invalid date format. Use YYYY-MM-DD format. Error: {str(date_error)}"
+                )
+        else:
+            days = days or 30
+            end_dt = datetime.utcnow()
+            start_dt = end_dt - timedelta(days=days)
+            calculated_days = days
+            logger.info(f"🏢 [DEBUG] DEPT-ANALYTICS: Using days parameter: {calculated_days} days from {start_dt} to {end_dt}")
+        
+        # Add cache-busting parameter
+        cache_buster = datetime.utcnow().microsecond
+        
+        # Get all departments with budget info
+        departments_query = select(Department).where(Department.id.isnot(None))
+        departments_result = await session.execute(departments_query)
+        all_departments = departments_result.scalars().all()
+        
+        # Build aggregation query for department usage
+        dept_usage_query = select(
+            UsageLog.department_id,
+            func.count(UsageLog.id).label('total_requests'),
+            func.count(UsageLog.id).filter(UsageLog.success == True).label('successful_requests'),
+            func.sum(UsageLog.total_tokens).label('total_tokens'),
+            func.sum(UsageLog.input_tokens).label('input_tokens'),
+            func.sum(UsageLog.output_tokens).label('output_tokens'),
+            func.sum(func.coalesce(UsageLog.estimated_cost, 0.0)).label('total_cost'),
+            func.avg(UsageLog.response_time_ms).label('avg_response_time'),
+            func.max(UsageLog.response_time_ms).label('max_response_time')
+        ).where(
+            and_(
+                UsageLog.created_at >= start_dt,
+                UsageLog.created_at <= end_dt,
+                UsageLog.department_id.isnot(None),
+                # Add cache-busting condition
+                UsageLog.id >= 0
+            )
+        ).group_by(UsageLog.department_id).params(cache_buster=cache_buster)
+        
+        dept_usage_result = await session.execute(dept_usage_query)
+        dept_usage_data = dept_usage_result.fetchall()
+        
+        # Create department analytics response
+        department_analytics = []
+        
+        # Create a map of usage data by department_id
+        usage_by_dept = {usage.department_id: usage for usage in dept_usage_data}
+        
+        for dept in all_departments:
+            usage = usage_by_dept.get(dept.id)
+            
+            if usage:
+                total_requests = usage.total_requests or 0
+                successful_requests = usage.successful_requests or 0
+                total_cost = float(usage.total_cost or 0)
+                
+                # Calculate budget analysis
+                budget_utilization = 0
+                projected_monthly_cost = 0
+                is_over_budget = False
+                
+                if dept.monthly_budget and dept.monthly_budget > 0:
+                    budget_utilization = (total_cost / dept.monthly_budget) * 100
+                    is_over_budget = total_cost > dept.monthly_budget
+                
+                if calculated_days > 0:
+                    projected_monthly_cost = total_cost * (30 / calculated_days)
+                
+                department_analytics.append({
+                    "department_id": dept.id,
+                    "department_name": dept.name,
+                    "department_info": {
+                        "id": dept.id,
+                        "name": dept.name,
+                        "code": dept.code or dept.name[:3].upper(),
+                        "monthly_budget": float(dept.monthly_budget or 0),
+                        "is_active": True  # Assume active if it has usage
+                    },
+                    "requests": {
+                        "total": total_requests,
+                        "successful": successful_requests,
+                        "failed": total_requests - successful_requests,
+                        "success_rate": (successful_requests / total_requests * 100) if total_requests > 0 else 0
+                    },
+                    "tokens": {
+                        "total": int(usage.total_tokens or 0),
+                        "input": int(usage.input_tokens or 0),
+                        "output": int(usage.output_tokens or 0)
+                    },
+                    "cost": {
+                        "total_usd": total_cost,
+                        "average_per_request": total_cost / successful_requests if successful_requests > 0 else 0
+                    },
+                    "performance": {
+                        "average_response_time_ms": int(usage.avg_response_time or 0),
+                        "max_response_time_ms": int(usage.max_response_time or 0)
+                    },
+                    "budget_analysis": {
+                        "monthly_budget": float(dept.monthly_budget or 0),
+                        "current_spending": total_cost,
+                        "projected_monthly_cost": projected_monthly_cost,
+                        "budget_utilization_percent": budget_utilization,
+                        "is_over_budget": is_over_budget,
+                        "remaining_budget": max(0, float(dept.monthly_budget or 0) - total_cost)
+                    }
+                })
+        
+        # Sort by total requests (most active departments first)
+        department_analytics.sort(key=lambda x: x["requests"]["total"], reverse=True)
+        
+        return {
+            "period": {
+                "start_date": start_dt.isoformat(),
+                "end_date": end_dt.isoformat(),
+                "days": calculated_days
+            },
+            "departments": department_analytics,
+            "summary": {
+                "total_departments": len(department_analytics),
+                "departments_with_usage": len([d for d in department_analytics if d["requests"]["total"] > 0]),
+                "total_budget": sum(d["budget_analysis"]["monthly_budget"] for d in department_analytics),
+                "total_spending": sum(d["cost"]["total_usd"] for d in department_analytics),
+                "departments_over_budget": len([d for d in department_analytics if d["budget_analysis"]["is_over_budget"]])
+            },
+            "generated_at": datetime.utcnow().isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"❌ DEPARTMENT ANALYTICS ERROR: {str(e)}")
+        import traceback
+        logger.error(f"❌ DEPARTMENT ANALYTICS TRACEBACK: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get department analytics: {str(e)}"
         )
 
 # =============================================================================

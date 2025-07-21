@@ -137,18 +137,33 @@ class UsageAnalyticsService {
    * across all usage analytics endpoints. Now includes automatic auth failure handling.
    */
   private async handleResponse<T>(response: Response): Promise<T> {
+    console.log(`🔍 [API DEBUG] Response status: ${response.status} ${response.statusText}`);
+    console.log(`🔍 [API DEBUG] Response URL: ${response.url}`);
+    
     if (!response.ok) {
       // Try to get error message from response
       let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
       
       try {
-        const errorData = await response.json();
-        if (errorData.detail) {
-          errorMessage = errorData.detail;
+        const errorData = await response.text(); // Use text() first to see raw response
+        console.log(`🔍 [API DEBUG] Raw error response:`, errorData);
+        
+        try {
+          const parsedError = JSON.parse(errorData);
+          if (parsedError.detail) {
+            errorMessage = parsedError.detail;
+          }
+        } catch (jsonError) {
+          // If it's not JSON, use the raw text
+          console.log(`🔍 [API DEBUG] Response is not JSON, using raw text`);
+          errorMessage = errorData || errorMessage;
         }
-      } catch {
-        // If parsing JSON fails, use the default error message
+      } catch (readError) {
+        console.log(`🔍 [API DEBUG] Failed to read error response:`, readError);
+        // If reading response fails, use the default error message
       }
+      
+      console.log(`🔍 [API DEBUG] Final error message:`, errorMessage);
       
       // Handle authentication failures specifically
       if (response.status === 401 || response.status === 403) {
@@ -1066,6 +1081,89 @@ class UsageAnalyticsService {
   }
 
   /**
+   * Get department analytics for charts
+   * 
+   * This fetches usage data for all departments that have been active
+   * in the specified time period, including budget analysis.
+   * 
+   * 🔧 UPDATED: Now uses the new dedicated department analytics endpoint
+   */
+  async getDepartmentAnalytics(
+    days: number = 30,
+    startDate?: string,
+    endDate?: string,
+    signal?: AbortSignal
+  ): Promise<DepartmentAnalyticsResponse> {
+    const dateRangeText = startDate && endDate 
+      ? `from ${startDate} to ${endDate}`
+      : `${days} days`;
+    console.log(`🏢 Fetching department analytics for ${dateRangeText}...`);
+    
+    try {
+      // 🔧 TEST: First try a simple test endpoint
+      console.log('🏢 [DEPT ANALYTICS] Testing endpoint availability...');
+      const testResponse = await fetch(
+        `${API_BASE_URL}/admin/usage/departments/test`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+          signal: signal
+        }
+      );
+      
+      if (!testResponse.ok) {
+        console.log('🏢 [DEPT ANALYTICS] Test endpoint failed:', testResponse.status, testResponse.statusText);
+        throw new Error(`Test endpoint failed: ${testResponse.status} ${testResponse.statusText}`);
+      }
+      
+      const testResult = await testResponse.json();
+      console.log('🏢 [DEPT ANALYTICS] Test endpoint success:', testResult);
+      
+      // Now try the actual analytics endpoint
+      const params = new URLSearchParams();
+      
+      // Use custom date range if provided, otherwise use days
+      if (startDate && endDate) {
+        console.log(`🏢 [DEPT ANALYTICS] Using custom date range: ${startDate} to ${endDate}`);
+        params.append('start_date', startDate);
+        params.append('end_date', endDate);
+      } else {
+        console.log(`🏢 [DEPT ANALYTICS] Using days parameter: ${days}`);
+        params.append('days', days.toString());
+      }
+      
+      const response = await fetch(
+        `${API_BASE_URL}/admin/usage/departments/analytics?${params}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+          signal: signal
+        }
+      );
+      
+      const result = await this.handleResponse<DepartmentAnalyticsResponse>(response);
+      console.log('✅ Department analytics loaded:', result);
+      return result;
+      
+    } catch (error) {
+      console.error('❌ Failed to get department analytics:', error);
+      
+      // 🔧 ENHANCED: Better error message extraction
+      let errorMessage = 'Failed to load department analytics';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error && typeof error === 'object') {
+        // Try to extract meaningful error info from object
+        errorMessage = error.detail || error.message || JSON.stringify(error);
+      }
+      
+      throw new Error(errorMessage);
+    }
+  }
+
+  /**
    * Get dashboard data in one call
    * 
    * This is a convenience method that fetches multiple pieces of data
@@ -1771,3 +1869,6 @@ export interface ModelStats {
 // Create and export a singleton instance
 // Learning: This pattern ensures we have one shared instance across the app
 export const usageAnalyticsService = new UsageAnalyticsService();
+
+// Export the new types
+export type { DepartmentAnalyticsResponse, DepartmentAnalytics, DepartmentChartData } from '../types/usage';

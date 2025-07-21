@@ -2,7 +2,7 @@
 // Data visualization for usage analytics with modern glassmorphism design
 // Uses Recharts library for professional chart rendering with dark theme
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   BarChart,
   Bar,
@@ -21,7 +21,8 @@ import {
   AreaChart
 } from 'recharts';
 
-import { ProviderStats, UsageSummary, MostUsedModelsResponse } from '../../types/usage';
+import { ProviderStats, UsageSummary, MostUsedModelsResponse, DepartmentAnalyticsResponse, DepartmentChartData } from '../../types/usage';
+import { usageAnalyticsService } from '../../services/usageAnalyticsService';
 import { formatCurrency } from '../../utils/formatUtils';
 
 interface UsageChartsProps {
@@ -29,6 +30,12 @@ interface UsageChartsProps {
   mostUsedModels: MostUsedModelsResponse | null;
   isLoading: boolean;
   error: string | null;
+}
+
+// Utility to safely coerce any value to a finite number (fallback to 0)
+function safeNumber(val: any): number {
+  const n = Number(val);
+  return Number.isFinite(n) ? n : 0;
 }
 
 const UsageCharts: React.FC<UsageChartsProps> = ({
@@ -42,9 +49,14 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
   // VIEW STATE MANAGEMENT
   // =============================================================================
 
-  const [viewMode, setViewMode] = useState<'models' | 'providers'>('models');
+  const [viewMode, setViewMode] = useState<'models' | 'providers' | 'departments'>('models');
   const [showAllModels, setShowAllModels] = useState(false);
   const defaultModelLimit = 5;
+  
+  // Department analytics state
+  const [departmentAnalytics, setDepartmentAnalytics] = useState<DepartmentAnalyticsResponse | null>(null);
+  const [isDepartmentLoading, setIsDepartmentLoading] = useState(false);
+  const [departmentError, setDepartmentError] = useState<string | null>(null);
 
   // =============================================================================
   // CHART CONFIGURATION (DEFINE COLORS FIRST)
@@ -245,10 +257,173 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
       .sort((a, b) => a.responseTime - b.responseTime);
   }, [summary?.providers]);
 
+  // Department data processing - new functionality
+  const departmentChartData = useMemo(() => {
+    if (!departmentAnalytics?.departments) return [];
+    
+    return departmentAnalytics.departments
+      .map((dept, index) => ({
+        name: dept.department_info.code || dept.department_name,
+        displayName: dept.department_info.code || dept.department_name.substring(0, 15),
+        fullName: dept.department_name,
+        department_id: dept.department_id,
+        requests: safeNumber(dept.requests.total),
+        successfulRequests: safeNumber(dept.requests.successful),
+        failedRequests: safeNumber(dept.requests.failed),
+        tokens: safeNumber(dept.tokens.total),
+        cost: safeNumber(dept.cost.total_usd),
+        avgResponseTime: safeNumber(dept.performance.average_response_time_ms),
+        successRate: safeNumber(dept.requests.success_rate),
+        budget: safeNumber(dept.budget_analysis.monthly_budget),
+        budgetUtilization: safeNumber(dept.budget_analysis.budget_utilization_percent),
+        color: CHART_COLORS[index % CHART_COLORS.length]
+      }))
+      .sort((a, b) => b.requests - a.requests);
+  }, [departmentAnalytics?.departments]);
+
+  const departmentCostBreakdownData = useMemo(() => {
+    if (!departmentAnalytics?.departments) return [];
+    
+    const totalCost = departmentAnalytics.departments.reduce((sum, dept) => sum + safeNumber(dept.cost.total_usd), 0);
+    const hasAnyCost = departmentAnalytics.departments.some(dept => safeNumber(dept.cost.total_usd) > 0);
+    
+    if (!hasAnyCost && departmentAnalytics.departments.length > 0) {
+      return departmentAnalytics.departments.map((dept, index) => ({
+        name: dept.department_info.code || dept.department_name,
+        displayName: dept.department_info.code || dept.department_name.substring(0, 15),
+        fullName: dept.department_name,
+        cost: 0,
+        percentage: (100 / departmentAnalytics.departments.length).toFixed(1),
+        color: CHART_COLORS[index % CHART_COLORS.length],
+        isZeroCost: true
+      }));
+    }
+    
+    return departmentAnalytics.departments
+      .filter(dept => safeNumber(dept.cost.total_usd) > 0)
+      .map((dept, index) => ({
+        name: dept.department_info.code || dept.department_name,
+        displayName: dept.department_info.code || dept.department_name.substring(0, 15),
+        fullName: dept.department_name,
+        cost: safeNumber(dept.cost.total_usd),
+        percentage: totalCost > 0 ? (safeNumber(dept.cost.total_usd) / totalCost * 100).toFixed(1) : '0',
+        color: CHART_COLORS[index % CHART_COLORS.length],
+        isZeroCost: false
+      }))
+      .sort((a, b) => b.cost - a.cost);
+  }, [departmentAnalytics?.departments]);
+
+  const departmentPerformanceData = useMemo(() => {
+    if (!departmentAnalytics?.departments) return [];
+    
+    return departmentAnalytics.departments
+      .map((dept, index) => ({
+        name: dept.department_info.code || dept.department_name,
+        displayName: dept.department_info.code || dept.department_name.substring(0, 15),
+        fullName: dept.department_name,
+        responseTime: safeNumber(dept.performance.average_response_time_ms),
+        successRate: safeNumber(dept.requests.success_rate),
+        costPerRequest: safeNumber(dept.cost.average_per_request),
+        color: CHART_COLORS[index % CHART_COLORS.length]
+      }))
+      .sort((a, b) => a.responseTime - b.responseTime);
+  }, [departmentAnalytics?.departments]);
+
+  const quotaFulfillmentData = useMemo(() => {
+    if (!departmentAnalytics?.departments) return [];
+    
+    return departmentAnalytics.departments
+      .map((dept, index) => {
+        // 🔧 CRITICAL: Add NaN protection for all numeric values
+        const budget = safeNumber(dept.budget_analysis?.monthly_budget);
+        const used = safeNumber(dept.cost?.total_usd);
+        const remaining = Math.max(0, budget - used);
+        const utilization = budget > 0 ? (used / budget) * 100 : 0;
+        
+        // 🔧 Validate all numbers are finite before using in charts
+        const safeValues = {
+          budget: safeNumber(budget),
+          used: safeNumber(used),
+          remaining: safeNumber(remaining),
+          utilization: safeNumber(utilization)
+        };
+        
+        return {
+          name: dept.department_info?.code || dept.department_name,
+          displayName: (dept.department_info?.code || dept.department_name)?.substring(0, 15) || 'Unknown',
+          fullName: dept.department_name || 'Unknown Department',
+          budget: safeValues.budget,
+          used: safeValues.used,
+          remaining: safeValues.remaining,
+          utilization: safeValues.utilization,
+          color: CHART_COLORS[index % CHART_COLORS.length],
+          isOverBudget: safeValues.used > safeValues.budget && safeValues.budget > 0
+        };
+      })
+      .filter(item => {
+        // 🔧 Filter out any items with invalid data
+        const isValid = isFinite(item.budget) && isFinite(item.used) && 
+                       isFinite(item.remaining) && isFinite(item.utilization);
+        if (!isValid) {
+          console.warn(`⚠️ Filtering out invalid department data:`, item);
+        }
+        return isValid;
+      })
+      .sort((a, b) => b.budget - a.budget);
+  }, [departmentAnalytics?.departments]);
+
   // Dynamic data selection based on view mode - defined after all base data
-  const currentChartData = viewMode === 'models' ? modelChartData : providerChartData;
-  const currentCostData = viewMode === 'models' ? modelCostBreakdownData : costBreakdownData;
-  const currentPerformanceData = viewMode === 'models' ? modelPerformanceData : performanceData;
+  const currentChartData = viewMode === 'models' ? modelChartData : 
+                          viewMode === 'providers' ? providerChartData : 
+                          departmentChartData;
+  const currentCostData = viewMode === 'models' ? modelCostBreakdownData : 
+                         viewMode === 'providers' ? costBreakdownData : 
+                         departmentCostBreakdownData;
+  const currentPerformanceData = viewMode === 'models' ? modelPerformanceData : 
+                                viewMode === 'providers' ? performanceData : 
+                                departmentPerformanceData;
+
+  // =============================================================================
+  // DATA LOADING EFFECTS
+  // =============================================================================
+
+  /**
+   * Load department analytics when switching to departments view
+   * Reset state when switching away from departments view
+   */
+  useEffect(() => {
+    if (viewMode === 'departments') {
+      // Only load if we don't have data and we're not already loading
+      if (!departmentAnalytics && !isDepartmentLoading) {
+        console.log('📊 Loading department analytics...');
+        setIsDepartmentLoading(true);
+        setDepartmentError(null);
+        
+        usageAnalyticsService.getDepartmentAnalytics(30)
+          .then(data => {
+            console.log('✅ Department analytics loaded:', data);
+            setDepartmentAnalytics(data);
+            setDepartmentError(null);
+          })
+          .catch(error => {
+            console.error('❌ Failed to load department analytics:', error);
+            setDepartmentError(error.message || 'Failed to load department analytics');
+            setDepartmentAnalytics(null);
+          })
+          .finally(() => {
+            setIsDepartmentLoading(false);
+          });
+      }
+    } else {
+      // 🔧 Clear department data when switching away from departments view
+      if (departmentAnalytics || departmentError) {
+        console.log('🗑️ Clearing department analytics (switched away from departments view)');
+        setDepartmentAnalytics(null);
+        setDepartmentError(null);
+        setIsDepartmentLoading(false);
+      }
+    }
+  }, [viewMode]); // 🔧 FIXED: Only depend on viewMode
 
   // =============================================================================
   // CUSTOM COMPONENTS
@@ -358,13 +533,19 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
   // MAIN RENDER
   // =============================================================================
 
-  if (isLoading) {
+  // Show loading if main data is loading OR if departments view is loading
+  if (isLoading || (viewMode === 'departments' && isDepartmentLoading && !departmentAnalytics)) {
     return renderLoading();
   }
 
+  // Show error for main data only - departments errors are handled gracefully
   if (error || !summary) {
     return renderError();
   }
+
+  // 🔧 For departments view: show graceful fallback if there's an error
+  const isDepartmentsViewWithError = viewMode === 'departments' && departmentError && !departmentAnalytics;
+  const shouldShowDepartmentsError = isDepartmentsViewWithError;
 
   return (
     <div className="space-y-6 mb-8">
@@ -381,10 +562,15 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
             <div>
               <h3 className="text-lg font-semibold text-white">Usage Analytics Charts</h3>
               <p className="text-sm text-blue-200">
-                Viewing by {viewMode === 'models' ? 'AI Models' : 'Providers'}
+                Viewing by {viewMode === 'models' ? 'AI Models' : viewMode === 'providers' ? 'Providers' : 'Departments'}
                 {viewMode === 'models' && mostUsedModels?.models && (
                   <span className="ml-2">
                     • Showing {showAllModels ? mostUsedModels.models.length : Math.min(defaultModelLimit, mostUsedModels.models.length)} of {mostUsedModels.models.length} models
+                  </span>
+                )}
+                {viewMode === 'departments' && departmentAnalytics?.departments && (
+                  <span className="ml-2">
+                    • Showing {departmentAnalytics.departments.length} departments with usage data
                   </span>
                 )}
               </p>
@@ -425,6 +611,21 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
                   <span>Providers</span>
                 </span>
               </button>
+              <button
+                onClick={() => setViewMode('departments')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                  viewMode === 'departments'
+                    ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg'
+                    : 'text-blue-200 hover:text-white hover:bg-white/20'
+                }`}
+              >
+                <span className="flex items-center space-x-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  <span>Departments</span>
+                </span>
+              </button>
             </div>
             
             {/* Show All Models Toggle - only visible in models view */}
@@ -455,7 +656,7 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
               </svg>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">Requests by {viewMode === 'models' ? 'Model' : 'Provider'}</h3>
+              <h3 className="text-lg font-semibold text-white">Requests by {viewMode === 'models' ? 'Model' : viewMode === 'providers' ? 'Provider' : 'Department'}</h3>
               <p className="text-sm text-blue-200">Success vs failed requests</p>
             </div>
           </div>
@@ -506,7 +707,7 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
             </div>
             <div>
               <h3 className="text-lg font-semibold text-white">
-                Cost Distribution by {viewMode === 'models' ? 'Model' : 'Provider'}
+                Cost Distribution by {viewMode === 'models' ? 'Model' : viewMode === 'providers' ? 'Provider' : 'Department'}
                 {currentCostData.length > 0 && currentCostData[0]?.isZeroCost && (
                   <span className="ml-2 text-sm text-blue-300 font-normal">
                     (No costs in selected period)
@@ -540,7 +741,7 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
           <div className="mt-4 space-y-2">
             {currentCostData.length === 0 ? (
               <div className="text-center text-blue-200 text-sm py-4">
-                No {viewMode === 'models' ? 'model' : 'provider'} data available
+                No {viewMode === 'models' ? 'model' : viewMode === 'providers' ? 'provider' : 'department'} data available
               </div>
             ) : currentCostData[0]?.isZeroCost ? (
               <div className="bg-blue-500/20 border border-blue-400/30 rounded-xl p-3 mb-3">
@@ -549,7 +750,7 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
                     <span className="text-white text-xs">i</span>
                   </div>
                   <span className="text-blue-200 text-sm font-medium">
-                    No costs recorded in the selected period. Chart shows {viewMode === 'models' ? 'model' : 'provider'} availability.
+                    No costs recorded in the selected period. Chart shows {viewMode === 'models' ? 'model' : viewMode === 'providers' ? 'provider' : 'department'} availability.
                   </span>
                 </div>
               </div>
@@ -588,7 +789,7 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
               </svg>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">Average Response Time by {viewMode === 'models' ? 'Model' : 'Provider'}</h3>
+              <h3 className="text-lg font-semibold text-white">Average Response Time by {viewMode === 'models' ? 'Model' : viewMode === 'providers' ? 'Provider' : 'Department'}</h3>
               <p className="text-sm text-blue-200">Performance comparison</p>
             </div>
           </div>
@@ -641,7 +842,7 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
               </svg>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">Success Rate by {viewMode === 'models' ? 'Model' : 'Provider'}</h3>
+              <h3 className="text-lg font-semibold text-white">Success Rate by {viewMode === 'models' ? 'Model' : viewMode === 'providers' ? 'Provider' : 'Department'}</h3>
               <p className="text-sm text-blue-200">Reliability metrics</p>
             </div>
           </div>
@@ -686,6 +887,110 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
 
       </div>
 
+      {/* Quota Fulfillment Chart - Only visible in departments view */}
+      {viewMode === 'departments' && (
+        <div className="bg-white/5 backdrop-blur-lg rounded-3xl shadow-2xl p-6 border border-white/10 hover:shadow-3xl transition-all duration-300">
+          <div className="flex items-center space-x-3 mb-6">
+            <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-white">Quota Fulfillment by Department</h3>
+              <p className="text-sm text-blue-200">Budget usage and remaining allocation</p>
+            </div>
+          </div>
+          <ResponsiveContainer width="100%" height={400}>
+            <BarChart data={quotaFulfillmentData} layout="horizontal">
+              <CartesianGrid strokeDasharray="3 3" stroke={DARK_THEME.grid} />
+              <XAxis 
+                type="number"
+                tick={{ fontSize: 12, fill: DARK_THEME.text }}
+                axisLine={{ stroke: DARK_THEME.axis }}
+                tickLine={{ stroke: DARK_THEME.axis }}
+                domain={[0, 'dataMax']}
+              />
+              <YAxis 
+                type="category"
+                dataKey="displayName"
+                tick={{ fontSize: 11, fill: DARK_THEME.text }}
+                axisLine={{ stroke: DARK_THEME.axis }}
+                tickLine={{ stroke: DARK_THEME.axis }}
+                width={100}
+              />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: 'rgba(17, 24, 39, 0.9)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  borderRadius: '12px',
+                  color: '#E5E7EB'
+                }}
+                formatter={(value: number, name: string) => {
+                  if (name === 'budget') return [`${value.toFixed(2)}`, 'Budget'];
+                  if (name === 'used') return [`${value.toFixed(2)}`, 'Used'];
+                  if (name === 'remaining') return [`${value.toFixed(2)}`, 'Remaining'];
+                  return [`${value.toFixed(2)}`, name];
+                }}
+              />
+              <Legend wrapperStyle={{ color: DARK_THEME.text }} />
+              {/* Background bar showing total budget */}
+              <Bar 
+                dataKey="budget" 
+                name="Total Budget" 
+                fill="#374151"
+              />
+              {/* Foreground bar showing usage (overlaid on same axis) */}
+              <Bar 
+                dataKey="used" 
+                name="Used" 
+                fill="#10B981"
+              />
+            </BarChart>
+          </ResponsiveContainer>
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+            {quotaFulfillmentData.map((item) => (
+              <div key={item.name} className="bg-white/5 backdrop-blur-lg rounded-xl p-4 border border-white/10 hover:bg-white/10 transition-colors">
+                <div className="font-semibold text-white mb-3 text-center">{item.fullName}</div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between text-blue-200">
+                    <span>Budget:</span>
+                    <span className="font-medium text-white">${item.budget.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-blue-200">
+                    <span>Used:</span>
+                    <span className={`font-medium ${item.isOverBudget ? 'text-red-400' : 'text-green-400'}`}>
+                      ${item.used.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-blue-200">
+                    <span>Remaining:</span>
+                    <span className={`font-medium ${item.remaining < 0 ? 'text-red-400' : 'text-green-400'}`}>
+                      ${Math.max(0, item.remaining).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-blue-200">
+                    <span>Utilization:</span>
+                    <span className={`font-medium ${
+                      item.utilization > 100 ? 'text-red-400' : 
+                      item.utilization > 80 ? 'text-yellow-400' : 
+                      'text-green-400'
+                    }`}>
+                      {item.utilization.toFixed(1)}%
+                    </span>
+                  </div>
+                  {item.isOverBudget && (
+                    <div className="mt-2 p-2 bg-red-500/20 border border-red-400/30 rounded-lg text-red-300 text-xs text-center">
+                      ⚠️ Over Budget
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Token Usage Analysis */}
       <div className="bg-white/5 backdrop-blur-lg rounded-3xl shadow-2xl p-6 border border-white/10 hover:shadow-3xl transition-all duration-300">
         <div className="flex items-center space-x-3 mb-6">
@@ -695,8 +1000,8 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
             </svg>
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-white">Token Usage and Cost Efficiency</h3>
-            <p className="text-sm text-blue-200">Volume and cost analysis by {viewMode === 'models' ? 'model' : 'provider'}</p>
+          <h3 className="text-lg font-semibold text-white">Token Usage and Cost Efficiency</h3>
+          <p className="text-sm text-blue-200">Volume and cost analysis by {viewMode === 'models' ? 'model' : viewMode === 'providers' ? 'provider' : 'department'}</p>
           </div>
         </div>
         <ResponsiveContainer width="100%" height={300}>
@@ -763,7 +1068,7 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
                 <div className="flex justify-between text-blue-200">
                   <span>Efficiency:</span>
                   <span className="font-medium text-white">
-                    {item.tokens > 0 ? formatCurrency(item.cost / item.tokens * 1000) : formatCurrency(0)} /1K
+                  {item.tokens > 0 ? `$${(item.cost / item.tokens * 1000).toFixed(4)}` : '$0.0000'} /1K
                   </span>
                 </div>
               </div>

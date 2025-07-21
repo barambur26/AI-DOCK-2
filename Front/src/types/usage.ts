@@ -369,6 +369,48 @@ export interface ModelStats {
 }
 
 // =============================================================================
+// DEPARTMENT ANALYTICS TYPES
+// =============================================================================
+
+/**
+ * Department analytics response for charts
+ */
+export interface DepartmentAnalyticsResponse {
+  period: TimePeriod;
+  departments: DepartmentAnalytics[];
+  summary: {
+    total_departments: number;
+    departments_with_usage: number;
+    total_budget: number;
+    total_spending: number;
+    departments_over_budget: number;
+  };
+  generated_at: string;
+}
+
+export interface DepartmentAnalytics extends DepartmentUsageStats {
+  department_id: number;
+  department_name: string;
+}
+
+export interface DepartmentChartData {
+  name: string;
+  displayName: string;
+  fullName: string;
+  department_id: number;
+  requests: number;
+  successfulRequests: number;
+  failedRequests: number;
+  tokens: number;
+  cost: number;
+  avgResponseTime: number;
+  successRate: number;
+  budget: number;
+  budgetUtilization: number;
+  color: string;
+}
+
+// =============================================================================
 // DASHBOARD DATA TYPES
 // =============================================================================
 
