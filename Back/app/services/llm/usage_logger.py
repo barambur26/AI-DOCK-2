@@ -197,6 +197,8 @@ class LLMUsageLogger:
         """
         Create standardized request data for logging.
         
+        🔧 FIXED: Enhanced request_prompt extraction with better error handling
+        
         Args:
             messages: List of chat messages
             parameters: Request parameters (temperature, max_tokens, etc.)
@@ -207,20 +209,39 @@ class LLMUsageLogger:
         """
         total_chars = sum(len(msg.get("content", "")) for msg in messages)
         
-        # Find the most recent user message for request_prompt
+        # 🔧 ENHANCED: Improved request_prompt extraction with debugging
         request_prompt = None
-        for msg in reversed(messages):
-            if msg.get("role") == "user":
-                request_prompt = msg.get("content")
-                break
+        user_messages = []
         
-        return {
+        # Extract all user messages for debugging
+        for msg in messages:
+            if msg.get("role") == "user" and msg.get("content"):
+                user_messages.append(msg.get("content"))
+        
+        # Get the most recent user message
+        if user_messages:
+            request_prompt = user_messages[-1]
+            self.logger.info(f"🔍 [DEBUG] Found {len(user_messages)} user messages, using latest: {request_prompt[:100]}...")
+        else:
+            self.logger.warning(f"🔍 [DEBUG] No user messages found in conversation! Messages: {[msg.get('role') for msg in messages]}")
+            # Fallback: use the last message regardless of role
+            if messages:
+                last_message = messages[-1]
+                request_prompt = f"[{last_message.get('role', 'unknown')}] {last_message.get('content', '')}"
+                self.logger.warning(f"🔍 [DEBUG] Using fallback prompt from {last_message.get('role')}: {request_prompt[:100]}...")
+        
+        request_data = {
             "messages_count": len(messages),
             "total_chars": total_chars,
             "streaming": streaming,
             "parameters": parameters,
-            "request_prompt": request_prompt
+            "request_prompt": request_prompt  # This should now always have content
         }
+        
+        # 🔧 DEBUG: Log what we're about to store
+        self.logger.info(f"🔍 [DEBUG] Request data created - messages: {len(messages)}, chars: {total_chars}, prompt_length: {len(request_prompt) if request_prompt else 0}")
+        
+        return request_data
     
     def create_performance_data(
         self,

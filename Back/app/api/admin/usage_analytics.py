@@ -597,30 +597,59 @@ async def get_recent_usage_logs(
         from ...models.conversation import Conversation, ConversationMessage
         from sqlalchemy.orm import selectinload
         for log in logs:
-            # 🔧 FIXED: Properly fetch messages for this log using session_id
+            # 🔧 ENHANCED: Comprehensive message fetching with multiple fallback strategies
             messages = []
+            request_prompt_from_conversations = None
+            
+            # Strategy 1: Try to get messages from conversation using session_id
             if log.session_id and log.user_id:
-                # Try to find a conversation for this user/session with matching session_id
-                conv = await session.execute(
-                    select(Conversation)
-                    .options(selectinload(Conversation.messages))  # Ensure messages are loaded
-                    .where(
-                        and_(
-                            Conversation.user_id == log.user_id,
-                            Conversation.session_id == log.session_id  # 🆕 NOW WORKING: Match by session_id
+                try:
+                    conv = await session.execute(
+                        select(Conversation)
+                        .options(selectinload(Conversation.messages))
+                        .where(
+                            and_(
+                                Conversation.user_id == log.user_id,
+                                Conversation.session_id == log.session_id
+                            )
                         )
+                        .order_by(Conversation.updated_at.desc())
                     )
-                    .order_by(Conversation.updated_at.desc())
-                )
-                conv = conv.scalars().first()
-                if conv and conv.messages:
-                    # Get last 10 messages (or fewer) from the correct conversation
-                    msg_objs = conv.messages[-10:] if len(conv.messages) > 10 else conv.messages
-                    messages = [
-                        {"role": m.role, "content": m.content}
-                        for m in msg_objs
-                    ]
-            # Note: For old conversations (session_id is NULL), messages will be empty as intended
+                    conv = conv.scalars().first()
+                    
+                    if conv and conv.messages:
+                        # Get messages from conversation
+                        msg_objs = conv.messages[-10:] if len(conv.messages) > 10 else conv.messages
+                        messages = [
+                            {"role": m.role, "content": m.content}
+                            for m in msg_objs
+                        ]
+                        
+                        # Also extract request prompt from conversation messages
+                        for msg in reversed(msg_objs):
+                            if msg.role == "user":
+                                request_prompt_from_conversations = msg.content
+                                break
+                                
+                        logger.info(f"🔍 [ADMIN API] Found {len(messages)} messages for log {log.id} via session_id")
+                    else:
+                        logger.warning(f"🔍 [ADMIN API] No conversation found for session_id {log.session_id}")
+                        
+                except Exception as conv_error:
+                    logger.error(f"🔍 [ADMIN API] Error fetching conversation for log {log.id}: {str(conv_error)}")
+                
+            # Strategy 2: Use stored request_prompt as fallback
+            final_request_prompt = log.request_prompt or request_prompt_from_conversations
+            
+            # If we have a request_prompt but no conversation messages, create a synthetic message structure
+            if final_request_prompt and not messages:
+                messages = [
+                    {"role": "user", "content": final_request_prompt}
+                ]
+                if log.response_preview:
+                    messages.append({"role": "assistant", "content": log.response_preview})
+                logger.info(f"🔍 [ADMIN API] Created synthetic messages for log {log.id} from stored prompts")
+            # Note: Now using stored request_prompt as fallback when session_id linking fails
             log_data.append({
                 "id": log.id,
                 "DEBUG_THIS_IS_A_TEST_FIELD": 12345,
@@ -656,11 +685,11 @@ async def get_recent_usage_logs(
                     "error_message": log.error_message
                 } if not log.success else None,
                 # Add these two fields for direct access in frontend
-                "request_prompt": log.request_prompt,
+                "request_prompt": final_request_prompt,  # Use enhanced prompt
                 "response_preview": log.response_preview,
-                # 🆕 NEW: Message data for dropdown display
+                # 🆕 ENHANCED: Message data for dropdown display with fallback support
                 "message_data": {
-                    "request_prompt": log.request_prompt,
+                    "request_prompt": final_request_prompt,  # Use enhanced prompt
                     "response_preview": log.response_preview,
                     "request_messages_count": log.request_messages_count or 0,
                     "request_total_chars": log.request_total_chars or 0,
