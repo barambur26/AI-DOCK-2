@@ -29,7 +29,8 @@ class ConversationService:
         llm_config_id: Optional[int] = None,
         model_used: Optional[str] = None,  # Keep parameter for backward compatibility but ignore it
         project_id: Optional[int] = None,
-        assistant_id: Optional[int] = None  # Explicit assistant ID takes precedence over project default
+        assistant_id: Optional[int] = None,  # Explicit assistant ID takes precedence over project default
+        session_id: Optional[str] = None  # NEW: Session ID for linking to usage logs
     ) -> Conversation:
         """Create a new conversation with optional project and assistant"""
         try:
@@ -48,7 +49,8 @@ class ConversationService:
                 llm_config_id=llm_config_id,
                 message_count=0,
                 is_active=True,
-                assistant_id=assistant_id or project_assistant_id  # Explicit takes precedence
+                assistant_id=assistant_id or project_assistant_id,  # Explicit takes precedence
+                session_id=session_id  # NEW: Set session_id for usage log tracking
             )
             
             # Save conversation first
@@ -263,7 +265,8 @@ class ConversationService:
         model_used: Optional[str] = None,  # Keep for backward compatibility but ignore
         title: Optional[str] = None,
         project_id: Optional[int] = None,  # 📁 Add folder assignment support
-        assistant_id: Optional[int] = None  # Explicit assistant ID takes precedence over project default
+        assistant_id: Optional[int] = None,  # Explicit assistant ID takes precedence over project default
+        session_id: Optional[str] = None  # NEW: Session ID for linking to usage logs
     ) -> Conversation:
         """Save a complete conversation from message list with enhanced validation"""
         
@@ -282,7 +285,9 @@ class ConversationService:
                 user_id=user_id,
                 title=title,
                 llm_config_id=llm_config_id,
-                project_id=project_id  # 📁 Pass folder assignment
+                project_id=project_id,  # 📁 Pass folder assignment
+                assistant_id=assistant_id,  # Pass assistant_id
+                session_id=session_id  # NEW: Pass session_id for usage log tracking
                 # 🔧 FIXED: No longer passing model_used per user request
             )
             

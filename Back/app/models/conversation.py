@@ -36,6 +36,14 @@ class Conversation(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     
+    # Session tracking - NEW for linking conversations to usage logs
+    session_id = Column(
+        String(100), 
+        nullable=True,  # Nullable for backward compatibility with existing conversations
+        index=True,     # Index for fast session-based queries
+        comment="Session ID to link conversation to usage logs for admin analytics"
+    )
+    
     # Conversation status - NEW for better conversation management
     is_active = Column(
         Boolean, 
@@ -205,7 +213,8 @@ class Conversation(Base):
             "is_active": self.is_active,  # NEW: Include active status
             "message_count": self.message_count,
             "last_message_at": self.last_message_at.isoformat() if self.last_message_at else None,
-            "model_used": self.model_used
+            "model_used": self.model_used,
+            "session_id": self.session_id  # NEW: Include session_id for usage log tracking
         }
 
 class ConversationMessage(Base):

@@ -596,28 +596,30 @@ async def get_recent_usage_logs(
         from ...models.conversation import Conversation, ConversationMessage
         from sqlalchemy.orm import selectinload
         for log in logs:
-            # --- Minimal modular fix: fetch messages for this log ---
+            # 🔧 FIXED: Properly fetch messages for this log using session_id
             messages = []
             if log.session_id and log.user_id:
-                # Try to find a conversation for this user/session
+                # Try to find a conversation for this user/session with matching session_id
                 conv = await session.execute(
                     select(Conversation)
-                    .options(selectinload(Conversation.messages))  # <-- ensure messages are loaded
+                    .options(selectinload(Conversation.messages))  # Ensure messages are loaded
                     .where(
-                        Conversation.user_id == log.user_id
-                        # Conversation.session_id == log.session_id  # <-- Uncomment if/when you add session_id
+                        and_(
+                            Conversation.user_id == log.user_id,
+                            Conversation.session_id == log.session_id  # 🆕 NOW WORKING: Match by session_id
+                        )
                     )
                     .order_by(Conversation.updated_at.desc())
                 )
                 conv = conv.scalars().first()
                 if conv and conv.messages:
-                    # Get last 10 messages (or fewer)
+                    # Get last 10 messages (or fewer) from the correct conversation
                     msg_objs = conv.messages[-10:] if len(conv.messages) > 10 else conv.messages
                     messages = [
                         {"role": m.role, "content": m.content}
                         for m in msg_objs
                     ]
-            # --- End fix ---
+            # Note: For old conversations (session_id is NULL), messages will be empty as intended
             log_data.append({
                 "id": log.id,
                 "DEBUG_THIS_IS_A_TEST_FIELD": 12345,

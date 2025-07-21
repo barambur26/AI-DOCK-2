@@ -43,7 +43,8 @@ async def create_conversation(
             llm_config_id=conversation_data.llm_config_id,
             model_used=conversation_data.model_used,
             project_id=conversation_data.project_id,
-            assistant_id=conversation_data.assistant_id
+            assistant_id=conversation_data.assistant_id,
+            session_id=conversation_data.session_id  # NEW: Pass session_id for usage log tracking
         )
         
         return await conversation_service.get_conversation(
@@ -77,7 +78,8 @@ async def save_conversation_from_messages(
             model_used=conversation_data.model_used,
             title=conversation_data.title,
             project_id=conversation_data.project_id,
-            assistant_id=conversation_data.assistant_id
+            assistant_id=conversation_data.assistant_id,
+            session_id=conversation_data.session_id  # NEW: Pass session_id for usage log tracking
         )
         
         return await conversation_service.get_conversation(

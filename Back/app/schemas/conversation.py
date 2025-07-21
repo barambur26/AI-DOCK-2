@@ -55,6 +55,7 @@ class ConversationCreate(ConversationBase):
     model_used: Optional[str] = Field(None, description="Model used in conversation")
     project_id: Optional[int] = Field(None, description="Project/folder to assign conversation to")
     assistant_id: Optional[int] = Field(None, description="Assistant to use for conversation (overrides project default)")
+    session_id: Optional[str] = Field(None, description="Session ID for linking to usage logs")
 
 class ConversationUpdate(BaseModel):
     """Schema for updating a conversation"""
@@ -72,6 +73,7 @@ class ConversationSummary(ConversationBase):
     project: Optional[Dict[str, Any]] = Field(None, description="Project details if associated")
     assistant_id: Optional[int] = Field(None, description="Assistant ID if one is assigned")
     assistant: Optional[Dict[str, Any]] = Field(None, description="Assistant details if one is assigned")
+    session_id: Optional[str] = Field(None, description="Session ID for usage log tracking")
 
     class Config:
         from_attributes = True
@@ -95,6 +97,7 @@ class ConversationSaveFromMessages(BaseModel):
     model_used: Optional[str] = Field(None, description="Primary model used")
     project_id: Optional[int] = Field(None, description="Project/folder to assign conversation to")
     assistant_id: Optional[int] = Field(None, description="Assistant to use for conversation (overrides project default)")
+    session_id: Optional[str] = Field(None, description="Session ID for linking to usage logs")
 
     @field_validator('messages')
     @classmethod
