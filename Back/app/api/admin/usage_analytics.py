@@ -561,6 +561,9 @@ async def get_recent_usage_logs(
         List of recent usage logs with metadata
     """
     try:
+        import logging
+        logger = logging.getLogger(__name__)
+        
         from sqlalchemy import select, and_, desc
         from ...models.usage_log import UsageLog
         
