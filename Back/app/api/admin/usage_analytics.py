@@ -1077,12 +1077,12 @@ async def get_departments_analytics(
                 projected_monthly_cost = 0
                 is_over_budget = False
                 
-                if dept.monthly_budget and dept.monthly_budget > 0:
-                    budget_utilization = (total_cost / dept.monthly_budget) * 100
-                    is_over_budget = total_cost > dept.monthly_budget
+                if dept.monthly_budget and float(dept.monthly_budget) > 0:
+                    budget_utilization = (float(total_cost) / float(dept.monthly_budget)) * 100
+                    is_over_budget = float(total_cost) > float(dept.monthly_budget)
                 
                 if calculated_days > 0:
-                    projected_monthly_cost = total_cost * (30 / calculated_days)
+                    projected_monthly_cost = float(total_cost) * (30 / calculated_days)
                 
                 department_analytics.append({
                     "department_id": dept.id,
@@ -1107,7 +1107,7 @@ async def get_departments_analytics(
                     },
                     "cost": {
                         "total_usd": total_cost,
-                        "average_per_request": total_cost / successful_requests if successful_requests > 0 else 0
+                        "average_per_request": float(total_cost) / successful_requests if successful_requests > 0 else 0
                     },
                     "performance": {
                         "average_response_time_ms": int(usage.avg_response_time or 0),
@@ -1115,11 +1115,11 @@ async def get_departments_analytics(
                     },
                     "budget_analysis": {
                         "monthly_budget": float(dept.monthly_budget or 0),
-                        "current_spending": total_cost,
+                        "current_spending": float(total_cost),
                         "projected_monthly_cost": projected_monthly_cost,
                         "budget_utilization_percent": budget_utilization,
                         "is_over_budget": is_over_budget,
-                        "remaining_budget": max(0, float(dept.monthly_budget or 0) - total_cost)
+                        "remaining_budget": max(0, float(dept.monthly_budget or 0) - float(total_cost))
                     }
                 })
         
