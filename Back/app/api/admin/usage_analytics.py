@@ -12,6 +12,7 @@ from sqlalchemy import select, func, and_, desc, or_
 from ...core.database import get_async_db, get_async_session_factory
 from ...core.security import get_current_admin_user
 from ...models.user import User
+from ...models.conversation import Conversation, ConversationMessage
 # Import usage service from services package
 from ...services import usage_service
 
