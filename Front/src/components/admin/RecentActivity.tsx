@@ -518,14 +518,7 @@ const RecentActivity: React.FC<RecentActivityProps> = ({
                     </div>
                   </div>
 
-                  {/* 🆕 NEW: Message Dropdown Component */}
-                  {(() => { console.log('Rendering log', log.id, (log.message_data as any)?.messages ?? []); return null; })()}
-                  <MessageDropdown 
-                    key={log.id}
-                    messageData={log.message_data} 
-                    isSuccess={log.performance.success}
-                    className="mt-2"
-                  />
+
 
                   {/* Expanded details */}
                   {expandedLogs.has(log.id) && (
@@ -586,6 +579,16 @@ const RecentActivity: React.FC<RecentActivityProps> = ({
                           </div>
                         </div>
                       )}
+
+                      {/* Message Details Component */}
+                      <div className="mt-4">
+                        <MessageDropdown 
+                          key={log.id}
+                          messageData={log.message_data} 
+                          isSuccess={log.performance.success}
+                          className=""
+                        />
+                      </div>
 
                       {/* Data quality indicator */}
                       {(!messageInfo.hasData || !charInfo.hasData) && (

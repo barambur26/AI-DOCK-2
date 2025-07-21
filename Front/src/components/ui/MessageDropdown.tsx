@@ -2,7 +2,7 @@
 // Displays recent message logs in an expandable dropdown
 
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, MessageSquare, Info, AlertCircle, Clock, Hash } from 'lucide-react';
+import { ChevronDown, ChevronRight, MessageSquare, Info, AlertCircle, Hash } from 'lucide-react';
 
 interface MessageData {
   response_preview?: string;
@@ -38,21 +38,14 @@ const MessageDropdown: React.FC<MessageDropdownProps> = ({
     setIsExpanded(!isExpanded);
   };
 
-  const formatParameters = (params: any): string => {
-    if (!params) return 'None';
-    try {
-      return JSON.stringify(params, null, 2);
-    } catch {
-      return String(params);
-    }
-  };
+
 
   return (
     <div className={`mt-2 ${className}`}>
       {/* Dropdown Toggle Button */}
       <button
         onClick={toggleExpanded}
-        className={`flex items-center px-4 py-2 rounded-xl font-medium border border-white/10 bg-white/10 text-blue-200 hover:bg-white/20 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 ${isExpanded ? 'shadow-lg' : ''}`}
+        className={`flex items-center px-4 py-2 rounded-xl font-medium border border-white/10 bg-white/10 text-blue-200 hover:bg-white/20 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 backdrop-blur-lg ${isExpanded ? 'shadow-lg' : ''}`}
         aria-expanded={isExpanded}
         aria-label={isExpanded ? 'Hide message details' : 'Show message details'}
       >
@@ -67,42 +60,42 @@ const MessageDropdown: React.FC<MessageDropdownProps> = ({
 
       {/* Dropdown Content */}
       {isExpanded && (
-        <div className="mt-3 ml-6 bg-gray-50 rounded-lg p-4 border border-gray-200">
+        <div className="mt-3 bg-white/5 backdrop-blur-lg rounded-xl p-4 border border-white/10">
           <div className="space-y-3">
             
             {/* Request Summary */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-              <div className="flex items-center text-gray-600">
-                <Hash className="h-4 w-4 mr-2 text-blue-500" />
+              <div className="flex items-center text-blue-200">
+                <Hash className="h-4 w-4 mr-2 text-blue-400" />
                 <span className="font-medium">Messages:</span>
-                <span className="ml-1 text-gray-900">
+                <span className="ml-1 text-white">
                   {messageData.request_messages_count || 0}
                 </span>
               </div>
               
-              <div className="flex items-center text-gray-600">
-                <MessageSquare className="h-4 w-4 mr-2 text-green-500" />
+              <div className="flex items-center text-blue-200">
+                <MessageSquare className="h-4 w-4 mr-2 text-green-400" />
                 <span className="font-medium">Input Chars:</span>
-                <span className="ml-1 text-gray-900">
+                <span className="ml-1 text-white">
                   {(messageData.request_total_chars || 0).toLocaleString()}
                 </span>
               </div>
               
-              <div className="flex items-center text-gray-600">
-                <MessageSquare className="h-4 w-4 mr-2 text-purple-500" />
+              <div className="flex items-center text-blue-200">
+                <MessageSquare className="h-4 w-4 mr-2 text-purple-400" />
                 <span className="font-medium">Output Chars:</span>
-                <span className="ml-1 text-gray-900">
+                <span className="ml-1 text-white">
                   {(messageData.response_content_length || 0).toLocaleString()}
                 </span>
               </div>
             </div>
 
-            {/* 🆕 Messages Preview Section */}
+            {/* Messages Preview Section */}
             {Array.isArray(messageData.messages) && messageData.messages.length > 0 && (
-              <div className="border-t border-gray-200 pt-3">
+              <div className="border-t border-white/10 pt-3">
                 <div className="flex items-center mb-2">
-                  <Info className="h-4 w-4 mr-2 text-blue-500" />
-                  <span className="font-medium text-gray-700">Messages Sent</span>
+                  <Info className="h-4 w-4 mr-2 text-blue-400" />
+                  <span className="font-medium text-blue-200">Messages Sent</span>
                 </div>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
                   {messageData.messages.map((msg, idx) => (
@@ -112,32 +105,16 @@ const MessageDropdown: React.FC<MessageDropdownProps> = ({
               </div>
             )}
 
-            {/* Response Preview */}
-            {messageData.response_preview && (
-              <div className="border-t border-gray-200 pt-3">
-                <div className="flex items-center mb-2">
-                  <Info className="h-4 w-4 mr-2 text-blue-500" />
-                  <span className="font-medium text-gray-700">AI Response Preview:</span>
-                </div>
-                <div className="bg-white p-3 rounded border text-sm text-gray-800 max-h-32 overflow-y-auto">
-                  <pre className="whitespace-pre-wrap font-sans leading-relaxed">
-                    {messageData.response_preview}
-                  </pre>
-                  {messageData.response_preview.length >= 500 && (
-                    <span className="text-gray-500 italic">... (truncated at 500 characters)</span>
-                  )}
-                </div>
-              </div>
-            )}
+
 
             {/* Error Message */}
             {!isSuccess && messageData.error_message && (
-              <div className="border-t border-gray-200 pt-3">
+              <div className="border-t border-white/10 pt-3">
                 <div className="flex items-center mb-2">
-                  <AlertCircle className="h-4 w-4 mr-2 text-red-500" />
-                  <span className="font-medium text-gray-700">Error Details:</span>
+                  <AlertCircle className="h-4 w-4 mr-2 text-red-400" />
+                  <span className="font-medium text-blue-200">Error Details:</span>
                 </div>
-                <div className="bg-red-50 p-3 rounded border border-red-200 text-sm text-red-800">
+                <div className="bg-red-500/20 p-3 rounded-xl border border-red-400/30 text-sm text-red-300 backdrop-blur-lg">
                   <pre className="whitespace-pre-wrap font-sans">
                     {messageData.error_message}
                   </pre>
@@ -145,29 +122,16 @@ const MessageDropdown: React.FC<MessageDropdownProps> = ({
               </div>
             )}
 
-            {/* Request Parameters */}
-            {messageData.request_parameters && (
-              <div className="border-t border-gray-200 pt-3">
-                <div className="flex items-center mb-2">
-                  <Clock className="h-4 w-4 mr-2 text-yellow-500" />
-                  <span className="font-medium text-gray-700">Request Parameters:</span>
-                </div>
-                <div className="bg-white p-3 rounded border text-xs text-gray-700 max-h-32 overflow-y-auto">
-                  <pre className="whitespace-pre-wrap font-mono">
-                    {formatParameters(messageData.request_parameters)}
-                  </pre>
-                </div>
-              </div>
-            )}
+
 
             {/* Session and Request IDs */}
             {(messageData.session_id || messageData.request_id) && (
-              <div className="border-t border-gray-200 pt-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-gray-600">
+              <div className="border-t border-white/10 pt-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-blue-200">
                   {messageData.session_id && (
                     <div>
                       <span className="font-medium">Session ID:</span>
-                      <div className="mt-1 font-mono bg-gray-100 p-2 rounded text-gray-800 break-all">
+                      <div className="mt-1 font-mono bg-white/10 p-2 rounded-xl text-white break-all backdrop-blur-lg border border-white/10">
                         {messageData.session_id}
                       </div>
                     </div>
@@ -176,7 +140,7 @@ const MessageDropdown: React.FC<MessageDropdownProps> = ({
                   {messageData.request_id && (
                     <div>
                       <span className="font-medium">Request ID:</span>
-                      <div className="mt-1 font-mono bg-gray-100 p-2 rounded text-gray-800 break-all">
+                      <div className="mt-1 font-mono bg-white/10 p-2 rounded-xl text-white break-all backdrop-blur-lg border border-white/10">
                         {messageData.request_id}
                       </div>
                     </div>
@@ -226,24 +190,24 @@ const MessagePreview: React.FC<{ role: string; content: string }> = ({ role, con
   const isLong = content.length > 300;
   const displayContent = expanded || !isLong ? content : content.slice(0, 300) + '...';
   const roleColor =
-    role === 'user' ? 'bg-blue-100 text-blue-800' :
-    role === 'assistant' ? 'bg-green-100 text-green-800' :
-    'bg-gray-100 text-gray-700';
+    role === 'user' ? 'bg-blue-500/20 text-blue-200 border-blue-400/30' :
+    role === 'assistant' ? 'bg-green-500/20 text-green-200 border-green-400/30' :
+    'bg-white/10 text-blue-200 border-white/20';
 
   return (
-    <div className={`rounded-lg border border-gray-200 p-2 text-sm ${roleColor} relative`}>
-      <div className="flex items-center mb-1">
-        <span className="font-semibold mr-2 capitalize">{role}</span>
+    <div className={`rounded-xl border p-3 text-sm ${roleColor} relative backdrop-blur-lg`}>
+      <div className="flex items-center mb-2">
+        <span className="font-semibold mr-2 capitalize text-white">{role}</span>
         {isLong && (
           <button
-            className="ml-auto text-xs text-blue-500 hover:underline focus:outline-none"
+            className="ml-auto text-xs text-blue-300 hover:text-blue-200 hover:underline focus:outline-none transition-colors"
             onClick={() => setExpanded(e => !e)}
           >
             {expanded ? 'Show less' : 'Show more'}
           </button>
         )}
       </div>
-      <pre className="whitespace-pre-wrap font-sans leading-relaxed break-words">{displayContent}</pre>
+      <pre className="whitespace-pre-wrap font-sans leading-relaxed break-words text-white">{displayContent}</pre>
     </div>
   );
 };
