@@ -319,6 +319,7 @@ export const useConversationManager = (
           project_name: projectName,
           assistant_id: conversationDetails.assistant_id
         });
+        console.log('🔍 DEBUG: Set conversationProjectName to:', projectName);
       } catch (error) {
         console.warn('Could not determine conversation details:', error);
         setConversationProjectId(null);

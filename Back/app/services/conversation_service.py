@@ -84,6 +84,8 @@ class ConversationService:
     ) -> Optional[Conversation]:
         """Get conversation with all messages and project information"""
         try:
+            print(f"🔍 Backend: Loading conversation {conversation_id} for user {user_id}")
+            
             stmt = select(Conversation).options(
                 selectinload(Conversation.messages),
                 selectinload(Conversation.projects),  # Load project relationships for folder functionality
@@ -101,8 +103,25 @@ class ConversationService:
             
             # Ensure all relationships are loaded before returning
             if conversation:
+                print(f"🔍 Backend: Found conversation {conversation.id}")
+                print(f"  - Title: {conversation.title}")
+                print(f"  - Projects attr exists: {hasattr(conversation, 'projects')}")
+                
                 # Force load any remaining lazy relationships
                 await db.refresh(conversation, attribute_names=['messages', 'projects', 'assistant', 'user'])
+                
+                print(f"  - After refresh - Projects attr exists: {hasattr(conversation, 'projects')}")
+                if hasattr(conversation, 'projects'):
+                    print(f"  - Projects count: {len(conversation.projects) if conversation.projects else 0}")
+                    if conversation.projects:
+                        for i, project in enumerate(conversation.projects):
+                            print(f"    - Project {i}: id={project.id}, name={project.name}")
+                    else:
+                        print(f"  - Projects is empty or None")
+                else:
+                    print(f"  - Projects attribute missing after refresh")
+            else:
+                print(f"🚫 Backend: Conversation {conversation_id} not found")
             
             return conversation
             

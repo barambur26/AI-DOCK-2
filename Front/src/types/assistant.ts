@@ -346,6 +346,7 @@ export interface AssistantFormData {
   description: string;
   system_prompt: string;
   color: string;  // Hex color code for visual personalization
+  is_active: boolean; // Indicates if the assistant is active
   model_preferences: {
     model?: string;
     temperature?: number;
@@ -546,6 +547,7 @@ export function createDefaultAssistantFormData(): AssistantFormData {
     description: '',
     system_prompt: '',
     color: getRandomAssistantColor(),
+    is_active: true, // Default to active for new assistants
     model_preferences: { ...DEFAULT_ASSISTANT_CONFIG.model_preferences }
   };
 }

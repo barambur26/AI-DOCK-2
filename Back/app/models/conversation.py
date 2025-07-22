@@ -167,20 +167,40 @@ class Conversation(Base):
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dict for API responses"""
-        # Get project information (assuming single project per conversation for folder functionality)
+        # 🔧 ENHANCED: Get project information with comprehensive debugging
         project_info = None
         try:
-            if hasattr(self, 'projects') and self.projects:
-                first_project = self.projects[0]  # Use first project as primary folder
-                project_info = {
-                    "id": first_project.id,
-                    "name": first_project.name,
-                    "color": first_project.color,
-                    "icon": first_project.icon
-                }
-        except (AttributeError, IndexError):
+            print(f"🔍 Conversation {self.id} to_dict() debug:")
+            print(f"  - hasattr(self, 'projects'): {hasattr(self, 'projects')}")
+            
+            if hasattr(self, 'projects'):
+                print(f"  - self.projects: {self.projects}")
+                print(f"  - len(self.projects): {len(self.projects) if self.projects else 'None'}")
+                
+                if self.projects and len(self.projects) > 0:
+                    first_project = self.projects[0]  # Use first project as primary folder
+                    print(f"  - first_project: {first_project}")
+                    print(f"  - first_project.id: {first_project.id}")
+                    print(f"  - first_project.name: {first_project.name}")
+                    
+                    project_info = {
+                        "id": first_project.id,
+                        "name": first_project.name,
+                        "color": first_project.color,
+                        "icon": first_project.icon
+                    }
+                    print(f"  - Created project_info: {project_info}")
+                else:
+                    print(f"  - projects is empty or None")
+            else:
+                print(f"  - projects attribute not found")
+                
+        except (AttributeError, IndexError) as e:
             # Handle cases where projects relationship isn't loaded or is empty
+            print(f"  - Exception in project extraction: {e}")
             project_info = None
+        
+        print(f"  - Final project_info: {project_info}")
         
         # Get assistant information safely
         assistant_name = None
@@ -199,7 +219,7 @@ class Conversation(Base):
             assistant_name = None
             assistant_info = None
         
-        return {
+        result = {
             "id": self.id,
             "title": self.title,
             "user_id": self.user_id,
@@ -216,6 +236,9 @@ class Conversation(Base):
             "model_used": self.model_used,
             "session_id": self.session_id  # NEW: Include session_id for usage log tracking
         }
+        
+        print(f"📤 Conversation {self.id} API response: project_id={result['project_id']}, project_name={result['project']['name'] if result['project'] else None}")
+        return result
 
 class ConversationMessage(Base):
     """

@@ -366,6 +366,24 @@ export const ChatContainer: React.FC = () => {
           }
         }
       } else if (!conversationAssistantId && !conversationProjectId && selectedAssistantId) {
+        // 🔧 CRITICAL FIX: Data inconsistency detected - conversation not properly associated with folder
+        console.warn('🚨 DATA INCONSISTENCY: Conversation', conversationId, 'appears to be in a folder but has no backend project association');
+        console.log('🔧 This suggests a database sync issue between sidebar display and actual project associations');
+        
+        // Check if we can determine folder context from sidebar state
+        const potentialFolderContext = viewingFolderId || folderForNewChat;
+        if (potentialFolderContext) {
+          console.log('🔧 FALLBACK: Using viewing folder context as project context:', {
+            viewingFolderId,
+            viewingFolderName: viewingFolder?.name,
+            folderForNewChat
+          });
+          
+          // Temporarily set project context for breadcrumbs display
+          // This doesn't fix the database but provides UI consistency
+          // WARNING: This is a UI-only fix and doesn't resolve the backend data issue
+        }
+        
         // Conversation has no assigned assistant and no project
         console.log('🤖 Deactivating assistant for conversation without assigned assistant or project');
         deactivateAssistant();
@@ -379,7 +397,7 @@ export const ChatContainer: React.FC = () => {
     } finally {
       setIsLoadingConversation(false);
     }
-  }, [isStreaming, handleLoadConversation, setError, conversationAssistantId, conversationProjectId, selectedAssistantId, handleAssistantSelect, deactivateAssistant, getProjectDefaultAssistantById]);
+  }, [isStreaming, handleLoadConversation, setError, conversationAssistantId, conversationProjectId, selectedAssistantId, handleAssistantSelect, deactivateAssistant, getProjectDefaultAssistantById, viewingFolderId, viewingFolder?.name, folderForNewChat]);
 
   // 💾 Save current conversation
   const handleSaveCurrentConversation = useCallback(async () => {
@@ -544,6 +562,17 @@ export const ChatContainer: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isStreaming, setSidebarMode, toggleSidebar]);
   
+  // 🔍 DEBUG: Track folder name values for debugging
+  useEffect(() => {
+    const folderNameValue = currentConversationId ? conversationProjectName : folderForNewChatData?.name;
+    console.log('🍞 ChatContainer folder debug:', {
+      currentConversationId,
+      conversationProjectName,
+      folderForNewChatData_name: folderForNewChatData?.name,
+      finalFolderName: folderNameValue
+    });
+  }, [currentConversationId, conversationProjectName, folderForNewChatData?.name]);
+  
   return (
     <div className="flex h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-blue-950 overflow-hidden">
       {/* 📁 Unified Sidebar */}
@@ -602,7 +631,21 @@ export const ChatContainer: React.FC = () => {
           messages={messages}
           currentConversationId={currentConversationId}
           conversationTitle={conversationTitle}
-          folderName={currentConversationId ? conversationProjectName : folderForNewChatData?.name}
+          folderName={(
+            // 🔧 ENHANCED: Smart folder name resolution with fallback for data inconsistencies
+            currentConversationId 
+              ? (conversationProjectName || (
+                  // FALLBACK: If conversation has no backend project but we're viewing a folder, use viewing folder name
+                  // This handles database inconsistencies where conversations appear in folders but aren't properly associated
+                  viewingFolderId && viewingFolder?.name 
+                    ? (
+                        console.log('🔧 FALLBACK: Using viewing folder name for breadcrumbs:', viewingFolder.name),
+                        viewingFolder.name
+                      )
+                    : null
+                ))
+              : folderForNewChatData?.name
+          )}
           isSavingConversation={isSavingConversation}
           onSaveConversation={handleSaveCurrentConversation}
           onNewConversation={handleNewConversationClick}

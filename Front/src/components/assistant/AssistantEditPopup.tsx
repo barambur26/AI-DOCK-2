@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Wand2, Settings, Save, RotateCcw, ChevronDown, Check } from 'lucide-react';
-import { Assistant, AssistantFormData, ASSISTANT_VALIDATION, hasValidationErrors } from '../../types/assistant';
+import { Assistant, AssistantFormData, ASSISTANT_VALIDATION, hasValidationErrors, createDefaultAssistantFormData } from '../../types/assistant';
 import { assistantService } from '../../services/assistantService';
 
 interface AssistantEditPopupProps {
@@ -33,20 +33,8 @@ export const AssistantEditPopup: React.FC<AssistantEditPopupProps> = ({
   onSaved
 }) => {
   const [assistant, setAssistant] = useState<Assistant | null>(null);
-  const [formData, setFormData] = useState<AssistantFormData>({
-    name: '',
-    description: '',
-    system_prompt: '',
-    color: '#3B82F6',
-    is_active: true
-  });
-  const [originalData, setOriginalData] = useState<AssistantFormData>({
-    name: '',
-    description: '',
-    system_prompt: '',
-    color: '#3B82F6',
-    is_active: true
-  });
+  const [formData, setFormData] = useState<AssistantFormData>(createDefaultAssistantFormData());
+  const [originalData, setOriginalData] = useState<AssistantFormData>(createDefaultAssistantFormData());
   const [validationErrors, setValidationErrors] = useState<Record<string, string[]>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -185,7 +173,15 @@ export const AssistantEditPopup: React.FC<AssistantEditPopupProps> = ({
         description: data.description || '',
         system_prompt: data.system_prompt || '',
         color: data.color || '#3B82F6',
-        is_active: data.is_active ?? true
+        is_active: typeof data.is_active === 'boolean' ? data.is_active : true,
+        model_preferences: data.model_preferences || {
+          model: undefined,
+          temperature: undefined,
+          max_tokens: undefined,
+          top_p: undefined,
+          frequency_penalty: undefined,
+          presence_penalty: undefined
+        }
       };
       
       setFormData(formValues);
