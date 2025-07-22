@@ -1,28 +1,22 @@
 // 🎛️ Chat Interface Header Component
-// Shows model selection, project info, assistant info, and conversation controls
+// Clean header with HeroUI breadcrumbs, restructured layout
+// Top left: Sidepanel button + Breadcrumbs | Top right: Model selection + Navbar
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Settings, 
-  Zap, 
-  AlertCircle, 
-  CheckCircle, 
   Loader2, 
-  Home, 
-  Bot,
-  Archive,
   Save,
-  Folder
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { UnifiedModelsResponse, UnifiedModelInfo } from '../../../services/chatService';
 import { AssistantSummary } from '../../../types/assistant';
 import { ProjectSummary } from '../../../types/project';
-import { getShortProviderName } from '../../../utils/llmUtils';
 import { ModelSelector } from './ModelSelector';
-import { StatusIndicators } from './StatusIndicators';
 import { UnifiedTraversalButtons } from '../../ui/UnifiedTraversalButtons';
 import { AssistantFilesIndicator } from '../AssistantFilesIndicator';
+import { ChatBreadcrumbs } from './ChatBreadcrumbs';
 
 export interface ChatHeaderProps {
   // Model selection
@@ -48,8 +42,15 @@ export interface ChatHeaderProps {
   onSaveConversation: () => void;
   onNewConversation: () => void;
   
+  // Breadcrumb context
+  folderName?: string;
+  
+  // Sidebar state
+  showUnifiedSidebar?: boolean;
+  onToggleSidebar?: () => void;
+  isStreaming?: boolean;
+  
   // Streaming state
-  isStreaming: boolean;
   streamingHasError: boolean;
   streamingError: any;
   connectionState: string;
@@ -76,7 +77,10 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   isSavingConversation,
   onSaveConversation,
   onNewConversation,
-  isStreaming,
+  folderName,
+  showUnifiedSidebar = false,
+  onToggleSidebar,
+  isStreaming = false,
   streamingHasError,
   streamingError,
   connectionState,
@@ -84,40 +88,45 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
 }) => {
   const navigate = useNavigate();
   
-  // 🏠 Navigate back to dashboard
-  const handleBackToDashboard = () => {
-    console.log('🏠 Navigating back to dashboard');
-    navigate('/');
-  };
-  
-  // Get current config info
-  const selectedConfig = currentModelInfo ? {
-    id: currentModelInfo.config_id,
-    name: currentModelInfo.config_name,
-    provider: currentModelInfo.provider,
-    provider_name: currentModelInfo.provider
-  } : null;
+  // 🔍 DEBUG: Log folder name being passed to breadcrumbs
+  console.log('🍞 ChatHeader folderName prop:', folderName);
   
   return (
-    <div className="bg-white/5 backdrop-blur-lg border-b border-white/10 pl-12 md:pl-16 pr-4 md:pr-6 py-4 sticky top-0 z-50">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
-        <div className="flex items-center space-x-2 md:space-x-4">
-          <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
-            {selectedAssistant 
-              ? `Chat with ${selectedAssistant.name}` 
-              : 'AI Chat'
-            }
-          </h1>
+    <div className="bg-white/5 backdrop-blur-lg border-b border-white/10 px-4 md:px-6 py-4 sticky top-0 z-40">
+      {/* Main header layout */}
+      <div className="flex items-center justify-between">
+        
+        {/* LEFT SIDE: Sidebar toggle + Breadcrumbs */}
+        <div className="flex items-center space-x-4">
+          {/* Sidebar toggle button - far left */}
+          {onToggleSidebar && (
+            <button
+              onClick={onToggleSidebar}
+              disabled={isStreaming}
+              className="bg-blue-500 hover:bg-blue-600 backdrop-blur-lg border-2 border-blue-400 rounded-full p-2 shadow-2xl hover:shadow-3xl group hover:scale-105 transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 transition-all duration-300"
+              title={`${showUnifiedSidebar ? 'Hide' : 'Show'} sidebar`}
+              aria-label={`${showUnifiedSidebar ? 'Hide' : 'Show'} sidebar`}
+            >
+              {showUnifiedSidebar ? (
+                <ChevronLeft className="w-4 h-4 text-white group-hover:text-blue-100 transition-colors" />
+              ) : (
+                <ChevronRight className="w-4 h-4 text-white group-hover:text-blue-100 transition-colors" />
+              )}
+            </button>
+          )}
           
-          {/* 📊 Connection status indicator */}
-          <StatusIndicators 
-            connectionStatus={connectionStatus}
-            isMobile={isMobile}
+          {/* Breadcrumbs - a little to the right */}
+          <ChatBreadcrumbs
+            folderName={folderName}
+            chatTitle={conversationTitle}
+            assistantName={selectedAssistant?.name}
+            isNewChat={!currentConversationId && messages.length === 0}
           />
         </div>
-        
-        <div className="flex flex-wrap items-center gap-2 md:gap-3">
-          {/* 🆕 Model Selection */}
+
+        {/* RIGHT SIDE: Model selection + Navbar */}
+        <div className="flex items-center space-x-3">
+          {/* Model Selection */}
           <ModelSelector
             unifiedModelsData={unifiedModelsData}
             selectedModelId={selectedModelId}
@@ -128,10 +137,8 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
             onModelChange={onModelChange}
             isMobile={isMobile}
           />
-          
 
-
-          {/* 💾 Save Conversation button */}
+          {/* Save Conversation button */}
           {messages.length > 0 && !currentConversationId && (
             <button
               onClick={onSaveConversation}
@@ -149,72 +156,25 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
               </span>
             </button>
           )}
-          
 
-          
-          {/* 📂 Project indicator - REMOVED per requirements: folder context only in sidebar */}
-          
-
-          
-          {/* Integrated Navigation Buttons */}
-          <div className="ml-2 md:ml-4">
-            <UnifiedTraversalButtons 
-              variant="inline" 
-              size="md"
-              onNewChat={onNewConversation}
-            />
-          </div>
+          {/* Navigation Buttons - far right */}
+          <UnifiedTraversalButtons 
+            variant="inline" 
+            size="md"
+            onNewChat={onNewConversation}
+          />
         </div>
       </div>
       
-      {/* 💡 Enhanced model info with smart details */}
-      {selectedConfig && currentModelInfo && (
-        <div className="mt-2 text-xs md:text-sm text-blue-100">
-          <div className="flex flex-wrap items-center gap-1 md:gap-2">
-            {/* 📂 Project info - REMOVED per requirements: folder context only in sidebar */}
-            
-
-            
-            <div className="flex items-center">
-              <Zap className="w-3 h-3 md:w-4 md:h-4 mr-1 text-yellow-300 flex-shrink-0" />
-              <span className="whitespace-nowrap">
-                Model: <strong className="text-white">{currentModelInfo.display_name}</strong>
-              </span>
-            </div>
-            <div className="flex items-center">
-              <span className="whitespace-nowrap">
-                via <strong className="text-blue-200">{getShortProviderName(selectedConfig.provider_name)}</strong>
-              </span>
-            </div>
-            
-            {/* Model details - simplified without scores and cost tiers */}
-            <div className="flex items-center gap-1">
-              {currentModelInfo.is_recommended && (
-                <span className="text-yellow-300 text-xs" title="Recommended model">
-                  ⭐
-                </span>
-              )}
-              {/* Relevance score and cost tier removed for cleaner UI */}
-            </div>
-            
-            {/* Filtering status */}
-
-            
-            {/* Conversation status */}
-            {currentConversationId && conversationTitle && (
-              <div className="flex items-center gap-1">
-                <Archive className="w-3 h-3 text-blue-300" />
-                <span className="text-blue-200 text-xs">
-                  Saved: {conversationTitle.length > 20 ? conversationTitle.substring(0, 20) + '...' : conversationTitle}
-                </span>
-              </div>
-            )}
-            
+      {/* Status indicators - only show critical states */}
+      {(isSavingConversation || isStreaming || streamingHasError) && (
+        <div className="mt-3 text-xs md:text-sm text-blue-100">
+          <div className="flex flex-wrap items-center gap-2 md:gap-3">
             {/* Auto-save status */}
             {isSavingConversation && (
               <div className="flex items-center gap-1">
                 <Loader2 className="w-3 h-3 text-green-300 animate-spin" />
-                <span className="text-green-300 text-xs">Auto-saving...</span>
+                <span className="text-green-300">Auto-saving...</span>
               </div>
             )}
             
@@ -222,16 +182,17 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
             {isStreaming && (
               <div className="flex items-center gap-1">
                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                <span className="text-green-300 text-xs">Streaming response...</span>
+                <span className="text-green-300">Streaming response...</span>
               </div>
             )}
             
+            {/* Streaming error status */}
             {streamingHasError && streamingError && (
               <div className="flex items-center gap-1">
                 <div className="w-2 h-2 bg-red-400 rounded-full"></div>
-                <span className="text-red-300 text-xs">Stream error: {streamingError.type}</span>
+                <span className="text-red-300">Stream error: {streamingError.type}</span>
                 {streamingError.shouldFallback && (
-                  <span className="text-yellow-300 text-xs">(using fallback)</span>
+                  <span className="text-yellow-300">(using fallback)</span>
                 )}
               </div>
             )}
@@ -239,30 +200,13 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
         </div>
       )}
       
-      {/* 📁 Assistant Files Indicator */}
+      {/* Assistant Files Indicator */}
       {selectedAssistant && (
-        <div className="mt-2">
+        <div className="mt-3">
           <AssistantFilesIndicator 
             assistant={selectedAssistant}
             className="" 
           />
-        </div>
-      )}
-      
-      {/* Streaming connection status */}
-      {(isStreaming || streamingHasError) && (
-        <div className="mt-1 text-xs text-white/60">
-          Connection: <span className={`${
-            connectionState === 'connected' ? 'text-green-300' :
-            connectionState === 'connecting' ? 'text-yellow-300' :
-            connectionState === 'error' ? 'text-red-300' :
-            'text-gray-300'
-          }`}>
-            {connectionState}
-          </span>
-          <span className="ml-2">
-            Mode: <span className="text-green-300">Live Streaming</span>
-          </span>
         </div>
       )}
     </div>

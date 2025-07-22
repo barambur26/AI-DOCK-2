@@ -3,7 +3,7 @@
 // Folders are purely organizational and don't interfere with active chats
 
 import React, { useEffect, useCallback, useState } from 'react';
-import { Settings, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { Settings, Loader2 } from 'lucide-react';
 import { MessageList } from '../MessageList';
 import { MessageInput } from '../MessageInput';
 import { UnifiedSidebar } from './UnifiedSidebar';
@@ -103,6 +103,7 @@ export const ChatContainer: React.FC = () => {
     currentConversationId,
     conversationTitle,
     conversationProjectId, // Get the conversation's original project/folder
+    conversationProjectName, // Get the conversation's original project/folder name
     conversationAssistantId, // Get the conversation's assigned assistant
     isSavingConversation,
     lastAutoSaveMessageCount,
@@ -545,27 +546,6 @@ export const ChatContainer: React.FC = () => {
   
   return (
     <div className="flex h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-blue-950 overflow-hidden">
-
-      
-      {/* 📁 Unified Sidebar Toggle - Modern Top-Left Position */}
-      <button
-        onClick={() => {
-          setShowUnifiedSidebar(!showUnifiedSidebar);
-        }}
-        disabled={isStreaming}
-        className={`fixed top-6 z-[9999] transition-all duration-300 ${
-          showUnifiedSidebar ? 'left-[340px]' : 'left-6'
-        } bg-blue-500 hover:bg-blue-600 backdrop-blur-lg border-2 border-blue-400 rounded-full p-2 shadow-2xl hover:shadow-3xl group hover:scale-105 transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100`}
-        title={`${showUnifiedSidebar ? 'Hide' : 'Show'} sidebar`}
-        aria-label={`${showUnifiedSidebar ? 'Hide' : 'Show'} sidebar`}
-      >
-        {showUnifiedSidebar ? (
-          <ChevronLeft className="w-4 h-4 text-white group-hover:text-blue-100 transition-colors" />
-        ) : (
-          <ChevronRight className="w-4 h-4 text-white group-hover:text-blue-100 transition-colors" />
-        )}
-      </button>
-      
       {/* 📁 Unified Sidebar */}
       <UnifiedSidebar
         mode={sidebarMode}
@@ -602,12 +582,11 @@ export const ChatContainer: React.FC = () => {
       />
 
 
-      
-      {/* Main chat interface with sidebar-aware spacing */}
+      {/* Main chat interface */}
       <div className={`flex flex-col flex-1 min-w-0 transition-all duration-300 ${
         showUnifiedSidebar ? 'ml-80' : 'ml-0'
       }`}>
-        {/* 🎛️ Header - FIXED: No folder display in active chat */}
+        {/* 🎛️ Header with integrated sidebar toggle */}
         <ChatHeader
           unifiedModelsData={unifiedModelsData}
           selectedModelId={selectedModelId}
@@ -623,9 +602,12 @@ export const ChatContainer: React.FC = () => {
           messages={messages}
           currentConversationId={currentConversationId}
           conversationTitle={conversationTitle}
+          folderName={currentConversationId ? conversationProjectName : folderForNewChatData?.name}
           isSavingConversation={isSavingConversation}
           onSaveConversation={handleSaveCurrentConversation}
           onNewConversation={handleNewConversationClick}
+          showUnifiedSidebar={showUnifiedSidebar}
+          onToggleSidebar={() => setShowUnifiedSidebar(!showUnifiedSidebar)}
           isStreaming={isStreaming}
           streamingHasError={streamingHasError}
           streamingError={streamingError}

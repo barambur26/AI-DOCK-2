@@ -1,6 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import * as Sentry from '@sentry/react'
+import { NextUIProvider } from '@nextui-org/react'
 import App from './App.tsx'
 import './index.css'
 import './styles/thinking-animations.css'
@@ -26,6 +27,8 @@ Sentry.init({
 // We find the HTML element with id="root" and inject our React app into it
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <NextUIProvider>
+      <App />
+    </NextUIProvider>
   </React.StrictMode>,
 )

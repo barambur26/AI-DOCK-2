@@ -13,6 +13,7 @@ export interface ConversationManagerState {
   currentConversationId: number | null;
   conversationTitle: string | null;
   conversationProjectId: number | null; // Track conversation's original folder/project
+  conversationProjectName: string | null; // Track conversation's original folder/project name
   conversationAssistantId: number | null; // Track conversation's assigned assistant
   
   // Save state
@@ -53,6 +54,7 @@ export const useConversationManager = (
   const [currentConversationId, setCurrentConversationId] = useState<number | null>(null);
   const [conversationTitle, setConversationTitle] = useState<string | null>(null);
   const [conversationProjectId, setConversationProjectId] = useState<number | null>(null); // Track conversation's original folder
+  const [conversationProjectName, setConversationProjectName] = useState<string | null>(null); // Track conversation's original folder name
   const [conversationAssistantId, setConversationAssistantId] = useState<number | null>(null); // Track conversation's assigned assistant
   const [isSavingConversation, setIsSavingConversation] = useState(false);
   const [lastAutoSaveMessageCount, setLastAutoSaveMessageCount] = useState(0);
@@ -295,14 +297,32 @@ export const useConversationManager = (
         const conversationDetails = await conversationService.getConversation(conversationId);
         // Backend now includes project_id and assistant_id in conversation response
         setConversationProjectId(conversationDetails.project_id || null);
+        
+        // 🔧 FIXED: Ensure project name is populated from backend project object or fetch if missing
+        let projectName = conversationDetails.project?.name || null;
+        if (!projectName && conversationDetails.project_id) {
+          // Fallback: If project_id exists but project object is missing, fetch project name
+          try {
+            const { projectService } = await import('../../services/projectService');
+            const project = await projectService.getProject(conversationDetails.project_id);
+            projectName = project.name;
+            console.log('🔧 Fetched missing project name:', projectName, 'for project ID:', conversationDetails.project_id);
+          } catch (projectError) {
+            console.warn('⚠️ Could not fetch project name for project ID:', conversationDetails.project_id, projectError);
+          }
+        }
+        
+        setConversationProjectName(projectName);
         setConversationAssistantId(conversationDetails.assistant_id || null);
         console.log('🎯 Loaded conversation:', {
           project_id: conversationDetails.project_id,
+          project_name: projectName,
           assistant_id: conversationDetails.assistant_id
         });
       } catch (error) {
         console.warn('Could not determine conversation details:', error);
         setConversationProjectId(null);
+        setConversationProjectName(null);
         setConversationAssistantId(null);
       }
       
@@ -349,6 +369,7 @@ export const useConversationManager = (
     setCurrentConversationId(null);
     setConversationTitle(null);
     setConversationProjectId(null); // Clear conversation's project assignment
+    setConversationProjectName(null); // Clear conversation's project name
     setLastAutoSaveMessageCount(0);
     
     if (onConversationClear) {
@@ -388,6 +409,7 @@ export const useConversationManager = (
     currentConversationId,
     conversationTitle,
     conversationProjectId,
+    conversationProjectName,
     conversationAssistantId,
     isSavingConversation,
     lastAutoSaveMessageCount,
