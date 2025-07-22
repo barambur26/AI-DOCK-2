@@ -230,11 +230,11 @@ class Conversation(Base):
             "project": project_info,  # Add full project information
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
-            "is_active": self.is_active,  # NEW: Include active status
-            "message_count": self.message_count,
+            "is_active": getattr(self, 'is_active', True),  # NEW: Include active status with fallback
+            "message_count": getattr(self, 'message_count', 0),  # Safe fallback
             "last_message_at": self.last_message_at.isoformat() if self.last_message_at else None,
-            "model_used": self.model_used,
-            "session_id": self.session_id  # NEW: Include session_id for usage log tracking
+            "model_used": getattr(self, 'model_used', None),  # Safe fallback for None
+            "session_id": getattr(self, 'session_id', None)  # NEW: Include session_id with fallback
         }
         
         print(f"📤 Conversation {self.id} API response: project_id={result['project_id']}, project_name={result['project']['name'] if result['project'] else None}")

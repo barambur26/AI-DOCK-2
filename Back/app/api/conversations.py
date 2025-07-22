@@ -134,7 +134,13 @@ async def list_conversations(
                     "created_at": conv.created_at.isoformat(),
                     "updated_at": conv.updated_at.isoformat(),
                     "message_count": conv.message_count,
-                    "project": None  # Set to None if serialization fails
+                    "last_message_at": conv.last_message_at.isoformat() if conv.last_message_at else None,
+                    "model_used": conv.model_used,
+                    "project_id": None,
+                    "project": None,  # Set to None if serialization fails
+                    "assistant_id": conv.assistant_id,
+                    "assistant": None,
+                    "session_id": conv.session_id
                 })
         
         return ConversationListResponse(
