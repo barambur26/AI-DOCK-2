@@ -73,13 +73,90 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
     '#84CC16'  // Lime
   ];
 
-  // Dark theme colors for charts
+  // Enhanced dark theme with 3D effects for charts
   const DARK_THEME = {
     background: 'transparent',
     text: '#E5E7EB',
-    grid: '#374151',
-    axis: '#6B7280'
+    grid: 'rgba(55, 65, 81, 0.6)',
+    axis: '#6B7280',
+    gridGlow: 'rgba(59, 130, 246, 0.1)'
   };
+
+  // 3D Enhanced chart colors with gradients
+  const ENHANCED_CHART_COLORS = [
+    { fill: '#3B82F6', gradient: 'url(#blueGradient)' },
+    { fill: '#10B981', gradient: 'url(#greenGradient)' },
+    { fill: '#F59E0B', gradient: 'url(#amberGradient)' },
+    { fill: '#EF4444', gradient: 'url(#redGradient)' },
+    { fill: '#8B5CF6', gradient: 'url(#purpleGradient)' },
+    { fill: '#06B6D4', gradient: 'url(#cyanGradient)' },
+    { fill: '#F97316', gradient: 'url(#orangeGradient)' },
+    { fill: '#84CC16', gradient: 'url(#limeGradient)' }
+  ];
+
+  // Enhanced gradients for 3D effect
+  const renderGradientDefs = () => (
+    <defs>
+      <linearGradient id="blueGradient" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#60A5FA" stopOpacity={0.9} />
+        <stop offset="100%" stopColor="#1E40AF" stopOpacity={0.7} />
+      </linearGradient>
+      <linearGradient id="greenGradient" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#34D399" stopOpacity={0.9} />
+        <stop offset="100%" stopColor="#047857" stopOpacity={0.7} />
+      </linearGradient>
+      <linearGradient id="amberGradient" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#FBBF24" stopOpacity={0.9} />
+        <stop offset="100%" stopColor="#D97706" stopOpacity={0.7} />
+      </linearGradient>
+      <linearGradient id="redGradient" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#F87171" stopOpacity={0.9} />
+        <stop offset="100%" stopColor="#DC2626" stopOpacity={0.7} />
+      </linearGradient>
+      <linearGradient id="purpleGradient" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#A78BFA" stopOpacity={0.9} />
+        <stop offset="100%" stopColor="#7C3AED" stopOpacity={0.7} />
+      </linearGradient>
+      <linearGradient id="cyanGradient" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#22D3EE" stopOpacity={0.9} />
+        <stop offset="100%" stopColor="#0891B2" stopOpacity={0.7} />
+      </linearGradient>
+      <linearGradient id="orangeGradient" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#FB923C" stopOpacity={0.9} />
+        <stop offset="100%" stopColor="#EA580C" stopOpacity={0.7} />
+      </linearGradient>
+      <linearGradient id="limeGradient" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#A3E635" stopOpacity={0.9} />
+        <stop offset="100%" stopColor="#65A30D" stopOpacity={0.7} />
+      </linearGradient>
+      <linearGradient id="successGradient" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#34D399" stopOpacity={0.9} />
+        <stop offset="100%" stopColor="#059669" stopOpacity={0.8} />
+      </linearGradient>
+      <linearGradient id="failureGradient" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#F87171" stopOpacity={0.9} />
+        <stop offset="100%" stopColor="#DC2626" stopOpacity={0.8} />
+      </linearGradient>
+      <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#8B5CF6" stopOpacity={0.6} />
+        <stop offset="100%" stopColor="#8B5CF6" stopOpacity={0.1} />
+      </linearGradient>
+      <linearGradient id="textGradient" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stopColor="#E5E7EB" stopOpacity={1} />
+        <stop offset="100%" stopColor="#60A5FA" stopOpacity={0.8} />
+      </linearGradient>
+      <filter id="glow">
+        <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+        <feMerge> 
+          <feMergeNode in="coloredBlur"/>
+          <feMergeNode in="SourceGraphic"/> 
+        </feMerge>
+      </filter>
+      <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+        <feDropShadow dx="2" dy="4" stdDeviation="3" floodOpacity="0.3"/>
+      </filter>
+    </defs>
+  );
 
   // =============================================================================
   // CHART DATA PROCESSING
@@ -437,11 +514,15 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
       const fullLabel = dataPoint?.fullName || label;
       
       return (
-        <div className="bg-gray-900/95 backdrop-blur-lg border border-white/20 rounded-xl shadow-xl p-4 min-w-[200px]">
-          <p className="font-medium text-white mb-3 text-sm">{fullLabel}</p>
+        <div className="bg-gray-900/95 backdrop-blur-lg border border-cyan-400/30 rounded-xl shadow-2xl p-4 min-w-[200px] transform transition-all duration-200 hover:scale-105" style={{
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.2), 0 0 20px rgba(6, 182, 212, 0.3)'
+        }}>
+          <p className="font-medium text-white mb-3 text-sm bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">{fullLabel}</p>
           {payload.map((entry: any, index: number) => (
-            <p key={index} className="text-sm text-blue-200 mb-1" style={{ color: entry.color }}>
-              <span className="font-medium">{entry.name}:</span> {entry.value.toLocaleString()}
+            <p key={index} className="text-sm text-blue-200 mb-1 flex items-center space-x-2" style={{ color: entry.color }}>
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color, boxShadow: `0 0 8px ${entry.color}` }}></div>
+              <span className="font-medium">{entry.name}:</span> 
+              <span className="text-white font-semibold">{entry.value.toLocaleString()}</span>
             </p>
           ))}
         </div>
@@ -454,15 +535,29 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
     if (active && payload && payload.length > 0) {
       const data = payload[0].payload;
       return (
-        <div className="bg-gray-900/95 backdrop-blur-lg border border-white/20 rounded-xl shadow-xl p-4 min-w-[200px]">
-          <p className="font-semibold text-white mb-2 text-sm">{data.fullName}</p>
+        <div className="bg-gray-900/95 backdrop-blur-lg border border-purple-400/30 rounded-xl shadow-2xl p-4 min-w-[200px] transform transition-all duration-200 hover:scale-105" style={{
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.2), 0 0 20px rgba(139, 92, 246, 0.3)'
+        }}>
+          <p className="font-semibold text-white mb-2 text-sm bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">{data.fullName}</p>
           <div className="text-sm text-blue-200">
             {data.isZeroCost ? (
-              <p><span className="font-medium text-white">Distribution:</span> {data.percentage}%</p>
+              <p className="flex items-center space-x-2">
+                <div className="w-2 h-2 rounded-full bg-gradient-to-r from-blue-400 to-purple-400" style={{ boxShadow: '0 0 8px rgba(59, 130, 246, 0.6)' }}></div>
+                <span className="font-medium text-white">Distribution:</span> 
+                <span className="text-purple-300 font-semibold">{data.percentage}%</span>
+              </p>
             ) : (
               <>
-                <p><span className="font-medium text-white">Cost:</span> {formatCurrency(Number(data.cost))}</p>
-                <p><span className="font-medium text-white">Percentage:</span> {data.percentage}%</p>
+                <p className="flex items-center space-x-2 mb-1">
+                  <div className="w-2 h-2 rounded-full bg-gradient-to-r from-green-400 to-emerald-400" style={{ boxShadow: '0 0 8px rgba(16, 185, 129, 0.6)' }}></div>
+                  <span className="font-medium text-white">Cost:</span> 
+                  <span className="text-green-300 font-semibold">{formatCurrency(Number(data.cost))}</span>
+                </p>
+                <p className="flex items-center space-x-2">
+                  <div className="w-2 h-2 rounded-full bg-gradient-to-r from-purple-400 to-pink-400" style={{ boxShadow: '0 0 8px rgba(139, 92, 246, 0.6)' }}></div>
+                  <span className="font-medium text-white">Percentage:</span> 
+                  <span className="text-purple-300 font-semibold">{data.percentage}%</span>
+                </p>
               </>
             )}
           </div>
@@ -472,7 +567,7 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
     return null;
   };
 
-  // Custom pie chart label with better positioning
+  // Enhanced pie chart label with 3D glow effect
   const renderPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }: any) => {
     const RADIAN = Math.PI / 180;
     const radius = innerRadius + (outerRadius - innerRadius) * 1.4;
@@ -486,17 +581,33 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
     const shortName = viewMode === 'models' ? getShortModelName(name) : getShortDisplayName(name);
     
     return (
-      <text 
-        x={x} 
-        y={y} 
-        fill="#E5E7EB" 
-        textAnchor={x > cx ? 'start' : 'end'} 
-        dominantBaseline="central"
-        fontSize={12}
-        fontWeight={500}
-      >
-        {`${shortName}: ${(percent * 100).toFixed(1)}%`}
-      </text>
+      <g>
+        {/* Shadow text for 3D effect */}
+        <text 
+          x={x + 1} 
+          y={y + 1} 
+          fill="rgba(0, 0, 0, 0.5)" 
+          textAnchor={x > cx ? 'start' : 'end'} 
+          dominantBaseline="central"
+          fontSize={12}
+          fontWeight={600}
+        >
+          {`${shortName}: ${(percent * 100).toFixed(1)}%`}
+        </text>
+        {/* Main text with enhanced styling */}
+        <text 
+          x={x} 
+          y={y} 
+          fill="#E5E7EB" 
+          textAnchor={x > cx ? 'start' : 'end'} 
+          dominantBaseline="central"
+          fontSize={12}
+          fontWeight={600}
+          style={{ filter: 'drop-shadow(0 0 4px rgba(59, 130, 246, 0.5))' }}
+        >
+          {`${shortName}: ${(percent * 100).toFixed(1)}%`}
+        </text>
+      </g>
     );
   };
 
@@ -662,36 +773,48 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
           </div>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={currentChartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke={DARK_THEME.grid} />
+              {renderGradientDefs()}
+              <CartesianGrid 
+                strokeDasharray="4 4" 
+                stroke={DARK_THEME.grid} 
+                strokeOpacity={0.6}
+                strokeWidth={1}
+              />
               <XAxis 
                 dataKey="displayName" 
-                tick={{ fontSize: 11, fill: DARK_THEME.text }}
+                tick={{ fontSize: 11, fill: DARK_THEME.text, fontWeight: 500 }}
                 interval={0}
                 angle={-35}
                 textAnchor="end"
                 height={80}
-                axisLine={{ stroke: DARK_THEME.axis }}
-                tickLine={{ stroke: DARK_THEME.axis }}
+                axisLine={{ stroke: DARK_THEME.axis, strokeWidth: 2 }}
+                tickLine={{ stroke: DARK_THEME.axis, strokeWidth: 2 }}
                 tickMargin={8}
               />
               <YAxis 
-                tick={{ fontSize: 12, fill: DARK_THEME.text }} 
-                axisLine={{ stroke: DARK_THEME.axis }}
-                tickLine={{ stroke: DARK_THEME.axis }}
+                tick={{ fontSize: 12, fill: DARK_THEME.text, fontWeight: 500 }} 
+                axisLine={{ stroke: DARK_THEME.axis, strokeWidth: 2 }}
+                tickLine={{ stroke: DARK_THEME.axis, strokeWidth: 2 }}
               />
               <Tooltip content={<CustomTooltip />} />
-              <Legend wrapperStyle={{ color: DARK_THEME.text }} />
+              <Legend wrapperStyle={{ color: DARK_THEME.text, fontWeight: 600 }} />
               <Bar 
                 dataKey="successfulRequests" 
                 name="Successful" 
-                fill="#10B981" 
+                fill="url(#successGradient)"
                 stackId="requests"
+                radius={[0, 0, 0, 0]}
+                filter="url(#shadow)"
+                animationDuration={1000}
               />
               <Bar 
                 dataKey="failedRequests" 
                 name="Failed" 
-                fill="#EF4444" 
+                fill="url(#failureGradient)"
                 stackId="requests"
+                radius={[6, 6, 0, 0]}
+                filter="url(#shadow)"
+                animationDuration={1200}
               />
             </BarChart>
           </ResponsiveContainer>
@@ -719,21 +842,33 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
           </div>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
+              {renderGradientDefs()}
               <Pie
                 data={currentCostData}
                 cx="50%"
                 cy="45%"
                 labelLine={false}
                 label={renderPieLabel}
-                outerRadius={75}
-                innerRadius={20}
+                outerRadius={85}
+                innerRadius={30}
                 fill="#8884d8"
                 dataKey={currentCostData.length > 0 && currentCostData[0]?.isZeroCost ? "percentage" : "cost"}
-                paddingAngle={2}
+                paddingAngle={3}
+                animationDuration={1000}
+                animationBegin={0}
               >
-                {currentCostData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
+                {currentCostData.map((entry, index) => {
+                  const enhancedColor = ENHANCED_CHART_COLORS[index % ENHANCED_CHART_COLORS.length];
+                  return (
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={enhancedColor.gradient}
+                      stroke={enhancedColor.fill}
+                      strokeWidth={2}
+                      filter="url(#shadow)"
+                    />
+                  );
+                })}
               </Pie>
               <Tooltip content={<CustomPieTooltip />} />
             </PieChart>
@@ -795,30 +930,37 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
           </div>
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={currentPerformanceData}>
-              <CartesianGrid strokeDasharray="3 3" stroke={DARK_THEME.grid} />
+              {renderGradientDefs()}
+              <CartesianGrid 
+                strokeDasharray="4 4" 
+                stroke={DARK_THEME.grid} 
+                strokeOpacity={0.4}
+                strokeWidth={1}
+              />
               <XAxis 
                 dataKey="displayName" 
-                tick={{ fontSize: 11, fill: DARK_THEME.text }}
+                tick={{ fontSize: 11, fill: DARK_THEME.text, fontWeight: 500 }}
                 interval={0}
                 angle={-35}
                 textAnchor="end"
                 height={80}
-                axisLine={{ stroke: DARK_THEME.axis }}
-                tickLine={{ stroke: DARK_THEME.axis }}
+                axisLine={{ stroke: DARK_THEME.axis, strokeWidth: 2 }}
+                tickLine={{ stroke: DARK_THEME.axis, strokeWidth: 2 }}
                 tickMargin={8}
               />
               <YAxis 
-                tick={{ fontSize: 12, fill: DARK_THEME.text }}
-                label={{ value: 'Response Time (ms)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: DARK_THEME.text } }}
-                axisLine={{ stroke: DARK_THEME.axis }}
-                tickLine={{ stroke: DARK_THEME.axis }}
+                tick={{ fontSize: 12, fill: DARK_THEME.text, fontWeight: 500 }}
+                label={{ value: 'Response Time (ms)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: DARK_THEME.text, fontWeight: 600 } }}
+                axisLine={{ stroke: DARK_THEME.axis, strokeWidth: 2 }}
+                tickLine={{ stroke: DARK_THEME.axis, strokeWidth: 2 }}
               />
               <Tooltip 
                 contentStyle={{ 
-                  backgroundColor: 'rgba(17, 24, 39, 0.9)',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                  border: '1px solid rgba(139, 92, 246, 0.3)',
                   borderRadius: '12px',
-                  color: '#E5E7EB'
+                  color: '#E5E7EB',
+                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 0 20px rgba(139, 92, 246, 0.3)'
                 }}
                 formatter={(value: number) => [`${value.toFixed(0)}ms`, 'Response Time']}
               />
@@ -826,8 +968,10 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
                 type="monotone"
                 dataKey="responseTime"
                 stroke="#8B5CF6"
-                fill="#8B5CF6"
-                fillOpacity={0.3}
+                strokeWidth={3}
+                fill="url(#areaGradient)"
+                animationDuration={1500}
+                filter="url(#glow)"
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -848,38 +992,47 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
           </div>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={currentPerformanceData}>
-              <CartesianGrid strokeDasharray="3 3" stroke={DARK_THEME.grid} />
+              {renderGradientDefs()}
+              <CartesianGrid 
+                strokeDasharray="4 4" 
+                stroke={DARK_THEME.grid} 
+                strokeOpacity={0.4}
+                strokeWidth={1}
+              />
               <XAxis 
                 dataKey="displayName" 
-                tick={{ fontSize: 11, fill: DARK_THEME.text }}
+                tick={{ fontSize: 11, fill: DARK_THEME.text, fontWeight: 500 }}
                 interval={0}
                 angle={-35}
                 textAnchor="end"
                 height={80}
-                axisLine={{ stroke: DARK_THEME.axis }}
-                tickLine={{ stroke: DARK_THEME.axis }}
+                axisLine={{ stroke: DARK_THEME.axis, strokeWidth: 2 }}
+                tickLine={{ stroke: DARK_THEME.axis, strokeWidth: 2 }}
                 tickMargin={8}
               />
               <YAxis 
-                tick={{ fontSize: 12, fill: DARK_THEME.text }}
+                tick={{ fontSize: 12, fill: DARK_THEME.text, fontWeight: 500 }}
                 domain={[80, 100]}
-                label={{ value: 'Success Rate (%)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: DARK_THEME.text } }}
-                axisLine={{ stroke: DARK_THEME.axis }}
-                tickLine={{ stroke: DARK_THEME.axis }}
+                label={{ value: 'Success Rate (%)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: DARK_THEME.text, fontWeight: 600 } }}
+                axisLine={{ stroke: DARK_THEME.axis, strokeWidth: 2 }}
+                tickLine={{ stroke: DARK_THEME.axis, strokeWidth: 2 }}
               />
               <Tooltip 
                 contentStyle={{ 
-                  backgroundColor: 'rgba(17, 24, 39, 0.9)',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
                   borderRadius: '12px',
-                  color: '#E5E7EB'
+                  color: '#E5E7EB',
+                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 0 20px rgba(16, 185, 129, 0.3)'
                 }}
                 formatter={(value: number) => [`${value.toFixed(1)}%`, 'Success Rate']}
               />
               <Bar 
                 dataKey="successRate" 
-                fill="#10B981"
-                radius={[4, 4, 0, 0]}
+                fill="url(#successGradient)"
+                radius={[8, 8, 0, 0]}
+                filter="url(#shadow)"
+                animationDuration={1200}
               />
             </BarChart>
           </ResponsiveContainer>
@@ -887,7 +1040,7 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
 
       </div>
 
-      {/* Quota Fulfillment by Department - Merged with Budget vs Spending */}
+      {/* Quota Fulfillment by Department - Double Bar Chart */}
       {viewMode === 'departments' && (
         <div className="bg-white/5 backdrop-blur-lg rounded-3xl shadow-2xl p-6 border border-white/10 hover:shadow-3xl transition-all duration-300">
           <div className="flex items-center space-x-3 mb-6">
@@ -902,19 +1055,59 @@ const UsageCharts: React.FC<UsageChartsProps> = ({
             </div>
           </div>
           <ResponsiveContainer width="100%" height={400}>
-            <BarChart data={departmentChartData} barCategoryGap={32} layout="horizontal">
-              <CartesianGrid strokeDasharray="3 3" stroke={DARK_THEME.grid} />
-              <XAxis type="number" tick={{ fontSize: 12, fill: DARK_THEME.text }} axisLine={{ stroke: DARK_THEME.axis }} tickLine={{ stroke: DARK_THEME.axis }} domain={[0, 'dataMax']} label={{ value: 'Dollars ($)', angle: 0, position: 'insideBottom', style: { textAnchor: 'middle', fill: DARK_THEME.text } }} />
-              <YAxis type="category" dataKey="displayName" tick={{ fontSize: 11, fill: DARK_THEME.text }} axisLine={{ stroke: DARK_THEME.axis }} tickLine={{ stroke: DARK_THEME.axis }} width={100} />
-              <Tooltip 
-                contentStyle={{ backgroundColor: 'rgba(17, 24, 39, 0.9)', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: '12px', color: '#E5E7EB' }}
-                formatter={(value: number, name: string) => [`$${value.toFixed(2)}`, name === 'budget' ? 'Budget' : 'Used']} 
+            <BarChart data={departmentChartData} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
+              {renderGradientDefs()}
+              <CartesianGrid 
+                strokeDasharray="4 4" 
+                stroke={DARK_THEME.grid} 
+                strokeOpacity={0.4}
+                strokeWidth={1}
               />
-              <Legend wrapperStyle={{ color: DARK_THEME.text }} />
-              {/* Background bar showing total budget */}
-              <Bar dataKey="budget" name="Total Budget ($)" fill="#374151" />
-              {/* Foreground bar showing usage (overlaid on same axis) */}
-              <Bar dataKey="cost" name="Used ($)" fill="#10B981" />
+              <XAxis 
+                dataKey="displayName" 
+                tick={{ fontSize: 11, fill: DARK_THEME.text, fontWeight: 500 }}
+                interval={0}
+                angle={-35}
+                textAnchor="end"
+                height={80}
+                axisLine={{ stroke: DARK_THEME.axis, strokeWidth: 2 }}
+                tickLine={{ stroke: DARK_THEME.axis, strokeWidth: 2 }}
+                tickMargin={8}
+              />
+              <YAxis 
+                tick={{ fontSize: 12, fill: DARK_THEME.text, fontWeight: 500 }}
+                axisLine={{ stroke: DARK_THEME.axis, strokeWidth: 2 }}
+                tickLine={{ stroke: DARK_THEME.axis, strokeWidth: 2 }}
+                label={{ value: 'Dollars ($)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: DARK_THEME.text, fontWeight: 600 } }}
+              />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: 'rgba(17, 24, 39, 0.95)', 
+                  border: '1px solid rgba(59, 130, 246, 0.3)', 
+                  borderRadius: '12px', 
+                  color: '#E5E7EB',
+                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 0 20px rgba(59, 130, 246, 0.3)'
+                }}
+                formatter={(value: number, name: string) => [`${value.toFixed(2)}`, name]} 
+              />
+              <Legend wrapperStyle={{ color: DARK_THEME.text, fontWeight: 600 }} />
+              {/* Side-by-side bars with 3D gradients */}
+              <Bar 
+                dataKey="budget" 
+                name="Monthly Budget" 
+                fill="url(#blueGradient)" 
+                radius={[6, 6, 0, 0]}
+                filter="url(#shadow)"
+                animationDuration={1000}
+              />
+              <Bar 
+                dataKey="cost" 
+                name="Amount Used" 
+                fill="url(#greenGradient)" 
+                radius={[6, 6, 0, 0]}
+                filter="url(#shadow)"
+                animationDuration={1200}
+              />
             </BarChart>
           </ResponsiveContainer>
           <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
