@@ -49,6 +49,7 @@ from .api.admin.llm_configs import router as admin_llm_configs_router
 from .api.admin.quotas import router as admin_quotas_router
 from .api.chat import router as chat_router
 from .api.chat_streaming import router as chat_streaming_router  # 🆕 NEW: Streaming chat
+# 🔧 FIXED: Project routers are imported below where they're used
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -363,9 +364,10 @@ app.include_router(
 
 # Include project endpoints
 # This adds all /api/projects/* endpoints to our application
-from .api.projects import crud_router as projects_crud_router
-from .api.projects import conversations_router as projects_conversations_router
-from .api.projects import statistics_router as projects_statistics_router
+# 🔧 FIXED: Import routers directly from individual files
+from .api.projects.crud import router as projects_crud_router
+from .api.projects.conversations import router as projects_conversations_router
+from .api.projects.statistics import router as projects_statistics_router
 app.include_router(
     projects_crud_router,
     prefix="/api",

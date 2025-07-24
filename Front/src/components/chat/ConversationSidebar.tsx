@@ -70,26 +70,26 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   const [assigningToFolder, setAssigningToFolder] = useState<number | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState<{top: number, left: number} | null>(null);
   
-  // Fix for dropdown timing issue - delay click-outside handler setup
+  // 🔧 FIXED: Improved dropdown click handling - no timing delays needed
   useEffect(() => {
     if (showFolderDropdown !== null) {
-      // Small delay to prevent immediate closure from same click event
-      const timer = setTimeout(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-          const target = event.target as Element;
-          if (!target.closest('.folder-dropdown-container')) {
-            setShowFolderDropdown(null);
-          }
-        };
-        
+      const handleClickOutside = (event: MouseEvent) => {
+        const target = event.target as Element;
+        // Check if click is outside both the dropdown button and dropdown menu
+        if (!target.closest('.folder-dropdown-container') && 
+            !target.closest('.folder-dropdown-menu')) {
+          setShowFolderDropdown(null);
+        }
+      };
+      
+      // Add listener on next tick to avoid immediate closure
+      const timer = requestAnimationFrame(() => {
         document.addEventListener('click', handleClickOutside);
-        return () => {
-          document.removeEventListener('click', handleClickOutside);
-        };
-      }, 10);
+      });
       
       return () => {
-        clearTimeout(timer);
+        cancelAnimationFrame(timer);
+        document.removeEventListener('click', handleClickOutside);
       };
     }
   }, [showFolderDropdown]);
@@ -378,7 +378,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
           onClick={() => setShowFolderDropdown(null)}
         />
         {/* Dropdown menu */}
-        <div className="fixed w-56 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-200 z-[9999]"
+        <div className="fixed w-56 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-200 z-[9999] folder-dropdown-menu"
              onClick={(e) => e.stopPropagation()}
              style={{
                top: dropdownPosition?.top || '20%',
