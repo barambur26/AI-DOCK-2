@@ -88,9 +88,6 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
 }) => {
   const navigate = useNavigate();
   
-  // 🔍 DEBUG: Log folder name being passed to breadcrumbs
-  console.log('🍞 ChatHeader folderName prop:', folderName);
-  
   return (
     <div className="bg-white/5 backdrop-blur-lg border-b border-white/10 px-4 md:px-6 py-4 sticky top-0 z-40">
       {/* Main header layout */}
@@ -119,7 +116,6 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           <ChatBreadcrumbs
             folderName={folderName}
             chatTitle={conversationTitle}
-            assistantName={selectedAssistant?.name}
             isNewChat={!currentConversationId && messages.length === 0}
           />
         </div>
