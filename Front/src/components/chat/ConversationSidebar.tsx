@@ -139,19 +139,25 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       const conversation = conversations.find(c => c.id === conversationId);
       if (!conversation) return;
       
+      console.log('📏 Frontend: Assigning conversation', conversationId, 'to folder', folderId);
+      
       // If conversation is currently in a folder, remove it first
       if (conversation.project?.id) {
+        console.log('  - Removing from current folder:', conversation.project.name);
         await projectService.removeConversationFromProject(conversation.project.id, conversationId);
       }
       
       // If assigning to a new folder (not removing), add it
       if (folderId) {
+        console.log('  - Adding to new folder:', folderId);
         await projectService.addConversationToProject(folderId, conversationId);
       }
       
-      // Refresh conversations to get updated data
-      loadConversations();
-      loadFolders();
+      console.log('✅ Folder assignment complete - refreshing conversation list...');
+      
+      // 🔧 ENHANCED: Force refresh conversations to get updated data
+      await loadConversations();
+      await loadFolders();
       
       console.log('✅ Successfully updated conversation folder assignment');
       
@@ -162,7 +168,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       setAssigningToFolder(null);
       setShowFolderDropdown(null);
     }
-  }, [conversations]);
+  }, [conversations, loadConversations, loadFolders]);
   
   const updateConversationMessageCount = useCallback((conversationId: number, newMessageCount: number) => {
     const updateConversation = (conv: ConversationSummary) => 
@@ -229,6 +235,14 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       const response: ConversationListResponse = await conversationService.getConversations({
         limit: 50,
         offset
+      });
+      
+      // 🔧 DEBUG: Log conversation data to check for project info
+      console.log('📊 Frontend: Received conversations:', response.conversations.length);
+      response.conversations.slice(0, 3).forEach(conv => {
+        console.log(`  - Conversation ${conv.id}: "${conv.title}"`);
+        console.log(`    project_id: ${conv.project_id}`);
+        console.log(`    project: ${conv.project ? JSON.stringify(conv.project) : 'null'}`);
       });
       
       if (append) {
@@ -533,6 +547,15 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
             <span>{conversation.project.name}</span>
           </div>
         )}
+        
+        {/* 🔧 DEBUG: Log conversation data to check project info */}
+        {process.env.NODE_ENV === 'development' && (() => {
+          console.log(`📄 Conversation ${conversation.id} render data:`);
+          console.log(`  - title: ${conversation.title}`);
+          console.log(`  - project_id: ${conversation.project_id}`);
+          console.log(`  - project:`, conversation.project);
+          return null;
+        })()}
       </div>
 
       {!isStreaming && editingTitle !== conversation.id && (

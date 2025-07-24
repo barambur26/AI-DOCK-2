@@ -121,9 +121,17 @@ async def list_conversations(
         for conv in conversations:
             try:
                 conv_dict = conv.to_dict()
-                # 🔧 DEBUG: Log project info to verify it's being included
+                # 🔧 DEBUG: Log project info to verify it's being included (using info level for visibility)
                 if conv_dict.get('project'):
-                    logger.debug(f"Conversation {conv.id} serialized with project: {conv_dict['project']['name']}")
+                    logger.info(f"Conversation {conv.id} serialized with project: {conv_dict['project']['name']}")
+                else:
+                    logger.info(f"Conversation {conv.id} has NO project info - checking raw data...")
+                    logger.info(f"  - hasattr projects: {hasattr(conv, 'projects')}")
+                    if hasattr(conv, 'projects'):
+                        logger.info(f"  - projects count: {len(conv.projects) if conv.projects else 0}")
+                        if conv.projects:
+                            logger.info(f"  - first project: {conv.projects[0].name}")
+                
                 conversation_dicts.append(conv_dict)
             except Exception as conv_error:
                 logger.error(f"Failed to serialize conversation {conv.id}: {conv_error}")
