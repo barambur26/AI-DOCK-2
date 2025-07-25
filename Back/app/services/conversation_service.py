@@ -144,6 +144,24 @@ class ConversationService:
                 selectinload(Conversation.assistant)   # Load assistant relationship for API responses
             ).where(Conversation.user_id == user_id)
             
+            # 🔧 DEBUG: Check if there are ANY project-conversation associations in the database
+            from ..models.project import project_conversations
+            assoc_count_query = select(func.count()).select_from(project_conversations)
+            assoc_result = await db.execute(assoc_count_query)
+            total_associations = assoc_result.scalar()
+            
+            logger.info(f"🔍 DATABASE CHECK: Total project-conversation associations: {total_associations}")
+            
+            # 🔧 DEBUG: Check associations for this specific user
+            user_assoc_query = select(func.count()).select_from(project_conversations).join(
+                Conversation, project_conversations.c.conversation_id == Conversation.id
+            ).where(Conversation.user_id == user_id)
+            
+            user_assoc_result = await db.execute(user_assoc_query)
+            user_associations = user_assoc_result.scalar()
+            
+            logger.info(f"🔍 DATABASE CHECK: User {user_id} has {user_associations} conversation-project associations")
+            
             if project_id:
                 # Filter by project if specified
                 project = await self.get_project(db, project_id, user_id)
@@ -161,15 +179,27 @@ class ConversationService:
                     # Force refresh project and assistant relationships
                     await db.refresh(conversation, attribute_names=['projects', 'assistant'])
                     
-                    # Log project info for debugging
-                    if hasattr(conversation, 'projects') and conversation.projects:
-                        project_names = [p.name for p in conversation.projects]
-                        logger.info(f"✅ Conversation {conversation.id} has projects: {project_names}")
-                        print(f"✅ Backend: Conversation {conversation.id} has projects: {project_names}")
-                    else:
-                        logger.info(f"❌ Conversation {conversation.id} has no projects")
-                        print(f"❌ Backend: Conversation {conversation.id} has no projects")
+                    # 🔧 DEBUG: Log detailed info for each conversation
+                    logger.info(f"🔍 Backend conversation {conversation.id}: '{conversation.title}'")
+                    logger.info(f"   - hasattr(conversation, 'projects'): {hasattr(conversation, 'projects')}")
+                    
+                    if hasattr(conversation, 'projects'):
+                        projects_list = conversation.projects if conversation.projects else []
+                        logger.info(f"   - projects count: {len(projects_list)}")
                         
+                        for i, project in enumerate(projects_list):
+                            logger.info(f"   - project {i}: id={project.id}, name='{project.name}'")
+                    else:
+                        logger.info(f"   - projects attribute missing")
+                    
+                    # 🔧 DEBUG: Test to_dict() serialization
+                    try:
+                        conv_dict = conversation.to_dict()
+                        logger.info(f"   - to_dict() project_id: {conv_dict.get('project_id')}")
+                        logger.info(f"   - to_dict() project: {conv_dict.get('project')}")
+                    except Exception as dict_error:
+                        logger.error(f"   - to_dict() failed: {dict_error}")
+                    
                 except Exception as refresh_error:
                     logger.warning(f"Failed to refresh relationships for conversation {conversation.id}: {refresh_error}")
                     continue

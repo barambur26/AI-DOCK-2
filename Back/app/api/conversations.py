@@ -12,6 +12,9 @@ logger = logging.getLogger(__name__)
 from ..core.database import get_async_db
 from ..core.security import get_current_user
 from ..models.user import User
+from ..models.project import Project  # Add Project import
+from ..models.conversation import Conversation  # Add Conversation import
+from sqlalchemy import select, func  # Add SQLAlchemy imports
 from ..services.conversation_service import conversation_service
 from ..schemas.conversation import (
     ConversationCreate,
@@ -120,21 +123,28 @@ async def list_conversations(
         conversation_dicts = []
         for conv in conversations:
             try:
+                # 🔧 DEBUG: Log conversation details before serialization
+                logger.info(f"💾 API: Serializing conversation {conv.id}: '{conv.title}'")
+                
                 conv_dict = conv.to_dict()
                 # 🔧 DEBUG: Log project info to verify it's being included (using info level for visibility)
                 if conv_dict.get('project'):
-                    logger.info(f"Conversation {conv.id} serialized with project: {conv_dict['project']['name']}")
+                    logger.info(f"✅ API: Conversation {conv.id} serialized with project: {conv_dict['project']['name']}")
                 else:
-                    logger.info(f"Conversation {conv.id} has NO project info - checking raw data...")
-                    logger.info(f"  - hasattr projects: {hasattr(conv, 'projects')}")
+                    logger.info(f"❌ API: Conversation {conv.id} has NO project info after serialization")
+                    logger.info(f"   - project_id: {conv_dict.get('project_id')}")
+                    logger.info(f"   - project: {conv_dict.get('project')}")
+                    
+                    # 🔧 DEBUG: Check if the conversation object itself has projects
                     if hasattr(conv, 'projects'):
-                        logger.info(f"  - projects count: {len(conv.projects) if conv.projects else 0}")
-                        if conv.projects:
-                            logger.info(f"  - first project: {conv.projects[0].name}")
+                        logger.info(f"   - Raw conversation.projects: {conv.projects}")
+                        logger.info(f"   - Raw conversation.projects length: {len(conv.projects) if conv.projects else 0}")
+                    else:
+                        logger.info(f"   - Raw conversation has no 'projects' attribute")
                 
                 conversation_dicts.append(conv_dict)
             except Exception as conv_error:
-                logger.error(f"Failed to serialize conversation {conv.id}: {conv_error}")
+                logger.error(f"❌ API: Failed to serialize conversation {conv.id}: {conv_error}")
                 # Create a minimal dict to avoid breaking the entire response
                 conversation_dicts.append({
                     "id": conv.id,
@@ -302,6 +312,126 @@ async def get_conversation_stats(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get stats: {str(e)}"
+        )
+
+@router.post("/debug/database-check")
+async def debug_database_check(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    Debug endpoint to check database state for folder assignments.
+    """
+    try:
+        from ..models.project import project_conversations
+        from sqlalchemy import text
+        
+        # Check total associations
+        total_query = select(func.count()).select_from(project_conversations)
+        total_result = await db.execute(total_query)
+        total_associations = total_result.scalar()
+        
+        # Check user's associations
+        user_query = select(func.count()).select_from(project_conversations).join(
+            Conversation, project_conversations.c.conversation_id == Conversation.id
+        ).where(Conversation.user_id == current_user.id)
+        
+        user_result = await db.execute(user_query)
+        user_associations = user_result.scalar()
+        
+        # Get sample associations for this user
+        sample_query = select(
+            project_conversations.c.project_id,
+            project_conversations.c.conversation_id,
+            project_conversations.c.created_at
+        ).join(
+            Conversation, project_conversations.c.conversation_id == Conversation.id
+        ).where(Conversation.user_id == current_user.id).limit(5)
+        
+        sample_result = await db.execute(sample_query)
+        sample_associations = sample_result.fetchall()
+        
+        # Get user's projects
+        projects_query = select(Project).where(Project.user_id == current_user.id)
+        projects_result = await db.execute(projects_query)
+        user_projects = projects_result.scalars().all()
+        
+        # Get user's conversations
+        convs_query = select(Conversation).where(Conversation.user_id == current_user.id).limit(5)
+        convs_result = await db.execute(convs_query)
+        user_conversations = convs_result.scalars().all()
+        
+        return {
+            "database_state": {
+                "total_associations": total_associations,
+                "user_associations": user_associations,
+                "sample_associations": [
+                    {
+                        "project_id": assoc.project_id,
+                        "conversation_id": assoc.conversation_id,
+                        "created_at": assoc.created_at.isoformat()
+                    } for assoc in sample_associations
+                ]
+            },
+            "user_data": {
+                "user_id": current_user.id,
+                "projects_count": len(user_projects),
+                "projects": [{
+                    "id": p.id,
+                    "name": p.name,
+                    "conversation_count": len(p.conversations) if hasattr(p, 'conversations') and p.conversations else 0
+                } for p in user_projects],
+                "conversations_count": len(user_conversations),
+                "sample_conversations": [{
+                    "id": c.id,
+                    "title": c.title,
+                    "project_count": len(c.projects) if hasattr(c, 'projects') and c.projects else 0
+                } for c in user_conversations]
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Debug database check failed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Debug check failed: {str(e)}"
+        )
+
+@router.post("/debug/test-assignment")
+async def debug_test_assignment(
+    conversation_id: int,
+    project_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    Debug endpoint to test folder assignment.
+    """
+    try:
+        from ..services.project_service import ProjectService
+        
+        service = ProjectService(db)
+        
+        logger.info(f"🔧 DEBUG API: Testing assignment of conversation {conversation_id} to project {project_id}")
+        
+        result = await service.add_conversation_to_project(
+            project_id=project_id,
+            conversation_id=conversation_id,
+            user_id=current_user.id
+        )
+        
+        logger.info(f"🔧 DEBUG API: Assignment result: {result}")
+        
+        return {
+            "success": result,
+            "message": f"Assignment of conversation {conversation_id} to project {project_id}: {'SUCCESS' if result else 'FAILED'}"
+        }
+        
+    except Exception as e:
+        logger.error(f"Debug test assignment failed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Test assignment failed: {str(e)}"
         )
 
 @router.post("/{conversation_id}/messages", response_model=ConversationOperationResponse)
