@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 from ..models.conversation import Conversation, ConversationMessage
 from ..models.user import User
 from ..models.llm_config import LLMConfiguration
-from ..models.project import Project
+from ..models.project import Project  # Already imported
 from ..core.database import get_async_db
 
 class ConversationService:
@@ -139,9 +139,11 @@ class ConversationService:
     ) -> List[Conversation]:
         """Get user's conversations with pagination and project information"""
         try:
+            # 🔧 ENHANCED: More aggressive relationship loading to ensure project data is available
             base_query = select(Conversation).options(
-                selectinload(Conversation.projects),  # Load project relationships for folder functionality
-                selectinload(Conversation.assistant)   # Load assistant relationship for API responses
+                selectinload(Conversation.projects).selectinload(Project.user),  # Load projects with user data
+                selectinload(Conversation.assistant),   # Load assistant relationship for API responses
+                selectinload(Conversation.user)         # Load user relationship to avoid lazy loading issues
             ).where(Conversation.user_id == user_id)
             
             # 🔧 DEBUG: Check if there are ANY project-conversation associations in the database
@@ -176,8 +178,20 @@ class ConversationService:
             # 🔧 ENHANCED: Ensure all project relationships are properly loaded
             for conversation in conversations:
                 try:
-                    # Force refresh project and assistant relationships
-                    await db.refresh(conversation, attribute_names=['projects', 'assistant'])
+                    # 🔧 CRITICAL FIX: Enhanced refresh and force project relationship loading
+                    await db.refresh(conversation, attribute_names=['projects', 'assistant', 'user'])
+                    
+                    # Force explicit loading of projects relationship to ensure it's available in to_dict()
+                    if hasattr(conversation, 'projects'):
+                        # Touch the projects relationship to force SQLAlchemy to fully load it
+                        projects_count = len(conversation.projects) if conversation.projects else 0
+                        if projects_count > 0:
+                            # Ensure each project object is fully loaded by accessing properties
+                            for project in conversation.projects:
+                                _ = project.name, project.id, project.color, project.icon  # Force loading
+                        logger.info(f"🔧 FORCED projects loading for conv {conversation.id}: {projects_count} projects")
+                    else:
+                        logger.warning(f"❌ No projects attribute found on conversation {conversation.id}")
                     
                     # 🔧 DEBUG: Log detailed info for each conversation
                     logger.info(f"🔍 Backend conversation {conversation.id}: '{conversation.title}'")
@@ -192,16 +206,24 @@ class ConversationService:
                     else:
                         logger.info(f"   - projects attribute missing")
                     
-                    # 🔧 DEBUG: Test to_dict() serialization
+                    # 🔧 CRITICAL DEBUG: Test to_dict() serialization after forced loading
                     try:
                         conv_dict = conversation.to_dict()
-                        logger.info(f"   - to_dict() project_id: {conv_dict.get('project_id')}")
-                        logger.info(f"   - to_dict() project: {conv_dict.get('project')}")
+                        logger.info(f"   - ✅ to_dict() project_id: {conv_dict.get('project_id')}")
+                        logger.info(f"   - ✅ to_dict() project: {conv_dict.get('project')}")
+                        
+                        # Log success/failure of project serialization
+                        if conv_dict.get('project_id') is not None:
+                            logger.info(f"   - 🎉 SUCCESS: Conversation {conversation.id} has project info after fix!")
+                        else:
+                            logger.error(f"   - ❌ STILL FAILING: Conversation {conversation.id} project_id is still None")
+                            
                     except Exception as dict_error:
-                        logger.error(f"   - to_dict() failed: {dict_error}")
+                        logger.error(f"   - ❌ to_dict() failed: {dict_error}")
                     
                 except Exception as refresh_error:
-                    logger.warning(f"Failed to refresh relationships for conversation {conversation.id}: {refresh_error}")
+                    logger.error(f"❌ CRITICAL: Failed to refresh relationships for conversation {conversation.id}: {refresh_error}")
+                    # Don't skip the conversation, but log the error
                     continue
             
             logger.info(f"Loaded {len(conversations)} conversations for user {user_id}")

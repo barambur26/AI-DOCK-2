@@ -71,7 +71,7 @@ class Conversation(Base):
         "Project",
         secondary=project_conversations,
         back_populates="conversations",
-        lazy="select"
+        lazy="selectin"  # FIXED: Use selectin for better eager loading with async sessions
     )
     
     def __repr__(self) -> str:
@@ -166,41 +166,58 @@ class Conversation(Base):
         return assistant.user_id == self.user_id
     
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dict for API responses"""
-        # 🔧 ENHANCED: Get project information with comprehensive debugging
+        """Convert to dict for API responses with enhanced project loading"""
+        # 🔧 CRITICAL FIX: Enhanced project information extraction with forced loading
         project_info = None
         try:
-            print(f"🔍 Conversation {self.id} to_dict() debug:")
+            print(f"🔍 CRITICAL: Conversation {self.id} to_dict() debug:")
             print(f"  - hasattr(self, 'projects'): {hasattr(self, 'projects')}")
             
             if hasattr(self, 'projects'):
-                print(f"  - self.projects: {self.projects}")
-                print(f"  - len(self.projects): {len(self.projects) if self.projects else 'None'}")
+                print(f"  - self.projects type: {type(self.projects)}")
+                print(f"  - self.projects value: {self.projects}")
                 
-                if self.projects and len(self.projects) > 0:
-                    first_project = self.projects[0]  # Use first project as primary folder
+                # Force evaluation of the projects relationship
+                projects_list = list(self.projects) if self.projects is not None else []
+                print(f"  - projects_list after list(): {projects_list}")
+                print(f"  - len(projects_list): {len(projects_list)}")
+                
+                if projects_list and len(projects_list) > 0:
+                    first_project = projects_list[0]  # Use first project as primary folder
                     print(f"  - first_project: {first_project}")
                     print(f"  - first_project.id: {first_project.id}")
                     print(f"  - first_project.name: {first_project.name}")
                     
-                    project_info = {
-                        "id": first_project.id,
-                        "name": first_project.name,
-                        "color": first_project.color,
-                        "icon": first_project.icon
-                    }
-                    print(f"  - Created project_info: {project_info}")
+                    # Force loading of project attributes
+                    project_id = getattr(first_project, 'id', None)
+                    project_name = getattr(first_project, 'name', None)
+                    project_color = getattr(first_project, 'color', '#3B82F6')
+                    project_icon = getattr(first_project, 'icon', '📁')
+                    
+                    if project_id is not None and project_name is not None:
+                        project_info = {
+                            "id": project_id,
+                            "name": project_name,
+                            "color": project_color,
+                            "icon": project_icon
+                        }
+                        print(f"  - ✅ SUCCESS: Created project_info: {project_info}")
+                    else:
+                        print(f"  - ❌ FAILED: project_id or project_name is None")
+                        print(f"    - project_id: {project_id}, project_name: {project_name}")
                 else:
-                    print(f"  - projects is empty or None")
+                    print(f"  - ❌ projects_list is empty or None")
             else:
-                print(f"  - projects attribute not found")
+                print(f"  - ❌ projects attribute not found on conversation object")
                 
         except (AttributeError, IndexError) as e:
             # Handle cases where projects relationship isn't loaded or is empty
-            print(f"  - Exception in project extraction: {e}")
+            print(f"  - ❌ Exception in project extraction: {e}")
+            import traceback
+            print(f"  - ❌ Full traceback: {traceback.format_exc()}")
             project_info = None
         
-        print(f"  - Final project_info: {project_info}")
+        print(f"  - 🎯 FINAL project_info: {project_info}")
         
         # Get assistant information safely
         assistant_name = None
@@ -237,7 +254,16 @@ class Conversation(Base):
             "session_id": getattr(self, 'session_id', None)  # NEW: Include session_id with fallback
         }
         
-        print(f"📤 Conversation {self.id} API response: project_id={result['project_id']}, project_name={result['project']['name'] if result['project'] else None}")
+        # 🔧 CRITICAL: Log final API response details
+        print(f"📤 FINAL API RESPONSE for Conversation {self.id}:")
+        print(f"  - project_id: {result['project_id']}")
+        print(f"  - project: {result['project']}")
+        if result['project']:
+            print(f"  - project_name: {result['project']['name']}")
+            print(f"  - 🎉 SUCCESS: Project info will be sent to frontend!")
+        else:
+            print(f"  - ❌ CRITICAL: No project info in API response - frontend will show null")
+        
         return result
 
 class ConversationMessage(Base):
