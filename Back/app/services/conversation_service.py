@@ -164,9 +164,11 @@ class ConversationService:
                     # Log project info for debugging
                     if hasattr(conversation, 'projects') and conversation.projects:
                         project_names = [p.name for p in conversation.projects]
-                        logger.debug(f"Conversation {conversation.id} has projects: {project_names}")
+                        logger.info(f"✅ Conversation {conversation.id} has projects: {project_names}")
+                        print(f"✅ Backend: Conversation {conversation.id} has projects: {project_names}")
                     else:
-                        logger.debug(f"Conversation {conversation.id} has no projects")
+                        logger.info(f"❌ Conversation {conversation.id} has no projects")
+                        print(f"❌ Backend: Conversation {conversation.id} has no projects")
                         
                 except Exception as refresh_error:
                     logger.warning(f"Failed to refresh relationships for conversation {conversation.id}: {refresh_error}")

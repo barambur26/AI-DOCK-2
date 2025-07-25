@@ -216,12 +216,30 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
             </div>
             
             {/* Show folder/project information if available */}
-            {conversation.project?.name && (
+            {(conversation.project?.name || conversation.project_id) && (
               <div className="flex items-center">
                 <Folder className="w-3 h-3 mr-1 flex-shrink-0" />
                 <span className="text-blue-600 font-medium">
-                  {conversation.project.name}
+                  {conversation.project?.name || `Folder ${conversation.project_id}`}
                 </span>
+                {conversation.project?.color && (
+                  <div 
+                    className="w-2 h-2 rounded-full ml-1" 
+                    style={{ backgroundColor: conversation.project.color }}
+                    title={`Folder color: ${conversation.project.color}`}
+                  />
+                )}
+              </div>
+            )}
+            
+            {/* Debug: Show project info in development */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="text-xs text-gray-400 border border-gray-300 rounded px-1">
+                {conversation.project_id ? (
+                  <span>🏷️ ID:{conversation.project_id} | {conversation.project?.name ? `📁${conversation.project.name}` : '⚠️ Missing name'}</span>
+                ) : (
+                  <span>📁 No folder</span>
+                )}
               </div>
             )}
             

@@ -1,7 +1,7 @@
 // AI Dock Conversation Sidebar - ENHANCED with Folder Management
 // UI component for managing saved conversations and organizing them into folders
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   MessageSquare, 
   Search, 
@@ -51,6 +51,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   embedded = false
 }) => {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const conversationsRef = useRef<ConversationSummary[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -177,6 +178,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
             // Refresh conversations
             const response = await conversationService.getConversations({ limit: 50, offset: 0 });
             setConversations(response.conversations);
+            conversationsRef.current = response.conversations;
             setTotalCount(response.total_count);
             setHasMore(response.has_more);
             
@@ -202,7 +204,11 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     const updateConversation = (conv: ConversationSummary) => 
       conv.id === conversationId ? { ...conv, message_count: newMessageCount } : conv;
     
-    setConversations(prev => prev.map(updateConversation));
+    setConversations(prev => {
+      const updated = prev.map(updateConversation);
+      conversationsRef.current = updated;
+      return updated;
+    });
     setSearchResults(prev => prev.map(updateConversation));
   }, []);
 
@@ -222,11 +228,13 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     
     setConversations(prev => {
       const updated = prev.map(updateConversation);
-      return updated.sort((a, b) => {
+      const sorted = updated.sort((a, b) => {
         const dateA = new Date(a.last_message_at || a.updated_at || a.created_at);
         const dateB = new Date(b.last_message_at || b.updated_at || b.created_at);
         return dateB.getTime() - dateA.getTime();
       });
+      conversationsRef.current = sorted;
+      return sorted;
     });
     
     setSearchResults(prev => prev.map(updateConversation));
@@ -235,11 +243,14 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   const addNewConversation = useCallback((newConversation: ConversationSummary) => {
     setConversations(prev => {
       const exists = prev.some(conv => conv.id === newConversation.id);
+      let updated;
       if (exists) {
-        return prev.map(conv => conv.id === newConversation.id ? newConversation : conv);
+        updated = prev.map(conv => conv.id === newConversation.id ? newConversation : conv);
       } else {
-        return [newConversation, ...prev];
+        updated = [newConversation, ...prev];
       }
+      conversationsRef.current = updated;
+      return updated;
     });
     setTotalCount(prev => prev + 1);
   }, []);
@@ -259,7 +270,8 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       }
       setError(null);
       
-      const offset = append ? conversations.length : 0;
+      // Use ref to get current length without dependency
+      const offset = append ? conversationsRef.current.length : 0;
       const response: ConversationListResponse = await conversationService.getConversations({
         limit: 50,
         offset
@@ -267,16 +279,27 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       
       // 🔧 DEBUG: Log conversation data to check for project info
       console.log('📊 Frontend: Received conversations:', response.conversations.length);
-      response.conversations.slice(0, 3).forEach(conv => {
+      response.conversations.slice(0, 5).forEach(conv => {
         console.log(`  - Conversation ${conv.id}: "${conv.title}"`);
         console.log(`    project_id: ${conv.project_id}`);
         console.log(`    project: ${conv.project ? JSON.stringify(conv.project) : 'null'}`);
+        if (conv.project_id && !conv.project) {
+          console.warn(`    ⚠️ Conversation has project_id but no project object!`);
+        }
       });
       
+      // Count conversations with and without folders
+      const withFolders = response.conversations.filter(c => c.project?.name).length;
+      const withProjectId = response.conversations.filter(c => c.project_id).length;
+      console.log(`📁 Folder Summary: ${withFolders}/${response.conversations.length} have folder names, ${withProjectId} have project_id`);
+      
       if (append) {
-        setConversations(prev => [...prev, ...response.conversations]);
+        const newConversations = [...conversationsRef.current, ...response.conversations];
+        setConversations(newConversations);
+        conversationsRef.current = newConversations;
       } else {
         setConversations(response.conversations);
+        conversationsRef.current = response.conversations;
       }
       
       setTotalCount(response.total_count);
@@ -292,7 +315,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
         setIsLoading(false);
       }
     }
-  }, [conversations.length]);
+  }, []);
   
   const searchConversations = useCallback(async () => {
     if (!searchQuery.trim()) return;
@@ -323,7 +346,11 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   const handleDeleteConversation = async (conversationId: number) => {
     try {
       await conversationService.deleteConversation(conversationId);
-      setConversations(prev => prev.filter(c => c.id !== conversationId));
+      setConversations(prev => {
+        const filtered = prev.filter(c => c.id !== conversationId);
+        conversationsRef.current = filtered;
+        return filtered;
+      });
       setSearchResults(prev => prev.filter(c => c.id !== conversationId));
       setSelectedForDelete(null);
     } catch (error) {
@@ -346,7 +373,11 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       const updateConversation = (conv: ConversationSummary) => 
         conv.id === conversationId ? { ...conv, title: updated.title } : conv;
       
-      setConversations(prev => prev.map(updateConversation));
+      setConversations(prev => {
+        const mapped = prev.map(updateConversation);
+        conversationsRef.current = mapped;
+        return mapped;
+      });
       setSearchResults(prev => prev.map(updateConversation));
       setEditingTitle(null);
       setNewTitle('');

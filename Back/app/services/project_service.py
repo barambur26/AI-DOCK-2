@@ -114,11 +114,15 @@ class ProjectService:
             True if successful, False otherwise
         """
         try:
+            logger.info(f"🔧 DEBUG: Starting add_conversation_to_project - project_id: {project_id}, conversation_id: {conversation_id}, user_id: {user_id}")
+            
             # Get project and conversation, ensuring user ownership
             project = await self.get_project_by_id(project_id, user_id)
             if not project:
-                logger.warning(f"Project {project_id} not found for user {user_id}")
+                logger.warning(f"❌ Project {project_id} not found for user {user_id}")
                 return False
+            
+            logger.info(f"✅ Found project: {project.name} (id: {project.id})")
             
             # Get conversation with relationships loaded
             conv_query = select(Conversation).options(
@@ -134,19 +138,62 @@ class ProjectService:
             conversation = conv_result.scalar_one_or_none()
             
             if not conversation:
-                logger.warning(f"Conversation {conversation_id} not found for user {user_id}")
+                logger.warning(f"❌ Conversation {conversation_id} not found for user {user_id}")
                 return False
             
-            # Add conversation to project
+            logger.info(f"✅ Found conversation: {conversation.title} (id: {conversation.id})")
+            logger.info(f"🔍 Conversation currently in {len(conversation.projects)} projects")
+            
+            # Check if conversation is already in this project
+            already_in_project = any(p.id == project_id for p in conversation.projects)
+            if already_in_project:
+                logger.info(f"⚠️ Conversation {conversation_id} is already in project {project_id}")
+                return True  # Return success since it's already there
+            
+            # Add conversation to project using SQLAlchemy relationship
+            logger.info(f"🔗 Adding conversation to project using project.add_conversation()")
             project.add_conversation(conversation)
+            
+            # Force refresh relationships before commit
+            await self.db.refresh(project, attribute_names=['conversations'])
+            await self.db.refresh(conversation, attribute_names=['projects'])
+            
+            logger.info(f"🔍 After adding - project has {len(project.conversations)} conversations")
+            logger.info(f"🔍 After adding - conversation is in {len(conversation.projects)} projects")
+            
+            # Commit the transaction
+            logger.info(f"💾 Committing transaction...")
             await self.db.commit()
             
-            logger.info(f"Added conversation {conversation_id} to project {project_id}")
+            # Verify the relationship was persisted
+            await self.db.refresh(project, attribute_names=['conversations'])
+            await self.db.refresh(conversation, attribute_names=['projects'])
+            
+            logger.info(f"✅ After commit - project has {len(project.conversations)} conversations")
+            logger.info(f"✅ After commit - conversation is in {len(conversation.projects)} projects")
+            
+            # Double-check by querying the association table directly
+            from ..models.project import project_conversations
+            check_query = select(func.count()).select_from(project_conversations).where(
+                and_(
+                    project_conversations.c.project_id == project_id,
+                    project_conversations.c.conversation_id == conversation_id
+                )
+            )
+            check_result = await self.db.execute(check_query)
+            association_count = check_result.scalar()
+            
+            logger.info(f"🔍 Association table check: {association_count} records found")
+            
+            logger.info(f"✅ Successfully added conversation {conversation_id} to project {project_id}")
             return True
             
         except Exception as e:
             await self.db.rollback()
-            logger.error(f"Error adding conversation to project: {str(e)}")
+            logger.error(f"❌ Error adding conversation to project: {str(e)}")
+            logger.error(f"❌ Exception type: {type(e).__name__}")
+            import traceback
+            logger.error(f"❌ Traceback: {traceback.format_exc()}")
             return False
     
     async def remove_conversation_from_project(
@@ -167,10 +214,15 @@ class ProjectService:
             True if successful, False otherwise
         """
         try:
+            logger.info(f"🔧 DEBUG: Starting remove_conversation_from_project - project_id: {project_id}, conversation_id: {conversation_id}, user_id: {user_id}")
+            
             # Get project and conversation, ensuring user ownership
             project = await self.get_project_by_id(project_id, user_id)
             if not project:
+                logger.warning(f"❌ Project {project_id} not found for user {user_id}")
                 return False
+            
+            logger.info(f"✅ Found project: {project.name} (id: {project.id})")
             
             # Get conversation
             conv_query = select(Conversation).options(
@@ -186,18 +238,62 @@ class ProjectService:
             conversation = conv_result.scalar_one_or_none()
             
             if not conversation:
+                logger.warning(f"❌ Conversation {conversation_id} not found for user {user_id}")
                 return False
             
+            logger.info(f"✅ Found conversation: {conversation.title} (id: {conversation.id})")
+            logger.info(f"🔍 Conversation currently in {len(conversation.projects)} projects")
+            
+            # Check if conversation is actually in this project
+            in_project = any(p.id == project_id for p in conversation.projects)
+            if not in_project:
+                logger.info(f"⚠️ Conversation {conversation_id} is not in project {project_id}")
+                return True  # Return success since it's already not there
+            
             # Remove conversation from project
+            logger.info(f"🔗 Removing conversation from project using project.remove_conversation()")
             project.remove_conversation(conversation)
+            
+            # Force refresh relationships before commit
+            await self.db.refresh(project, attribute_names=['conversations'])
+            await self.db.refresh(conversation, attribute_names=['projects'])
+            
+            logger.info(f"🔍 After removing - project has {len(project.conversations)} conversations")
+            logger.info(f"🔍 After removing - conversation is in {len(conversation.projects)} projects")
+            
+            # Commit the transaction
+            logger.info(f"💾 Committing transaction...")
             await self.db.commit()
             
-            logger.info(f"Removed conversation {conversation_id} from project {project_id}")
+            # Verify the relationship was removed
+            await self.db.refresh(project, attribute_names=['conversations'])
+            await self.db.refresh(conversation, attribute_names=['projects'])
+            
+            logger.info(f"✅ After commit - project has {len(project.conversations)} conversations")
+            logger.info(f"✅ After commit - conversation is in {len(conversation.projects)} projects")
+            
+            # Double-check by querying the association table directly
+            from ..models.project import project_conversations
+            check_query = select(func.count()).select_from(project_conversations).where(
+                and_(
+                    project_conversations.c.project_id == project_id,
+                    project_conversations.c.conversation_id == conversation_id
+                )
+            )
+            check_result = await self.db.execute(check_query)
+            association_count = check_result.scalar()
+            
+            logger.info(f"🔍 Association table check: {association_count} records found (should be 0)")
+            
+            logger.info(f"✅ Successfully removed conversation {conversation_id} from project {project_id}")
             return True
             
         except Exception as e:
             await self.db.rollback()
-            logger.error(f"Error removing conversation from project: {str(e)}")
+            logger.error(f"❌ Error removing conversation from project: {str(e)}")
+            logger.error(f"❌ Exception type: {type(e).__name__}")
+            import traceback
+            logger.error(f"❌ Traceback: {traceback.format_exc()}")
             return False
 
     # =============================================================================
@@ -440,147 +536,6 @@ class ProjectService:
             await self.db.rollback()
             logger.error(f"Error deleting project {project_id}: {str(e)}")
             return False
-    
-    # =============================================================================
-    # PROJECT-CONVERSATION MANAGEMENT
-    # =============================================================================
-    
-    async def add_conversation_to_project(
-        self, 
-        project_id: int, 
-        conversation_id: int, 
-        user_id: int
-    ) -> bool:
-        """
-        Add a conversation to a project.
-        
-        Args:
-            project_id: ID of the project
-            conversation_id: ID of the conversation to add
-            user_id: ID of the user performing the action
-            
-        Returns:
-            True if successful, False otherwise
-        """
-        try:
-            # Get project and validate ownership
-            project = await self.get_project_by_id(project_id, user_id)
-            if not project:
-                return False
-            
-            # Get conversation and validate ownership
-            conversation_query = select(Conversation).where(
-                and_(
-                    Conversation.id == conversation_id,
-                    Conversation.user_id == user_id,
-                    Conversation.is_active == True
-                )
-            )
-            result = await self.db.execute(conversation_query)
-            conversation = result.scalar_one_or_none()
-            
-            if not conversation:
-                return False
-            
-            # Add conversation to project
-            project.add_conversation(conversation)
-            await self.db.commit()
-            
-            logger.info(f"Added conversation {conversation_id} to project {project_id}")
-            return True
-            
-        except Exception as e:
-            await self.db.rollback()
-            logger.error(f"Error adding conversation to project: {str(e)}")
-            return False
-    
-    async def remove_conversation_from_project(
-        self, 
-        project_id: int, 
-        conversation_id: int, 
-        user_id: int
-    ) -> bool:
-        """
-        Remove a conversation from a project.
-        
-        Args:
-            project_id: ID of the project
-            conversation_id: ID of the conversation to remove
-            user_id: ID of the user performing the action
-            
-        Returns:
-            True if successful, False otherwise
-        """
-        try:
-            # Get project and validate ownership
-            project = await self.get_project_by_id(project_id, user_id)
-            if not project:
-                return False
-            
-            # Find conversation in project
-            conversation = None
-            for conv in project.conversations:
-                if conv.id == conversation_id:
-                    conversation = conv
-                    break
-            
-            if not conversation:
-                return False
-            
-            # Remove conversation from project
-            project.remove_conversation(conversation)
-            await self.db.commit()
-            
-            logger.info(f"Removed conversation {conversation_id} from project {project_id}")
-            return True
-            
-        except Exception as e:
-            await self.db.rollback()
-            logger.error(f"Error removing conversation from project: {str(e)}")
-            return False
-    
-    async def get_project_conversations(
-        self, 
-        project_id: int, 
-        user_id: int,
-        limit: int = 20
-    ) -> List[Conversation]:
-        """
-        Get conversations associated with a project.
-        
-        Args:
-            project_id: ID of the project
-            user_id: ID of the user requesting conversations
-            limit: Maximum number of conversations to return
-            
-        Returns:
-            List of conversations in the project
-        """
-        try:
-            # Get the project with conversations loaded properly
-            query = select(Project).options(
-                selectinload(Project.conversations).selectinload(Conversation.assistant),
-                selectinload(Project.conversations).selectinload(Conversation.projects),
-                selectinload(Project.conversations).selectinload(Conversation.user)
-            ).where(
-                and_(
-                    Project.id == project_id,
-                    Project.user_id == user_id,
-                    Project.is_active == True
-                )
-            )
-            
-            result = await self.db.execute(query)
-            project = result.scalar_one_or_none()
-            
-            if not project:
-                return []
-            
-            return project.get_recent_conversations(limit)
-            
-        except Exception as e:
-            logger.error(f"Error getting project conversations: {str(e)}")
-            return []
     
     # =============================================================================
     # PROJECT STATUS MANAGEMENT
