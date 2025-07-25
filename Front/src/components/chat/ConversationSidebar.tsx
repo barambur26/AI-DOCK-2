@@ -153,12 +153,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
         await projectService.addConversationToProject(folderId, conversationId);
       }
       
-      console.log('✅ Folder assignment complete - refreshing conversation list...');
-      
-      // 🔧 ENHANCED: Force refresh conversations to get updated data
-      await loadConversations();
-      await loadFolders();
-      
+      console.log('✅ Folder assignment complete');
       console.log('✅ Successfully updated conversation folder assignment');
       
     } catch (error) {
@@ -167,8 +162,41 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     } finally {
       setAssigningToFolder(null);
       setShowFolderDropdown(null);
+      
+      // 🔧 FIXED: Trigger refresh after assignment by re-calling load functions
+      setTimeout(() => {
+        // Force re-render by clearing and reloading conversations
+        setConversations([]);
+        setFolders([]);
+        setIsLoading(true);
+        setLoadingFolders(true);
+        
+        // This will trigger a fresh load
+        const refreshData = async () => {
+          try {
+            // Refresh conversations
+            const response = await conversationService.getConversations({ limit: 50, offset: 0 });
+            setConversations(response.conversations);
+            setTotalCount(response.total_count);
+            setHasMore(response.has_more);
+            
+            // Refresh folders
+            const folderData = await projectService.getProjects();
+            setFolders(folderData);
+            
+            console.log('🔄 Refreshed conversations and folders after folder assignment');
+          } catch (error) {
+            console.error('Failed to refresh data:', error);
+          } finally {
+            setIsLoading(false);
+            setLoadingFolders(false);
+          }
+        };
+        
+        refreshData();
+      }, 100); // Small delay to ensure backend is updated
     }
-  }, [conversations, loadConversations, loadFolders]);
+  }, [conversations]);
   
   const updateConversationMessageCount = useCallback((conversationId: number, newMessageCount: number) => {
     const updateConversation = (conv: ConversationSummary) => 
@@ -547,15 +575,6 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
             <span>{conversation.project.name}</span>
           </div>
         )}
-        
-        {/* 🔧 DEBUG: Log conversation data to check project info */}
-        {process.env.NODE_ENV === 'development' && (() => {
-          console.log(`📄 Conversation ${conversation.id} render data:`);
-          console.log(`  - title: ${conversation.title}`);
-          console.log(`  - project_id: ${conversation.project_id}`);
-          console.log(`  - project:`, conversation.project);
-          return null;
-        })()}
       </div>
 
       {!isStreaming && editingTitle !== conversation.id && (
